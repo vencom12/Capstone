@@ -12,6 +12,7 @@ interface PaginationProps {
   pageSizeOptions?: number[];
   onPageSizeChange?: (newPageSize: number) => void;
   showInfo?: boolean;
+  isLoading?: boolean;
 }
 
 export default function Pagination({
@@ -20,81 +21,101 @@ export default function Pagination({
   pageSize,
   onPageChange,
   className = '',
+  isLoading = false,
 }: PaginationProps) {
   const dockRef = useRef<HTMLDivElement>(null);
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   if (totalItems <= 0) return null;
 
   const handlePageSelect = (p: number) => {
-    if (p === currentPage || p < 1 || p > totalPages) return;
+    if (isLoading || p === currentPage || p < 1 || p > totalPages) return;
     onPageChange(p);
 
     if (typeof window !== 'undefined') {
-      const resetScrollToTop = () => {
-        // 1. Target known viewport containers
-        const scrollContainers: HTMLElement[] = [];
-        const adminVp = document.getElementById('admin-main-viewport');
-        const employeeVp = document.getElementById('employee-main-viewport');
-        const customerVp = document.getElementById('customer-main-viewport');
-        if (adminVp) scrollContainers.push(adminVp);
-        if (employeeVp) scrollContainers.push(employeeVp);
-        if (customerVp) scrollContainers.push(customerVp);
-
-        document.querySelectorAll('[data-scroll-container="true"]').forEach((node) => {
-          scrollContainers.push(node as HTMLElement);
-        });
-
-        // 2. Ancestor hierarchy of the pagination dock
+      const smoothScrollToTop = () => {
+        // 1. Identify active scroll container
+        let activeContainer: HTMLElement | null = null;
         if (dockRef.current) {
           let el = dockRef.current.parentElement;
           while (el && el !== document.body && el !== document.documentElement) {
             const style = window.getComputedStyle(el);
-            if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
-              scrollContainers.push(el);
+            if (
+              (style.overflowY === 'auto' || style.overflowY === 'scroll') &&
+              el.scrollHeight > el.clientHeight
+            ) {
+              activeContainer = el;
+              break;
             }
             el = el.parentElement;
           }
         }
 
-        // 3. Fallback to any active overflow-y-auto elements
-        document.querySelectorAll('.overflow-y-auto').forEach((node) => {
-          scrollContainers.push(node as HTMLElement);
-        });
+        const knownContainers = [
+          document.getElementById('admin-main-viewport'),
+          document.getElementById('employee-main-viewport'),
+          document.getElementById('customer-main-viewport'),
+        ].filter(Boolean) as HTMLElement[];
 
-        // Execute scroll to top with both scrollTo and direct scrollTop reset
-        const unique = Array.from(new Set(scrollContainers));
-        unique.forEach((container) => {
-          try {
-            container.scrollTo({ top: 0, behavior: 'smooth' });
-            container.scrollTop = 0;
-          } catch {
-            container.scrollTop = 0;
+        if (!activeContainer) {
+          activeContainer = knownContainers.find(
+            (c) => c.scrollHeight > c.clientHeight && c.scrollTop > 0
+          ) || null;
+        }
+
+        // 2. Identify target element (the table, grid, or card container directly above pagination)
+        let targetElement: HTMLElement | null = null;
+        if (dockRef.current) {
+          let prev = dockRef.current.previousElementSibling as HTMLElement | null;
+          while (prev && prev.offsetHeight === 0) {
+            prev = prev.previousElementSibling as HTMLElement | null;
           }
-        });
+          if (prev) targetElement = prev;
+        }
 
-        // Reset window scroll
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        // Fallback for storefront products section
+        if (!targetElement) {
+          targetElement = document.getElementById('products-section');
+        }
 
-        // Storefront specific section anchor
-        const catalogEl = document.getElementById('products-section');
-        if (catalogEl) {
-          const headerOffset = 90;
-          const elementPosition = catalogEl.getBoundingClientRect().top + window.scrollY;
-          window.scrollTo({
-            top: Math.max(0, elementPosition - headerOffset),
-            behavior: 'smooth'
-          });
+        // 3. Smoothly scroll without abrupt jumping
+        if (activeContainer) {
+          if (targetElement && activeContainer.contains(targetElement)) {
+            const containerRect = activeContainer.getBoundingClientRect();
+            const targetRect = targetElement.getBoundingClientRect();
+            const offsetTop = targetRect.top - containerRect.top + activeContainer.scrollTop;
+            activeContainer.scrollTo({
+              top: Math.max(0, offsetTop - 20),
+              behavior: 'smooth',
+            });
+          } else {
+            activeContainer.scrollTo({
+              top: 0,
+              behavior: 'smooth',
+            });
+          }
+        } else {
+          if (targetElement) {
+            const headerOffset = 90;
+            const elementPosition = targetElement.getBoundingClientRect().top + window.scrollY;
+            window.scrollTo({
+              top: Math.max(0, elementPosition - headerOffset),
+              behavior: 'smooth',
+            });
+          } else {
+            window.scrollTo({
+              top: 0,
+              behavior: 'smooth',
+            });
+          }
         }
       };
 
-      // Run immediately
-      resetScrollToTop();
-      // Run on animation frame to withstand synchronous re-renders
+      // Slight frame delay so React state changes can trigger skeleton render before scrolling starts
       if (typeof requestAnimationFrame !== 'undefined') {
-        requestAnimationFrame(resetScrollToTop);
+        requestAnimationFrame(smoothScrollToTop);
+      } else {
+        smoothScrollToTop();
       }
-      // Run after microtask queue
-      setTimeout(resetScrollToTop, 50);
     }
   };
 
@@ -123,7 +144,7 @@ export default function Pagination({
       <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-bg-card/95 backdrop-blur-[16px] border border-border-glass shadow-xs">
         <button
           type="button"
-          disabled={currentPage <= 1}
+          disabled={currentPage <= 1 || isLoading}
           onClick={() => handlePageSelect(currentPage - 1)}
           className="w-7 h-7 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer flex items-center justify-center text-xs active:scale-95"
           aria-label="Previous page"
@@ -147,11 +168,12 @@ export default function Pagination({
               <button
                 key={pageNum}
                 type="button"
+                disabled={isLoading}
                 onClick={() => handlePageSelect(pageNum)}
                 className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center justify-center ${
                   isActive
                     ? 'bg-primary text-white shadow-xs'
-                    : 'text-text-main hover:bg-bg-surface hover:text-primary active:scale-95'
+                    : 'text-text-main hover:bg-bg-surface hover:text-primary active:scale-95 disabled:opacity-50'
                 }`}
                 aria-current={isActive ? 'page' : undefined}
               >
@@ -163,7 +185,7 @@ export default function Pagination({
 
         <button
           type="button"
-          disabled={currentPage >= totalPages}
+          disabled={currentPage >= totalPages || isLoading}
           onClick={() => handlePageSelect(currentPage + 1)}
           className="w-7 h-7 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer flex items-center justify-center text-xs active:scale-95"
           aria-label="Next page"

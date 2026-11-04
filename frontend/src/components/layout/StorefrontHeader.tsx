@@ -279,7 +279,15 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             <line x1="12" y1="16" x2="12.01" y2="16"/>
           </svg>
           <span className="truncate">
-            <strong>Workshop Notice:</strong> Production schedule adjusted ({emergencyNotice.reason}). In-queue orders updated.
+            {emergencyNotice.isScheduled ? (
+              <>
+                <strong>Upcoming Workshop Break:</strong> Closed for {emergencyNotice.reason} ({emergencyNotice.startDate ? new Date(emergencyNotice.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'soon'} &ndash; {emergencyNotice.resumeDate ? new Date(emergencyNotice.resumeDate).toLocaleDateString([], { month: 'short', day: 'numeric' }) : 'TBD'}). Normal turnaround applies until then.
+              </>
+            ) : (
+              <>
+                <strong>Workshop Notice:</strong> Production schedule adjusted ({emergencyNotice.reason}). In-queue orders updated.
+              </>
+            )}
           </span>
         </div>
       )}

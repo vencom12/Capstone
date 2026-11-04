@@ -80,12 +80,30 @@ export default function EmployeePage() {
 
   // Search & Filters State
   const [ordersSearchQuery, setOrdersSearchQuery] = useState('');
+  const [isQueueSearching, setIsQueueSearching] = useState(false);
+
+  useEffect(() => {
+    if (!ordersSearchQuery) return;
+    setIsQueueSearching(true);
+    const timer = setTimeout(() => setIsQueueSearching(false), 240);
+    return () => clearTimeout(timer);
+  }, [ordersSearchQuery]);
   const [ordersDateFilter, setOrdersDateFilter] = useState('');
   const [selectedOrderIds, setSelectedOrderIds] = useState<string[]>([]);
   const [batchStatus, setBatchStatus] = useState('');
   const [ordersQueueTab, setOrdersQueueTab] = useState<string>('all');
   const [queuePage, setQueuePage] = useState(1);
   const [queuePageSize, setQueuePageSize] = useState(30);
+  const [isQueuePageChanging, setIsQueuePageChanging] = useState(false);
+
+  const handleQueuePageChange = (newPage: number) => {
+    if (newPage === queuePage) return;
+    setIsQueuePageChanging(true);
+    setQueuePage(newPage);
+    setTimeout(() => {
+      setIsQueuePageChanging(false);
+    }, 280);
+  };
 
   // Bulk Names Roster Modal for machine operator / artisan
   const [activeRosterData, setActiveRosterData] = useState<WorkshopRosterData | null>(null);
@@ -100,9 +118,10 @@ export default function EmployeePage() {
   const [archivedPageSize, setArchivedPageSize] = useState(30);
   const [archivedTotalPages, setArchivedTotalPages] = useState(1);
 
-  const fetchArchivedOrders = async (query = historySearchQuery, date = historyDateFilter, page = 1, limit = archivedPageSize) => {
+  const fetchArchivedOrders = async (query = historySearchQuery, date = historyDateFilter, page = 1, limit = archivedPageSize, isPageSwitch = false) => {
     if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
     setIsLoadingArchived(true);
+    const minDelay = isPageSwitch ? new Promise((r) => setTimeout(r, 280)) : Promise.resolve();
     try {
       const params = new URLSearchParams();
       if (query && query.trim()) params.append('search', query.trim());
@@ -110,7 +129,10 @@ export default function EmployeePage() {
       params.append('page', String(page));
       params.append('limit', String(limit));
 
-      const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
+      const [res] = await Promise.all([
+        api.get<any>(`/api/admin/orders/history?${params.toString()}`),
+        minDelay
+      ]);
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
       if (res && res.orders) {
         setArchivedOrders(res.orders);
@@ -301,8 +323,9 @@ export default function EmployeePage() {
   useEffect(() => {
     if (!isHydrated || !isAuthenticated || (!checkAccess('employee') && !checkAccess('admin'))) return;
     if (activeTab === 'history') {
+      setIsLoadingArchived(true);
       const timer = setTimeout(() => {
-        fetchArchivedOrders(historySearchQuery, historyDateFilter, 1);
+        fetchArchivedOrders(historySearchQuery, historyDateFilter, 1, archivedPageSize, true);
       }, 250);
       return () => clearTimeout(timer);
     }
@@ -816,12 +839,12 @@ export default function EmployeePage() {
               );
             })()}
 
-            {isSyncing && orders.length === 0 ? (
+            {(isQueueSearching || isQueuePageChanging || (isSyncing && orders.length === 0)) ? (
               <div className="max-[1100px]:hidden mb-4 w-full">
-                <TableSkeleton rows={5} cols={6} />
+                <TableSkeleton rows={Math.min(queuePageSize, 8)} cols={6} />
               </div>
             ) : (
-              <div className="glass-table-container max-[1100px]:hidden">
+              <div className="glass-table-container max-[1100px]:hidden animate-table-fade">
                 <table className="glass-table">
                   <thead>
                     <tr>
@@ -1125,7 +1148,7 @@ export default function EmployeePage() {
 
             {/* Tablet & Mobile Card Block View */}
             <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-2 pr-1">
-              {isSyncing && orders.length === 0 ? (
+              {(isQueueSearching || isQueuePageChanging || (isSyncing && orders.length === 0)) ? (
                 Array.from({ length: 4 }).map((_, i) => (
                   <CardSkeleton key={i} />
                 ))
@@ -1377,7 +1400,8 @@ export default function EmployeePage() {
               currentPage={queuePage}
               totalItems={activeOrders.length}
               pageSize={queuePageSize}
-              onPageChange={setQueuePage}
+              onPageChange={handleQueuePageChange}
+              isLoading={isQueuePageChanging}
               pageSizeOptions={[5, 10, 20, 50]}
               onPageSizeChange={(newSize) => {
                 setQueuePageSize(newSize);
@@ -1453,7 +1477,7 @@ export default function EmployeePage() {
             ) : (
               <>
                 {/* Desktop Table */}
-                <div className="glass-table-container max-[1100px]:hidden">
+                <div className="glass-table-container max-[1100px]:hidden animate-table-fade">
                   <table className="glass-table">
                     <thead>
                       <tr>
@@ -1610,7 +1634,8 @@ export default function EmployeePage() {
                   currentPage={archivedPage}
                   totalItems={archivedTotal}
                   pageSize={archivedPageSize}
-                  onPageChange={(p) => fetchArchivedOrders(historySearchQuery, historyDateFilter, p, archivedPageSize)}
+                  onPageChange={(p) => fetchArchivedOrders(historySearchQuery, historyDateFilter, p, archivedPageSize, true)}
+                  isLoading={isLoadingArchived}
                   pageSizeOptions={[10, 15, 25, 50]}
                   onPageSizeChange={(newSize) => {
                     setArchivedPageSize(newSize);

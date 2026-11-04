@@ -6,9 +6,9 @@ const { estimateArtisanProductionTime } = require('./pickupScheduler');
 
 /**
  * Estimates production time in minutes for a given order based on artisan sewing machine speeds:
- * - 12 seconds per letter (0.20 minutes / letter; a 5-letter name = 60s active stitching).
+ * - 4 seconds per letter (4.0 / 60.0 minutes / letter; a 5-letter name = 20s active stitching).
  * - Standard single font & single size.
- * - ~1.0 minute handling per item (0.6 min hooping + 0.4 min trim/pack).
+ * - 20 seconds handling per item (hooping, alignment, trim & pack).
  * - Plain retail items (no monogram): 0.5 minutes inspection/pack.
  * @param {Object} order The order object to estimate
  * @returns {number} Estimated time in minutes

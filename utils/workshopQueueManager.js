@@ -133,12 +133,29 @@ async function resyncQueueFromDatabase(prisma) {
         const maxBulkPiecesPerPeriod = settings?.maxBulkPiecesPerDay || 50;
         const batchThrottlePeriod = settings?.batchThrottlePeriod || 'week';
 
+        let metaStartDate = null;
+        if (settings?.availableThreadColors) {
+            let tc = settings.availableThreadColors;
+            if (typeof tc === 'string') { try { tc = JSON.parse(tc); } catch (e) {} }
+            if (Array.isArray(tc)) {
+                const em = tc.find(c => c && c.id === '__emergency_meta__');
+                if (em?.startDate) metaStartDate = em.startDate;
+            }
+        }
+        const emStart = metaStartDate ? new Date(metaStartDate) : (settings?.emergencyNoticeCreatedAt ? new Date(settings.emergencyNoticeCreatedAt) : now);
+        const emResume = settings?.emergencyNoticeResumeDate ? new Date(settings.emergencyNoticeResumeDate) : null;
+
         const isEmergencyOn = Boolean(
             settings?.emergencyNoticeActive &&
-            settings.emergencyNoticeResumeDate &&
-            new Date(settings.emergencyNoticeResumeDate).getTime() > now.getTime()
+            emResume &&
+            emResume.getTime() > now.getTime() &&
+            emStart.getTime() <= now.getTime()
         );
-        const effectiveStartTime = isEmergencyOn ? new Date(settings.emergencyNoticeResumeDate) : now;
+        const isScheduled = Boolean(
+            settings?.emergencyNoticeActive &&
+            emStart.getTime() > now.getTime()
+        );
+        const effectiveStartTime = isEmergencyOn && emResume ? emResume : now;
 
         const benchmarkIncomingMins = 3; // Standard 1-piece baseline benchmark
         const schedule = calculatePickupSchedule({
@@ -180,6 +197,9 @@ async function resyncQueueFromDatabase(prisma) {
             isStoreOpenNow: schedule.isStoreOpenNow,
             emergencyNotice: settings?.emergencyNoticeActive ? {
                 active: true,
+                isScheduled,
+                isCurrentlyClosed: isEmergencyOn,
+                startDate: emStart.toISOString(),
                 policy: settings.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',
                 resumeDate: settings.emergencyNoticeResumeDate,
                 reason: settings.emergencyNoticeReason

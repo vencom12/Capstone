@@ -6,8 +6,9 @@
  * - Store Hours: 10:00 AM - 8:00 PM (10 hours total elapsed)
  * - Lunch Break: 12:00 PM - 12:15 PM (15 minutes pause)
  * - Active Production Time: 585 minutes / day (120 min morning + 465 min afternoon)
- * - Artisan Stitch Rate: 12 seconds per letter (5 letters = 1 minute)
- * - Standard Handling: ~1.0 minute per piece (hooping, alignment, trim & pack)
+ * - Artisan Stitch Rate: 4 seconds per letter (15 letters = 1 minute)
+ * - Standard Handling: 20 seconds per piece (hooping, alignment, trim & pack)
+ * - Cap Offset: 0 seconds (standardized across all garment types)
  */
 
 const SHOP_OPEN_HOUR = 10;       // 10:00 AM
@@ -167,21 +168,23 @@ function formatPickupLabel(targetDate, baseDate = new Date()) {
 
 /**
  * Estimates production time per order based on artisan sewing machine speeds:
- * - secondsPerLetter (default 12s = 0.20 minutes)
- * - handlingMinutes (default 1.0m: 0.6 hoop + 0.4 trim/pack)
- * - capOffsetMinutes (default 0.5m)
+ * - secondsPerLetter (standard 4s = 4.0 / 60.0 minutes)
+ * - handlingMinutes (fixed 20 seconds = 20.0 / 60.0 minutes per item)
+ * - capOffsetMinutes (0 minutes - cap offset removed)
+ * 
+ * e.g., 2 items with names add exactly 40 seconds of handling on top of total letter stitch time.
  * 
  * @param {Object} order 
- * @param {Object} [calibration] Optional calibration overrides from SystemSettings
- * @returns {number} Estimated minutes
+ * @param {Object} [calibration] Optional calibration overrides
+ * @returns {number} Estimated minutes (minimum 1 minute)
  */
 function estimateArtisanProductionTime(order, calibration = {}) {
-    if (!order) return 2;
+    if (!order) return 1;
 
-    const secPerLetter = typeof calibration.secondsPerLetter === 'number' ? calibration.secondsPerLetter : 12.0;
-    const letterRateMins = secPerLetter / 60.0;
-    const handlingMins = typeof calibration.handlingMinutes === 'number' ? calibration.handlingMinutes : 1.0;
-    const capOffset = typeof calibration.capOffsetMinutes === 'number' ? calibration.capOffsetMinutes : 0.5;
+    // Defensible workshop constants: 4s per letter, 20s handling per garment, 0s cap offset
+    const secPerLetter = 4.0;
+    const letterRateMins = secPerLetter / 60.0; // 4.0 / 60.0 minutes = 4 seconds
+    const handlingMins = 20.0 / 60.0;          // ~0.333 minutes = 20 seconds per item
 
     let items = [];
     if (Array.isArray(order.items)) {
@@ -199,29 +202,29 @@ function estimateArtisanProductionTime(order, calibration = {}) {
                 const letters = String(name || '').replace(/\s+/g, '').length || 5;
                 total += handlingMins + (letters * letterRateMins);
             });
-            return Math.max(2, Math.ceil(total));
+            return Math.max(1, Math.ceil(total));
         }
 
         const rawText = order.personalization?.text || order.monogramText || '';
         const letters = rawText.replace(/\s+/g, '').length || 5;
         const stitchMins = letters * letterRateMins;
-        return Math.max(2, Math.ceil(handlingMins + stitchMins));
+        return Math.max(1, Math.ceil(handlingMins + stitchMins));
     }
 
     let totalMinutes = 0;
     items.forEach(item => {
         const qty = Math.max(1, item.quantity || 1);
-        const designLower = (item.name || item.design || '').toLowerCase();
-        const isCap = designLower.includes('cap') || designLower.includes('hat');
-        const capBonus = isCap ? capOffset : 0.0;
 
         // Check if item has an explicit list of different names
         const namesList = item.personalization?.namesList || item.namesList;
         if (Array.isArray(namesList) && namesList.length > 0) {
             namesList.forEach(name => {
                 const letters = String(name || '').replace(/\s+/g, '').length || 5;
-                totalMinutes += handlingMins + (letters * letterRateMins) + capBonus;
+                totalMinutes += handlingMins + (letters * letterRateMins);
             });
+            if (qty > namesList.length) {
+                totalMinutes += (qty - namesList.length) * handlingMins;
+            }
             return;
         }
 
@@ -231,16 +234,16 @@ function estimateArtisanProductionTime(order, calibration = {}) {
         let perItemMinutes = 0;
         if (hasMonogram) {
             const stitchTime = itemText.length * letterRateMins;
-            perItemMinutes = handlingMins + stitchTime + capBonus;
+            perItemMinutes = handlingMins + stitchTime;
         } else {
-            // Plain retail item: inspection & packaging only
-            perItemMinutes = 0.5;
+            // Plain retail item: 20 seconds handling & inspection
+            perItemMinutes = handlingMins;
         }
 
         totalMinutes += perItemMinutes * qty;
     });
 
-    return Math.max(2, Math.ceil(totalMinutes));
+    return Math.max(1, Math.ceil(totalMinutes));
 }
 
 /**
@@ -272,7 +275,7 @@ function calculatePickupSchedule({
     const effectiveBacklog = Math.ceil(Math.max(0, queueBacklogMinutes) / machines);
 
     // Total production time = waiting in queue + time to embroider incoming order
-    const orderStitchMinutes = Math.max(2, Math.ceil(orderDurationMinutes));
+    const orderStitchMinutes = Math.max(1, Math.ceil(orderDurationMinutes));
     const activeMinutesNeeded = effectiveBacklog + orderStitchMinutes;
     const estimatedReadyDate = addActiveProductionMinutes(startTime, activeMinutesNeeded);
 

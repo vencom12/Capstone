@@ -13,6 +13,7 @@ import {
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import Pagination from '@/components/ui/Pagination';
+import { TableSkeleton } from '@/components/ui/Skeletons';
 
 interface PanelAnalyticsProps {
   orders: any[];
@@ -198,6 +199,16 @@ export default function PanelAnalytics({
   // Pagination for category performance
   const [categoryPage, setCategoryPage] = useState(1);
   const [categoryPageSize, setCategoryPageSize] = useState(30);
+  const [isCategoryPageChanging, setIsCategoryPageChanging] = useState(false);
+
+  const handleCategoryPageChange = (newPage: number) => {
+    if (newPage === categoryPage) return;
+    setIsCategoryPageChanging(true);
+    setCategoryPage(newPage);
+    setTimeout(() => {
+      setIsCategoryPageChanging(false);
+    }, 280);
+  };
 
   // 1. Inventory cost map
   const inventoryCostMap = useMemo(() => {
@@ -883,9 +894,11 @@ export default function PanelAnalytics({
           <div className="py-8 text-center text-xs text-text-dim">
             No orders recorded for {timeRange === 'today' ? 'today' : timeRange === 'week' ? 'the past 7 days' : timeRange === 'month' ? 'the past 30 days' : timeRange === '6months' ? 'the past 6 months' : timeRange === '1year' ? 'the past 1 year' : 'this period'}. Expand the timeframe to 6 Months, 1 Year, or All Time to view sales.
           </div>
+        ) : isCategoryPageChanging ? (
+          <TableSkeleton rows={Math.min(categoryPageSize, 6)} cols={5} />
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto animate-table-fade">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b border-border-glass text-text-dim text-[11px]">
@@ -930,7 +943,8 @@ export default function PanelAnalytics({
               currentPage={categoryPage}
               totalItems={categoryPerformance.length}
               pageSize={categoryPageSize}
-              onPageChange={setCategoryPage}
+              onPageChange={handleCategoryPageChange}
+              isLoading={isCategoryPageChanging}
               pageSizeOptions={[5, 10, 20]}
               onPageSizeChange={(newSize) => {
                 setCategoryPageSize(newSize);

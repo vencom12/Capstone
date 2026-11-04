@@ -52,10 +52,11 @@ export default function PanelAuditTrail() {
   const [totalCount, setTotalCount] = useState(() => cachedAuditLogs?.totalCount || 0);
   const [pageSize, setPageSize] = useState(30);
 
-  const fetchLogs = async (page = 1, entity = selectedEntity, search = searchQuery, size = pageSize, silent = false) => {
-    if (!silent && !cachedAuditLogs) {
+  const fetchLogs = async (page = 1, entity = selectedEntity, search = searchQuery, size = pageSize, silent = false, isPageSwitch = false) => {
+    if (isPageSwitch || (!silent && !cachedAuditLogs)) {
       setIsLoading(true);
     }
+    const minDelay = isPageSwitch ? new Promise((r) => setTimeout(r, 280)) : Promise.resolve();
     try {
       const params = new URLSearchParams();
       params.append('page', String(page));
@@ -63,10 +64,13 @@ export default function PanelAuditTrail() {
       if (entity && entity !== 'All') params.append('entity', entity);
       if (search && search.trim()) params.append('search', search.trim());
 
-      const res = await api.get<{
-        logs: AuditLogEntry[];
-        pagination?: { totalCount: number; currentPage: number; totalPages: number };
-      }>(`/api/admin/audit-logs?${params.toString()}`);
+      const [res] = await Promise.all([
+        api.get<{
+          logs: AuditLogEntry[];
+          pagination?: { totalCount: number; currentPage: number; totalPages: number };
+        }>(`/api/admin/audit-logs?${params.toString()}`),
+        minDelay,
+      ]);
 
       if (res && res.logs) {
         setLogs(res.logs);
@@ -96,8 +100,9 @@ export default function PanelAuditTrail() {
       fetchLogs(currentPage, selectedEntity, searchQuery, pageSize, hasCached);
       return;
     }
+    setIsLoading(true);
     const timer = setTimeout(() => {
-      fetchLogs(1, selectedEntity, searchQuery, pageSize, false);
+      fetchLogs(1, selectedEntity, searchQuery, pageSize, false, true);
     }, 250);
     return () => clearTimeout(timer);
   }, [selectedEntity, searchQuery]);
@@ -255,7 +260,7 @@ export default function PanelAuditTrail() {
       {isLoading ? (
         <TableSkeleton rows={8} cols={6} />
       ) : (
-        <div className="glass-table-container overflow-x-auto w-full">
+        <div className="glass-table-container overflow-x-auto w-full animate-table-fade">
           <table className="glass-table w-full min-w-[980px]">
             <thead>
               <tr>
@@ -384,11 +389,12 @@ export default function PanelAuditTrail() {
         currentPage={currentPage}
         totalItems={totalCount}
         pageSize={pageSize}
-        onPageChange={(p) => fetchLogs(p, selectedEntity, searchQuery)}
+        onPageChange={(p) => fetchLogs(p, selectedEntity, searchQuery, pageSize, false, true)}
+        isLoading={isLoading}
         pageSizeOptions={[10, 15, 25, 50]}
         onPageSizeChange={(newSize) => {
           setPageSize(newSize);
-          fetchLogs(1, selectedEntity, searchQuery, newSize);
+          fetchLogs(1, selectedEntity, searchQuery, newSize, false, true);
         }}
         itemLabel="audit log entries"
       />

@@ -51,6 +51,14 @@ export default function PanelManageDesigns({
   const { user } = useAuthStore();
   const isAdmin = user?.role === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    setIsSearching(true);
+    const timer = setTimeout(() => setIsSearching(false), 240);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Studio Thread Palette State (Slim Section in Products Tab)
   const [threadColors, setThreadColors] = useState<StudioThreadColor[]>(DEFAULT_STUDIO_THREAD_COLORS);
@@ -311,10 +319,15 @@ export default function PanelManageDesigns({
   // Pagination for Products Grid
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize] = useState(30);
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
 
   const handlePageChange = (newPage: number) => {
     if (newPage === currentPage) return;
+    setIsPageTransitioning(true);
     setCurrentPage(newPage);
+    setTimeout(() => {
+      setIsPageTransitioning(false);
+    }, 280);
   };
 
   useEffect(() => {
@@ -835,9 +848,9 @@ export default function PanelManageDesigns({
 
       {/* Product card grid layout */}
       <div className="w-full pr-2 flex-1">
-        {isSyncing && products.length === 0 ? (
+        {(isSearching || isPageTransitioning || (isSyncing && products.length === 0)) ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-            {Array.from({ length: 4 }).map((_, i) => (
+            {Array.from({ length: Math.min(pageSize, 8) }).map((_, i) => (
               <ProductCardSkeleton key={i} />
             ))}
           </div>
@@ -846,7 +859,7 @@ export default function PanelManageDesigns({
             No products match the selected filters.{isAdmin ? ' Click "+ New Product" to create one.' : ''}
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 animate-table-fade">
             {paginatedProducts.map((p) => {
               const id = p.id || p._id;
               const availableStock = p.availableStock !== undefined ? p.availableStock : Math.max(0, (p.count || 0) - (p.reservedCount || 0));
@@ -1005,6 +1018,7 @@ export default function PanelManageDesigns({
           totalItems={filteredProducts.length}
           pageSize={pageSize}
           onPageChange={handlePageChange}
+          isLoading={isPageTransitioning}
           showInfo={false}
           className="mt-3.5"
         />

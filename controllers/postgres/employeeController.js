@@ -187,22 +187,12 @@ exports.receiveGarments = async (req, res) => {
         const now = new Date();
         const { calculatePickupSchedule, estimateArtisanProductionTime } = require('../../utils/pickupScheduler');
         
-        // Fetch calibration settings with robust fallback
-        let calibration = {};
-        try {
-            if (prisma.systemSettings) {
-                const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
-                if (settings) {
-                    calibration = {
-                        secondsPerLetter: settings.artisanSecondsPerLetter,
-                        handlingMinutes: settings.artisanHandlingMinutes,
-                        capOffsetMinutes: settings.artisanCapOffsetMinutes
-                    };
-                }
-            }
-        } catch (settingsErr) {
-            console.warn('SystemSettings query notice, using default calibration:', settingsErr.message);
-        }
+        // Standardized workshop calibration parameters: 4s/letter, 20s handling per piece, 0s cap offset
+        const calibration = {
+            secondsPerLetter: 4.0,
+            handlingMinutes: 20.0 / 60.0,
+            capOffsetMinutes: 0.0
+        };
 
         const estMinutes = order.estimatedTime || estimateArtisanProductionTime(order, calibration);
         const schedule = calculatePickupSchedule({

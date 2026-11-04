@@ -227,7 +227,7 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
         </div>
       ) : isPageLoading ? (
         <>
-          <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1 animate-pulse">
+          <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1">
             {Array.from({ length: 4 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))}
@@ -237,13 +237,14 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
             totalItems={visible.length}
             pageSize={pageSize}
             onPageChange={handlePageChange}
+            isLoading={isPageLoading}
             showInfo={false}
             className="mt-3.5"
           />
         </>
       ) : (
         <>
-          <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1">
+          <div className="grid grid-cols-2 gap-4 max-[1100px]:grid-cols-1 animate-table-fade">
             {paginatedOrders.map((o) => (
               <OrderCard
                 key={o.id}

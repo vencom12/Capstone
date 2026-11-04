@@ -1,489 +1,522 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import GlassDatePicker from '@/components/ui/GlassDatePicker';
-import GlassSelect from '@/components/ui/GlassSelect';
-import GlassModal from '@/components/ui/GlassModal';
-import InvoiceModal from '@/components/dashboard/InvoiceModal';
-import ClaimStubModal from '@/components/admin/ClaimStubModal';
-import EmergencyDelayNoticeModal from '@/components/admin/EmergencyDelayNoticeModal';
-import { api } from '@/lib/api';
-import { getOrderScheduleInfo } from '@/lib/orderSchedule';
-import { showToast } from '@/components/ui/Toast';
-import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
-import Pagination from '@/components/ui/Pagination';
-
-interface PanelOverviewProps {
-  orders: any[];
-  isSyncing: boolean;
-  refreshData: () => Promise<void>;
-  dbType?: string;
-  setOrders?: React.Dispatch<React.SetStateAction<any[]>>;
-}
-
-export default function PanelOverview({
-  orders,
-  isSyncing,
-  refreshData,
-  dbType,
-  setOrders
-}: PanelOverviewProps) {
-  // Search & Filters State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState('');
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [batchStatus, setBatchStatus] = useState('');
-  const [queueTab, setQueueTab] = useState<string>('all');
-
-  // Emergency Delay Notice Protocol State
-  const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
-  const [delayNoticeStatus, setDelayNoticeStatus] = useState<any>(null);
-
-  const fetchDelayNoticeStatus = async () => {
-    try {
-      const res = await api.get<any>('/api/admin/delay-notice');
-      if (res) setDelayNoticeStatus(res);
-    } catch (err) {
-      console.warn('Failed to fetch delay notice status:', err);
-    }
-  };
-
-  useEffect(() => {
-    fetchDelayNoticeStatus();
-  }, []);
-
-  const handleDirectLiftNotice = async () => {
-    if (!window.confirm('Are you sure you want to lift the active delay notice and resume regular workshop pace?')) return;
-    try {
-      await api.post('/api/admin/delay-notice/lift', {});
-      showToast('Delay notice lifted. Normal workshop operations resumed.', 'success');
-      fetchDelayNoticeStatus();
-      refreshData().catch(() => {});
-    } catch (err: any) {
-      showToast(err.message || 'Failed to lift delay notice', 'error');
-    }
-  };
-
-  // Receipt Modal State
-  const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
-  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
-  const [receiptDetails, setReceiptDetails] = useState<any>(null);
-  const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
-
-  const [claimStubOrder, setClaimStubOrder] = useState<any>(null);
-  const [verifyingSmsIds, setVerifyingSmsIds] = useState<Record<string, boolean>>({});
-  const isOrderPickup = (_o?: any) => true;
-
-  const getOrderGcashRef = (o: any): string => {
-    if (!o) return '';
-    const paymentMethod = String(o.paymentMethod || '').toLowerCase();
-    if (paymentMethod && paymentMethod !== 'gcash') return '';
-
-    const rawRef =
-      o.receipt?.referenceId ||
-      (o.personalization && typeof o.personalization === 'object' ? o.personalization.referenceNumber : '') ||
-      '';
-    if (!rawRef || rawRef.startsWith('TX-')) return '';
-    return String(rawRef).trim();
-  };
-
-  const isOrderSmsVerified = (o: any): boolean => {
-    if (!o) return false;
-    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
-    return Boolean(pers.smsVerified);
-  };
-
-  const handleVerifySmsMatch = async (o: any, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
-    const targetId = o.id || o._id || o.orderId;
-    if (!targetId || verifyingSmsIds[targetId]) return;
-
-    const ref = getOrderGcashRef(o);
-    setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: true }));
-
-    // Optimistic update
-    if (setOrders) {
-      setOrders((prev) =>
-        prev.map((item) => {
-          if ((item.id || item._id || item.orderId) !== targetId) return item;
-          const pers = item.personalization && typeof item.personalization === 'object' ? { ...item.personalization } : {};
-          pers.smsVerified = true;
-          return {
-            ...item,
-            paymentStatus: 'paid',
-            personalization: pers,
-            receipt: item.receipt ? { ...item.receipt, status: 'Verified', aiVerificationStatus: 'verified' } : item.receipt,
-          };
-        })
-      );
-    }
-
-    try {
-      const res = await api.post<any>(`/api/admin/orders/${targetId}/verify-payment`, {
-        referenceNumber: ref || undefined,
-      });
-      showToast(res?.message || `Payment verified for Ref: ...${ref.slice(-4)}`, 'success');
-      refreshData().catch(() => {});
-    } catch (err: any) {
-      showToast(err.message || 'Failed to confirm payment reference', 'error');
-      refreshData().catch(() => {});
-    } finally {
-      setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: false }));
-    }
-  };
-
-  const getOrderClaimCode = (o: any) => {
-    if (!o) return '#A-000';
-    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
-    if (pers.claimCode) return pers.claimCode;
-    const id = o.orderId || '';
-    if (id.startsWith('WI-')) return `#${id.replace('WI-', 'A-')}`;
-    const suffix = id.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
-    return `#A-${suffix.toUpperCase()}`;
-  };
-
-  // High-Volume Logistics State (Batch Thermal Labels & Courier Manifest)
-  const [batchPrintOrders, setBatchPrintOrders] = useState<any[]>([]);
-  const [isManifestOpen, setIsManifestOpen] = useState(false);
-
-  const printIsolatedElement = (elementId: string, docTitle: string, isContinuousThermal = false) => {
-    const el = document.getElementById(elementId);
-    if (!el) {
-      window.print();
-      return;
-    }
-
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = '0';
-    document.body.appendChild(iframe);
-
-    const doc = iframe.contentWindow?.document;
-    if (!doc) {
-      window.print();
-      return;
-    }
-
-    doc.open();
-    doc.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>${docTitle}</title>
-          <style>
-            @page {
-              size: ${isContinuousThermal ? '100mm 150mm' : 'auto'};
-              margin: ${isContinuousThermal ? '4mm' : '10mm'};
-            }
-            * {
-              box-sizing: border-box;
-              margin: 0;
-              padding: 0;
-              -webkit-print-color-adjust: exact !important;
-              print-color-adjust: exact !important;
-            }
-            body {
-              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, monospace;
-              background: #fff;
-              color: #000;
-              padding: 0;
-              margin: 0;
-            }
-            ${isContinuousThermal ? `
-              .print\\\\:break-after-page {
-                page-break-after: always !important;
-                break-after: page !important;
-                margin-bottom: 8mm;
-              }
-            ` : ''}
-            table { width: 100%; border-collapse: collapse; }
-            th, td { border: 1px solid #000; padding: 6px; }
-            .border-b-2 { border-bottom: 2px solid #000; }
-            .border-b { border-bottom: 1px solid #000; }
-            .border-t-2 { border-top: 2px solid #000; }
-            .border-t { border-top: 1px solid #000; }
-            .border-r { border-right: 1px solid #000; }
-            .border { border: 1px solid #000; }
-            .border-black { border-color: #000 !important; }
-            .flex { display: flex; }
-            .flex-col { flex-direction: column; }
-            .flex-1 { flex: 1; }
-            .justify-between { justify-content: space-between; }
-            .items-center { align-items: center; }
-            .grid { display: grid; }
-            .grid-cols-2 { grid-template-columns: 1fr 1fr; }
-            .gap-2 { gap: 8px; }
-            .gap-4 { gap: 16px; }
-            .gap-6 { gap: 24px; }
-            .text-center { text-align: center; }
-            .text-right { text-align: right; }
-            .font-bold { font-weight: bold; }
-            .font-black { font-weight: 900; }
-            .uppercase { text-transform: uppercase; }
-            .bg-emerald-700 { background: #047857 !important; color: #fff !important; }
-            .bg-\\\\[\\\\#e11d48\\\\] { background: #e11d48 !important; color: #fff !important; }
-            .bg-black { background: #000 !important; color: #fff !important; }
-            .text-white { color: #fff !important; }
-            .rounded-xl { border-radius: 8px; }
-            .p-4 { padding: 12px; }
-            .p-6 { padding: 18px; }
-            svg { display: block; }
-          </style>
-        </head>
-        <body>
-          ${el.outerHTML}
-        </body>
-      </html>
-    `);
-    doc.close();
-
-    setTimeout(() => {
-      iframe.contentWindow?.focus();
-      iframe.contentWindow?.print();
-      setTimeout(() => {
-        document.body.removeChild(iframe);
-      }, 1000);
-    }, 250);
-  };
-
-
-
-  // 1. Filtering & Queue Priority Sorting Logic
-  const activeOrders = orders
-    .filter((o) => {
-      // Hide delivered and canceled in primary Overview queue
-      if (['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)) return false;
-
-      const matchesSearch =
-        !searchQuery ||
-        o.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        o.status?.toLowerCase().includes(searchQuery.toLowerCase());
-
-      const matchesDate =
-        !dateFilter ||
-        new Date(o.date || o.createdAt).toISOString().split('T')[0] === dateFilter;
-
-      const matchesTab = queueTab === 'all' || o.status === queueTab;
-
-      return matchesSearch && matchesDate && matchesTab;
-    })
-    .sort((a, b) => {
-      // Prioritize Rush orders and high priority scores first, followed by FIFO order creation
-      const scoreA = (a.priorityScore || 0) + (a.isRush ? 100 : 0);
-      const scoreB = (b.priorityScore || 0) + (b.isRush ? 100 : 0);
-      if (scoreB !== scoreA) {
-        return scoreB - scoreA;
-      }
-      return new Date(a.date || a.createdAt || 0).getTime() - new Date(b.date || b.createdAt || 0).getTime();
-    });
-
-  // Pagination for Active Orders Queue Table
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(30);
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, dateFilter, queueTab, pageSize]);
-
-  const paginatedOrders = activeOrders.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize
-  );
-
-  // Calculate Queued and Realized Revenue
-  const pendingOrders = orders.filter(o =>
-    ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'].includes(o.status)
-  );
-  const completedOrders = orders.filter(o => o.status === 'Order Delivered');
-
-  const queuedRevenue = pendingOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
-  const realizedRevenue = completedOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
-
-  const totalProjected = realizedRevenue + queuedRevenue;
-  const progressPercent = totalProjected > 0 ? (realizedRevenue / totalProjected) * 100 : 0;
-
-
-  // 2. Fetch Receipt Details
-  const viewReceipt = async (order: any) => {
-    const transactionId = order.transactionID || order.transactionId || order.receiptID || order.receiptId;
-    if (!transactionId || transactionId === 'undefined') {
-      showToast('No secure transaction ID recorded for this order', 'error');
-      return;
-    }
-    setSelectedReceipt(order);
-    setReceiptDetails(null);
-    setIsLoadingReceipt(true);
-    setIsReceiptModalOpen(true);
-
-    try {
-      const data = await api.get<any>(`/api/admin/receipt/${transactionId}`);
-      if (data) {
-        setReceiptDetails(data);
-      } else {
-        throw new Error('No data received');
-      }
-    } catch (err) {
-      console.error('Failed to load transaction receipt:', err);
-      showToast('Retrieving receipt data failed', 'error');
-    } finally {
-      setIsLoadingReceipt(false);
-    }
-  };
-
-  const handleDownloadReceipt = async (order: any) => {
-    const receiptId = receiptDetails?.transactionID ||
-      receiptDetails?.id ||
-      order?.transactionID ||
-      order?.transactionId ||
-      order?.receiptID ||
-      order?.receiptId ||
-      order?.orderId ||
-      order?.id ||
-      order?._id;
-
-    if (!receiptId || receiptId === 'undefined') {
-      showToast('No receipt reference available for download', 'error');
-      return;
-    }
-
-    try {
-      showToast('Preparing secure receipt download...', 'info');
-      await api.download(`/api/admin/receipt/${receiptId}/download`, `STITCH_OPT_RECEIPT_${receiptId}.pdf`);
-      showToast('Receipt PDF downloaded successfully', 'success');
-    } catch (err) {
-      console.error('Download failed:', err);
-      showToast('Downloading receipt PDF failed', 'error');
-    }
-  };
-
-  // 3. Batch Status Apply (Auto-triggered upon dropdown selection)
-  const handleBatchStatusApply = async (statusOverride?: string) => {
-    const targetStatus = statusOverride || batchStatus;
-    if (selectedIds.length === 0) {
-      showToast('Select orders first from the queue checkbox', 'error');
-      setBatchStatus('');
-      return;
-    }
-    if (!targetStatus) return;
-
-    const prevOrders = [...orders];
-    const targetIds = [...selectedIds];
-
-    // 1. Optimistic instant UI update (0ms)
-    if (setOrders) {
-      setOrders(prev => prev.map(o => targetIds.includes(o.id || o._id) ? { ...o, status: targetStatus } : o));
-    }
-    showToast(`Batch updated ${targetIds.length} orders to "${targetStatus}"`, 'success');
-    setSelectedIds([]);
-    setBatchStatus('');
-
-    // 2. Dispatch to server in background
-    try {
-      await api.post('/api/admin/orders/batch-status', {
-        ids: targetIds,
-        status: targetStatus
-      });
-      refreshData().catch(() => { });
-    } catch (err) {
-      // 3. Rollback on error
-      if (setOrders) setOrders(prevOrders);
-      setSelectedIds(targetIds);
-      console.error(err);
-      showToast('Failed to apply batch updates. Reverted.', 'error');
-    }
-  };
-
-
-
-  const toggleSelectAll = () => {
-    if (selectedIds.length === activeOrders.length) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(activeOrders.map((o) => o.id || o._id));
-    }
-  };
-
-  const toggleSelect = (id: string) => {
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
-    );
-  };
-
-  return (
-    <section className="animate-fade flex flex-col min-h-full text-left">
-
-
-      {/* Active orders queue (Full Width) */}
-      <div className="glass-card w-full p-5 mb-6 border border-border-glass rounded-xl">
-        <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
-          <div className="flex items-center gap-3">
-            <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
-            <span className="text-xs font-mono font-bold bg-success/10 text-success border border-success/20 px-2.5 py-1 rounded-full">
-              ₱{queuedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Total Value
-            </span>
-          </div>
-          <div className="flex gap-3 items-center flex-wrap">
-            <button
-              type="button"
-              onClick={() => setIsDelayModalOpen(true)}
-              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
-                delayNoticeStatus?.active
-                  ? 'bg-white/15 hover:bg-white/25 text-text-main border-white/40 shadow-xs'
-                  : 'bg-bg-surface hover:bg-white/5 text-text-dim hover:text-text-main border-border-glass'
-              }`}
-              title="Broadcast or manage temporary workshop operational delay notice"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="12" y1="8" x2="12" y2="12"/>
-                <line x1="12" y1="16" x2="12.01" y2="16"/>
-              </svg>
-              <span>{delayNoticeStatus?.active ? 'Delay Notice Active' : 'Delay Notice'}</span>
-            </button>
-            <GlassDatePicker
-              value={dateFilter}
-              onChange={(val) => setDateFilter(val)}
-              placeholder="Filter date"
-            />
-            <input
-              type="text"
-              maxLength={80}
-              placeholder="Search ID or Customer..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-[0.85rem] outline-none min-w-[200px]"
-            />
-          </div>
-        </div>
-
-        {/* Operational Delay Notice Banner (When Active) */}
+'use client';
+
+import { useState, useEffect } from 'react';
+import GlassDatePicker from '@/components/ui/GlassDatePicker';
+import GlassSelect from '@/components/ui/GlassSelect';
+import GlassModal from '@/components/ui/GlassModal';
+import InvoiceModal from '@/components/dashboard/InvoiceModal';
+import ClaimStubModal from '@/components/admin/ClaimStubModal';
+import EmergencyDelayNoticeModal from '@/components/admin/EmergencyDelayNoticeModal';
+import { api } from '@/lib/api';
+import { getOrderScheduleInfo } from '@/lib/orderSchedule';
+import { showToast } from '@/components/ui/Toast';
+import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
+import Pagination from '@/components/ui/Pagination';
+
+interface PanelOverviewProps {
+  orders: any[];
+  isSyncing: boolean;
+  refreshData: () => Promise<void>;
+  dbType?: string;
+  setOrders?: React.Dispatch<React.SetStateAction<any[]>>;
+}
+
+export default function PanelOverview({
+  orders,
+  isSyncing,
+  refreshData,
+  dbType,
+  setOrders
+}: PanelOverviewProps) {
+  // Search & Filters State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    setIsSearching(true);
+    const timer = setTimeout(() => setIsSearching(false), 240);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  const [dateFilter, setDateFilter] = useState('');
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [batchStatus, setBatchStatus] = useState('');
+  const [queueTab, setQueueTab] = useState<string>('all');
+
+  // Emergency Delay Notice Protocol State
+  const [isDelayModalOpen, setIsDelayModalOpen] = useState(false);
+  const [delayNoticeStatus, setDelayNoticeStatus] = useState<any>(null);
+
+  const fetchDelayNoticeStatus = async () => {
+    try {
+      const res = await api.get<any>('/api/admin/delay-notice');
+      if (res) setDelayNoticeStatus(res);
+    } catch (err) {
+      console.warn('Failed to fetch delay notice status:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchDelayNoticeStatus();
+  }, []);
+
+  const handleDirectLiftNotice = async () => {
+    if (!window.confirm('Are you sure you want to lift the active delay notice and resume regular workshop pace?')) return;
+    try {
+      await api.post('/api/admin/delay-notice/lift', {});
+      showToast('Delay notice lifted. Normal workshop operations resumed.', 'success');
+      fetchDelayNoticeStatus();
+      refreshData().catch(() => {});
+    } catch (err: any) {
+      showToast(err.message || 'Failed to lift delay notice', 'error');
+    }
+  };
+
+  // Receipt Modal State
+  const [selectedReceipt, setSelectedReceipt] = useState<any>(null);
+  const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
+  const [receiptDetails, setReceiptDetails] = useState<any>(null);
+  const [isLoadingReceipt, setIsLoadingReceipt] = useState(false);
+
+  const [claimStubOrder, setClaimStubOrder] = useState<any>(null);
+  const [verifyingSmsIds, setVerifyingSmsIds] = useState<Record<string, boolean>>({});
+  const isOrderPickup = (_o?: any) => true;
+
+  const getOrderGcashRef = (o: any): string => {
+    if (!o) return '';
+    const paymentMethod = String(o.paymentMethod || '').toLowerCase();
+    if (paymentMethod && paymentMethod !== 'gcash') return '';
+
+    const rawRef =
+      o.receipt?.referenceId ||
+      (o.personalization && typeof o.personalization === 'object' ? o.personalization.referenceNumber : '') ||
+      '';
+    if (!rawRef || rawRef.startsWith('TX-')) return '';
+    return String(rawRef).trim();
+  };
+
+  const isOrderSmsVerified = (o: any): boolean => {
+    if (!o) return false;
+    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+    return Boolean(pers.smsVerified);
+  };
+
+  const handleVerifySmsMatch = async (o: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetId = o.id || o._id || o.orderId;
+    if (!targetId || verifyingSmsIds[targetId]) return;
+
+    const ref = getOrderGcashRef(o);
+    setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: true }));
+
+    // Optimistic update
+    if (setOrders) {
+      setOrders((prev) =>
+        prev.map((item) => {
+          if ((item.id || item._id || item.orderId) !== targetId) return item;
+          const pers = item.personalization && typeof item.personalization === 'object' ? { ...item.personalization } : {};
+          pers.smsVerified = true;
+          return {
+            ...item,
+            paymentStatus: 'paid',
+            personalization: pers,
+            receipt: item.receipt ? { ...item.receipt, status: 'Verified', aiVerificationStatus: 'verified' } : item.receipt,
+          };
+        })
+      );
+    }
+
+    try {
+      const res = await api.post<any>(`/api/admin/orders/${targetId}/verify-payment`, {
+        referenceNumber: ref || undefined,
+      });
+      showToast(res?.message || `Payment verified for Ref: ...${ref.slice(-4)}`, 'success');
+      refreshData().catch(() => {});
+    } catch (err: any) {
+      showToast(err.message || 'Failed to confirm payment reference', 'error');
+      refreshData().catch(() => {});
+    } finally {
+      setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: false }));
+    }
+  };
+
+  const getOrderClaimCode = (o: any) => {
+    if (!o) return '#A-000';
+    const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+    if (pers.claimCode) return pers.claimCode;
+    const id = o.orderId || '';
+    if (id.startsWith('WI-')) return `#${id.replace('WI-', 'A-')}`;
+    const suffix = id.slice(-4).replace(/[^a-zA-Z0-9]/g, '');
+    return `#A-${suffix.toUpperCase()}`;
+  };
+
+  // High-Volume Logistics State (Batch Thermal Labels & Courier Manifest)
+  const [batchPrintOrders, setBatchPrintOrders] = useState<any[]>([]);
+  const [isManifestOpen, setIsManifestOpen] = useState(false);
+
+  const printIsolatedElement = (elementId: string, docTitle: string, isContinuousThermal = false) => {
+    const el = document.getElementById(elementId);
+    if (!el) {
+      window.print();
+      return;
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      window.print();
+      return;
+    }
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>${docTitle}</title>
+          <style>
+            @page {
+              size: ${isContinuousThermal ? '100mm 150mm' : 'auto'};
+              margin: ${isContinuousThermal ? '4mm' : '10mm'};
+            }
+            * {
+              box-sizing: border-box;
+              margin: 0;
+              padding: 0;
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+            }
+            body {
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, monospace;
+              background: #fff;
+              color: #000;
+              padding: 0;
+              margin: 0;
+            }
+            ${isContinuousThermal ? `
+              .print\\\\:break-after-page {
+                page-break-after: always !important;
+                break-after: page !important;
+                margin-bottom: 8mm;
+              }
+            ` : ''}
+            table { width: 100%; border-collapse: collapse; }
+            th, td { border: 1px solid #000; padding: 6px; }
+            .border-b-2 { border-bottom: 2px solid #000; }
+            .border-b { border-bottom: 1px solid #000; }
+            .border-t-2 { border-top: 2px solid #000; }
+            .border-t { border-top: 1px solid #000; }
+            .border-r { border-right: 1px solid #000; }
+            .border { border: 1px solid #000; }
+            .border-black { border-color: #000 !important; }
+            .flex { display: flex; }
+            .flex-col { flex-direction: column; }
+            .flex-1 { flex: 1; }
+            .justify-between { justify-content: space-between; }
+            .items-center { align-items: center; }
+            .grid { display: grid; }
+            .grid-cols-2 { grid-template-columns: 1fr 1fr; }
+            .gap-2 { gap: 8px; }
+            .gap-4 { gap: 16px; }
+            .gap-6 { gap: 24px; }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .font-bold { font-weight: bold; }
+            .font-black { font-weight: 900; }
+            .uppercase { text-transform: uppercase; }
+            .bg-emerald-700 { background: #047857 !important; color: #fff !important; }
+            .bg-\\\\[\\\\#e11d48\\\\] { background: #e11d48 !important; color: #fff !important; }
+            .bg-black { background: #000 !important; color: #fff !important; }
+            .text-white { color: #fff !important; }
+            .rounded-xl { border-radius: 8px; }
+            .p-4 { padding: 12px; }
+            .p-6 { padding: 18px; }
+            svg { display: block; }
+          </style>
+        </head>
+        <body>
+          ${el.outerHTML}
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 250);
+  };
+
+
+
+  // 1. Filtering & Queue Priority Sorting Logic
+  const activeOrders = orders
+    .filter((o) => {
+      // Hide delivered and canceled in primary Overview queue
+      if (['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)) return false;
+
+      const matchesSearch =
+        !searchQuery ||
+        o.orderId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.client?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        o.status?.toLowerCase().includes(searchQuery.toLowerCase());
+
+      const matchesDate =
+        !dateFilter ||
+        new Date(o.date || o.createdAt).toISOString().split('T')[0] === dateFilter;
+
+      const matchesTab = queueTab === 'all' || o.status === queueTab;
+
+      return matchesSearch && matchesDate && matchesTab;
+    })
+    .sort((a, b) => {
+      // Prioritize Rush orders and high priority scores first, followed by FIFO order creation
+      const scoreA = (a.priorityScore || 0) + (a.isRush ? 100 : 0);
+      const scoreB = (b.priorityScore || 0) + (b.isRush ? 100 : 0);
+      if (scoreB !== scoreA) {
+        return scoreB - scoreA;
+      }
+      return new Date(a.date || a.createdAt || 0).getTime() - new Date(b.date || b.createdAt || 0).getTime();
+    });
+
+  // Pagination for Active Orders Queue Table
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(30);
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === currentPage) return;
+    setIsPageTransitioning(true);
+    setCurrentPage(newPage);
+    setTimeout(() => {
+      setIsPageTransitioning(false);
+    }, 280);
+  };
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, dateFilter, queueTab, pageSize]);
+
+  const paginatedOrders = activeOrders.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize
+  );
+
+  // Calculate Queued and Realized Revenue
+  const pendingOrders = orders.filter(o =>
+    ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'].includes(o.status)
+  );
+  const completedOrders = orders.filter(o => o.status === 'Order Delivered');
+
+  const queuedRevenue = pendingOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
+  const realizedRevenue = completedOrders.reduce((sum, o) => sum + (o.totalAmount || o.amount || 0), 0);
+
+  const totalProjected = realizedRevenue + queuedRevenue;
+  const progressPercent = totalProjected > 0 ? (realizedRevenue / totalProjected) * 100 : 0;
+
+
+  // 2. Fetch Receipt Details
+  const viewReceipt = async (order: any) => {
+    const transactionId = order.transactionID || order.transactionId || order.receiptID || order.receiptId;
+    if (!transactionId || transactionId === 'undefined') {
+      showToast('No secure transaction ID recorded for this order', 'error');
+      return;
+    }
+    setSelectedReceipt(order);
+    setReceiptDetails(null);
+    setIsLoadingReceipt(true);
+    setIsReceiptModalOpen(true);
+
+    try {
+      const data = await api.get<any>(`/api/admin/receipt/${transactionId}`);
+      if (data) {
+        setReceiptDetails(data);
+      } else {
+        throw new Error('No data received');
+      }
+    } catch (err) {
+      console.error('Failed to load transaction receipt:', err);
+      showToast('Retrieving receipt data failed', 'error');
+    } finally {
+      setIsLoadingReceipt(false);
+    }
+  };
+
+  const handleDownloadReceipt = async (order: any) => {
+    const receiptId = receiptDetails?.transactionID ||
+      receiptDetails?.id ||
+      order?.transactionID ||
+      order?.transactionId ||
+      order?.receiptID ||
+      order?.receiptId ||
+      order?.orderId ||
+      order?.id ||
+      order?._id;
+
+    if (!receiptId || receiptId === 'undefined') {
+      showToast('No receipt reference available for download', 'error');
+      return;
+    }
+
+    try {
+      showToast('Preparing secure receipt download...', 'info');
+      await api.download(`/api/admin/receipt/${receiptId}/download`, `STITCH_OPT_RECEIPT_${receiptId}.pdf`);
+      showToast('Receipt PDF downloaded successfully', 'success');
+    } catch (err) {
+      console.error('Download failed:', err);
+      showToast('Downloading receipt PDF failed', 'error');
+    }
+  };
+
+  // 3. Batch Status Apply (Auto-triggered upon dropdown selection)
+  const handleBatchStatusApply = async (statusOverride?: string) => {
+    const targetStatus = statusOverride || batchStatus;
+    if (selectedIds.length === 0) {
+      showToast('Select orders first from the queue checkbox', 'error');
+      setBatchStatus('');
+      return;
+    }
+    if (!targetStatus) return;
+
+    const prevOrders = [...orders];
+    const targetIds = [...selectedIds];
+
+    // 1. Optimistic instant UI update (0ms)
+    if (setOrders) {
+      setOrders(prev => prev.map(o => targetIds.includes(o.id || o._id) ? { ...o, status: targetStatus } : o));
+    }
+    showToast(`Batch updated ${targetIds.length} orders to "${targetStatus}"`, 'success');
+    setSelectedIds([]);
+    setBatchStatus('');
+
+    // 2. Dispatch to server in background
+    try {
+      await api.post('/api/admin/orders/batch-status', {
+        ids: targetIds,
+        status: targetStatus
+      });
+      refreshData().catch(() => { });
+    } catch (err) {
+      // 3. Rollback on error
+      if (setOrders) setOrders(prevOrders);
+      setSelectedIds(targetIds);
+      console.error(err);
+      showToast('Failed to apply batch updates. Reverted.', 'error');
+    }
+  };
+
+
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === activeOrders.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(activeOrders.map((o) => o.id || o._id));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((i) => i !== id) : [...prev, id]
+    );
+  };
+
+  return (
+    <section className="animate-fade flex flex-col min-h-full text-left">
+
+
+      {/* Active orders queue (Full Width) */}
+      <div className="glass-card w-full p-5 mb-6 border border-border-glass rounded-xl">
+        <div className="flex justify-between items-center flex-wrap gap-3 mb-3">
+          <div className="flex items-center gap-3">
+            <h3 className="text-xl font-bold m-0 text-text-main">Active Orders Queue</h3>
+            <span className="text-xs font-mono font-bold bg-success/10 text-success border border-success/20 px-2.5 py-1 rounded-full">
+              ₱{queuedRevenue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Total Value
+            </span>
+          </div>
+          <div className="flex gap-3 items-center flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsDelayModalOpen(true)}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer border ${
+                delayNoticeStatus?.active
+                  ? 'bg-white/15 hover:bg-white/25 text-text-main border-white/40 shadow-xs'
+                  : 'bg-bg-surface hover:bg-white/5 text-text-dim hover:text-text-main border-border-glass'
+              }`}
+              title="Broadcast or manage temporary workshop operational delay notice"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/>
+                <line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <span>{delayNoticeStatus?.active ? (delayNoticeStatus.isScheduled ? 'Vacation Scheduled' : 'Delay Notice Active') : 'Schedule Break / Delay'}</span>
+            </button>
+            <GlassDatePicker
+              value={dateFilter}
+              onChange={(val) => setDateFilter(val)}
+              placeholder="Filter date"
+            />
+            <input
+              type="text"
+              maxLength={80}
+              placeholder="Search ID or Customer..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="bg-bg-surface border border-border-glass p-2.5 rounded-lg text-text-main text-[0.85rem] outline-none min-w-[200px]"
+            />
+          </div>
+        </div>
+
+        {/* Operational Delay Notice Banner (When Active or Scheduled) */}
         {delayNoticeStatus?.active && (
           <div className="mb-4 p-3.5 rounded-xl bg-white/5 border border-white/20 flex items-center justify-between flex-wrap gap-3">
             <div className="flex items-center gap-3">
               <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center text-text-main border border-white/20 shrink-0">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <line x1="12" y1="8" x2="12" y2="12"/>
-                  <line x1="12" y1="16" x2="12.01" y2="16"/>
-                </svg>
+                {delayNoticeStatus.isScheduled ? (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                    <line x1="16" y1="2" x2="16" y2="6"/>
+                    <line x1="8" y1="2" x2="8" y2="6"/>
+                    <line x1="3" y1="10" x2="21" y2="10"/>
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/>
+                    <line x1="12" y1="16" x2="12.01" y2="16"/>
+                  </svg>
+                )}
               </div>
               <div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-bold text-text-main">
-                    Active Operational Delay Notice: {delayNoticeStatus.reason}
+                    {delayNoticeStatus.isScheduled ? 'Scheduled Vacation / Break: ' : 'Active Operational Notice: '}
+                    {delayNoticeStatus.reason}
                   </span>
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/10 border border-white/20 text-text-main font-bold">
-                    +{delayNoticeStatus.delayHours || 24}h Shifted
+                    {delayNoticeStatus.isScheduled ? 'Upcoming' : `+${delayNoticeStatus.delayHours || 24}h Shifted`}
                   </span>
                 </div>
                 <p className="text-[11px] text-text-dim mt-0.5">
-                  {delayNoticeStatus.message || 'Workshop schedule adjusted for active in-queue orders.'} 
-                  {delayNoticeStatus.resumeDate && ` Target resumption: ${new Date(delayNoticeStatus.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}.`}
+                  {delayNoticeStatus.message || (delayNoticeStatus.isScheduled ? 'Workshop closed for scheduled break during this period.' : 'Workshop schedule adjusted for active in-queue orders.')} 
+                  {delayNoticeStatus.startDate && delayNoticeStatus.resumeDate && (
+                    <>
+                      {' '}Dates: <strong>{new Date(delayNoticeStatus.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })} &rarr; {new Date(delayNoticeStatus.resumeDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>.
+                    </>
+                  )}
                 </p>
               </div>
             </div>
@@ -509,816 +542,817 @@ export default function PanelOverview({
           </div>
         )}
 
-        {/* Status Tab Navigation */}
-        {(() => {
-          const ALL_STATUSES = ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'];
-          const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
-          const tabs = [
-            { key: 'all', label: 'All Active', count: allActiveOrders.length },
-            ...ALL_STATUSES.map((s) => ({ key: s, label: s, count: allActiveOrders.filter(o => o.status === s).length }))
-          ];
-          return (
-            <div className="flex gap-2 flex-wrap mb-3 border-b border-border-glass/30 pb-3">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setQueueTab(tab.key)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${queueTab === tab.key
-                      ? 'bg-primary text-white border-primary shadow-sm'
-                      : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
-                    }`}
-                >
-                  {tab.label}
-                  <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${queueTab === tab.key ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
-                    }`}>
-                    {tab.count}
-                  </span>
-                </button>
-              ))}
-            </div>
-          );
-        })()}
-
-        {/* Batch operations desk (auto-applies when a status is selected) */}
-        <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-lg mb-3 flex-wrap">
-          <span className="text-[0.8rem] text-text-dim font-bold">
-            Batch Action ({selectedIds.length} selected):
-          </span>
-          <div className="w-[200px]">
-            <GlassSelect
-              value={batchStatus}
-              onChange={(val) => {
-                setBatchStatus(val);
-                if (val) {
-                  handleBatchStatusApply(val);
-                }
-              }}
-              options={[
-                { value: '', label: 'Select Status to Apply...' },
-                { value: 'Preparing Order', label: 'Preparing Order' },
-                { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
-                { value: 'Order Delivered', label: 'Claimed / Completed' }
-              ]}
-            />
-          </div>
-
-          {selectedIds.length > 0 && (
-            <div className="flex items-center gap-2 flex-wrap">
-              <button
-                type="button"
-                onClick={() => {
-                  const selectedList = orders.filter((o) => selectedIds.includes(o.id || o._id));
-                  setBatchPrintOrders(selectedList);
-                }}
-                className="px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
-                title="Print continuous 4x6 inch thermal dispatch labels for selected orders"
-              >
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                  <polyline points="6 9 6 2 18 2 18 9" />
-                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                  <rect x="6" y="14" width="12" height="8" />
-                </svg>
-                <span>Batch Print Labels ({selectedIds.length})</span>
-              </button>
-            </div>
-          )}
-
-          {selectedIds.length > 0 && (
-            <span className="text-xs text-primary font-medium animate-fade">
-              Selecting a status applies immediately to {selectedIds.length} order(s)
-            </span>
-          )}
-        </div>
-
-        {isSyncing && orders.length === 0 ? (
-          <div className="max-[1100px]:hidden mb-4 w-full animate-pulse">
-            <TableSkeleton rows={5} cols={7} />
-          </div>
-        ) : (
-          <div className="glass-table-container max-[1100px]:hidden">
-            <table className="glass-table">
-              <thead>
-                <tr>
-                  <th className="glass-th w-[45px] text-center">
-                    <input
-                      type="checkbox"
-                      checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
-                      onChange={toggleSelectAll}
-                      className="cursor-pointer"
-                    />
-                  </th>
-                  <th className="glass-th text-left">Order ID</th>
-                  <th className="glass-th text-left">Client & Date</th>
-                  <th className="glass-th text-left">Items / Custom Design</th>
-                  <th className="glass-th text-left">Amount</th>
-                  <th className="glass-th text-left">Status</th>
-                  <th className="glass-th text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {activeOrders.length === 0 ? (
-                  <tr className="glass-tr">
-                    <td colSpan={7} className="glass-td text-center text-text-dim">
-                      No active orders found.
-                    </td>
-                  </tr>
-                ) : (
-                  paginatedOrders.map((o) => {
-                    const id = o.id || o._id;
-                    const isChecked = selectedIds.includes(id);
-                    return (
-                      <tr
-                        key={id}
-                        className="glass-tr hover:bg-white/5 transition-all cursor-pointer"
-                        onClick={() => viewReceipt(o)}
-                      >
-                        <td className="glass-td text-center" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => toggleSelect(id)}
-                            className="cursor-pointer"
-                          />
-                        </td>
-                        <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span>{o.orderId}</span>
-                            {o.isRush && (
-                              <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
-                                RUSH
-                              </span>
-                            )}
-                            {o.isByog && (
-                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold border ${
-                                o.garmentsReceivedAt
-                                  ? 'bg-primary/10 text-primary border-primary/25'
-                                  : 'bg-white/5 text-text-dim border-border-glass'
-                              }`}>
-                                {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG Drop-off'}
-                              </span>
-                            )}
-                          </div>
-                          {(() => {
-                            const schedule = getOrderScheduleInfo(o);
-                            return (
-                              <div className="text-[11px] font-sans font-normal text-text-dim mt-1 flex items-center gap-2 flex-wrap">
-                                <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-main font-semibold">
-                                  {schedule.exactTargetLabel}
-                                </span>
-                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                                  schedule.isOverdue
-                                    ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
-                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                                }`}>
-                                  {schedule.relativeLabel}
-                                </span>
-                                <span className="text-text-dim text-[11px]">
-                                  ⏱ {schedule.stitchLabel}
-                                </span>
-                              </div>
-                            );
-                          })()}
-                        </td>
-                        <td className="glass-td text-left text-sm">
-                          <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
-                          <div className="text-[0.75rem] text-text-dim mt-0.5">
-                            {new Date(o.date || o.createdAt).toLocaleString()}
-                          </div>
-                        </td>
-                        <td className="glass-td text-left text-sm">
-                          {o.items && Array.isArray(o.items) ? (
-                            <div className="flex flex-col gap-1 max-w-[250px]">
-                              {o.items.map((item: any, idx: number) => {
-                                const rawName = String(item.name || '').trim();
-                                const lowerName = rawName.toLowerCase();
-                                const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
-                                  .filter(Boolean)
-                                  .map((p: string) => String(p).trim())
-                                  .filter((p: string, pIdx: number, arr: string[]) => {
-                                    if (!p) return false;
-                                    if (lowerName.includes(p.toLowerCase())) return false;
-                                    return arr.indexOf(p) === pIdx;
-                                  });
-                                const variantText = variantParts.join(' • ');
-                                return (
-                                  <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
-                                    
-                                    <span className="font-medium">{item.quantity}x {item.name}</span>
-                                    {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : (
-                            <span>{o.design || 'Embroidery Design'}</span>
-                          )}
-                        </td>
-                        <td className="glass-td text-left font-mono font-bold text-sm text-primary">
-                          <div>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</div>
-                          {(() => {
-                            const ref = getOrderGcashRef(o);
-                            const smsVerified = isOrderSmsVerified(o);
-                            const isCashOrCounter = String(o.orderId || '').startsWith('WI-') || o.paymentMethod === 'cash';
-                            if (isCashOrCounter && !ref) {
-                              return (
-                                <span className="inline-block mt-1 text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-white/5 text-text-dim border border-white/10">
-                                  Counter / Cash
-                                </span>
-                              );
-                            }
-                            if (!ref) return null;
-                            const prefix = ref.length > 4 ? ref.slice(0, -4) : '';
-                            const last4 = ref.slice(-4);
-                            return (
-                              <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                                <div
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
-                                  title={`Full GCash Ref: ${ref}`}
-                                >
-                                  <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
-                                  <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
-                                  <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
-                                    {last4}
-                                  </span>
-                                </div>
-                                {smsVerified ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim">
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                    Payment Verified
-                                  </span>
-                                ) : (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleVerifySmsMatch(o, e)}
-                                    disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
-                                    title="Tap to verify and approve payment against GCash transaction receipt"
-                                  >
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Verify Payment (...${last4})`}</span>
-                                  </button>
-                                )}
-                              </div>
-                            );
-                          })()}
-                        </td>
-                        <td className="glass-td text-left">
-                          <span
-                            className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
-                              ${o.status === 'Preparing Order'
-                                ? 'bg-primary/20 text-primary border border-primary/30'
-                                : o.status === 'In Transit'
-                                  ? 'bg-white/5 text-text-dim border border-border-glass'
-                                  : o.status === 'Ready For Pick Up'
-                                    ? 'bg-success/20 text-success border border-success/30'
-                                    : 'bg-white/10 text-text-dim border border-white/20'
-                              }
-                            `}
-                          >
-                            {o.status}
-                          </span>
-                        </td>
-                        <td className="glass-td text-right" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex gap-2 justify-end">
-                            <button
-                              onClick={() => setClaimStubOrder(o)}
-                              className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
-                              title="Print thermal claim slip / bag stub"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
-                                <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                              <span>Claim Slip</span>
-                            </button>
-                            <button
-                              onClick={() => viewReceipt(o)}
-                              className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
-                              title="Inspect full invoice & payment details"
-                            >
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                                <polyline points="14 2 14 8 20 8" />
-                              </svg>
-                              <span>Receipt</span>
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {/* Mobile Grid layout */}
-        <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-2">
-          {isSyncing && orders.length === 0 ? (
-            Array.from({ length: 4 }).map((_, i) => (
-              <CardSkeleton key={i} />
-            ))
-          ) : activeOrders.length === 0 ? (
-            <div className="glass-card p-6 text-center text-text-dim col-span-full rounded-xl">No active orders found.</div>
-          ) : (
-            paginatedOrders.map((o) => {
-              const id = o.id || o._id;
-              const isChecked = selectedIds.includes(id);
-              const rawClient = o.client || 'Valued Customer';
-              const cleanClient = String(rawClient).replace(/\s*\([^)]*\)/g, '').trim() || 'Valued Customer';
-
-              return (
-                <div
-                  key={id}
-                  onClick={() => viewReceipt(o)}
-                  className={`bg-bg-card backdrop-blur-[12px] border rounded-xl p-4 flex flex-col justify-between text-left relative shadow-xs hover:border-primary/50 transition-all gap-3 cursor-pointer ${
-                    isChecked ? 'border-primary shadow-sm' : 'border-border-glass'
-                  }`}
-                >
-                  {/* Select Toggle Box */}
-                  <div
-                    className="absolute top-3.5 right-3.5 z-10 p-1"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isChecked}
-                      onChange={() => toggleSelect(id)}
-                      className="w-5 h-5 cursor-pointer rounded border-border-glass bg-transparent"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 items-start pr-6">
-                    {/* Left Column */}
-                    {(() => {
-                      const schedule = getOrderScheduleInfo(o);
-                      return (
-                        <div className="flex flex-col gap-1.5 text-left">
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span
-                              className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider w-fit
-                                ${o.status === 'Preparing Order'
-                                  ? 'bg-primary/20 text-primary border border-primary/30'
-                                  : o.status === 'In Transit'
-                                    ? 'bg-white/5 text-text-dim border border-border-glass'
-                                    : o.status === 'Ready For Pick Up'
-                                      ? 'bg-success/20 text-success border border-success/30'
-                                      : 'bg-white/10 text-text-dim border border-white/20'
-                                }
-                              `}
-                            >
-                              {o.status}
-                            </span>
-                            <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${
-                              schedule.isOverdue
-                                ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
-                                : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
-                            }`}>
-                              {schedule.relativeLabel}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                            <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
-                            {o.isRush && (
-                              <span className="px-1.5 py-0.5 rounded text-[9px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
-                                RUSH
-                              </span>
-                            )}
-                            {o.isByog && (
-                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-sans font-semibold border ${
-                                o.garmentsReceivedAt
-                                  ? 'bg-primary/10 text-primary border-primary/25'
-                                  : 'bg-white/5 text-text-dim border-border-glass'
-                              }`}>
-                                {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG'}
-                              </span>
-                            )}
-                          </div>
-
-                          <div className="text-xs font-bold text-text-main truncate max-w-[150px]">{cleanClient}</div>
-
-                          <div className="flex flex-col text-[11px] font-semibold text-text-main mt-0.5">
-                            <span>{schedule.exactTargetLabel}</span>
-                            <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
-                          </div>
-                        </div>
-                      );
-                    })()}
-
-                    {/* Right Column: Items & Total */}
-                    <div className="flex flex-col gap-1.5 text-left border-l border-border-glass/30 pl-3">
-                      <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Items</span>
-                      <div className="flex flex-col gap-1">
-                        {o.items && Array.isArray(o.items) ? (
-                          o.items.map((item: any, idx: number) => {
-                            const rawName = String(item.name || '').trim();
-                            const lowerName = rawName.toLowerCase();
-                            const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
-                              .filter(Boolean)
-                              .map((p: string) => String(p).trim())
-                              .filter((p: string, pIdx: number, arr: string[]) => {
-                                if (!p) return false;
-                                if (lowerName.includes(p.toLowerCase())) return false;
-                                return arr.indexOf(p) === pIdx;
-                              });
-                            const variantText = variantParts.join(' • ');
-                            return (
-                              <div key={idx} className="flex items-center justify-between gap-1 py-0.5 border-b border-white/5 last:border-0">
-                                <div className="flex items-center gap-1.5 truncate">
-                                  
-                                  <span className="text-xs font-bold text-text-main truncate">{item.quantity}x {item.name}</span>
-                                </div>
-                                {variantText && <span className="text-text-dim text-[10px] shrink-0 font-sans">({variantText})</span>}
-                              </div>
-                            );
-                          })
-                        ) : (
-                          <div className="text-xs text-text-main font-medium">{o.design || 'Embroidery Design'}</div>
-                        )}
-                      </div>
-
-                      {/* Total Amount & Ref Badge */}
-                      <div className="mt-1 pt-1.5 border-t border-white/5 font-mono font-bold text-primary text-sm flex items-center justify-between gap-1.5 flex-wrap">
-                        <span>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</span>
-                        {(() => {
-                          const ref = getOrderGcashRef(o);
-                          const smsVerified = isOrderSmsVerified(o);
-                          if (!ref) return null;
-                          const last4 = ref.slice(-4);
-                          return (
-                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-bold">
-                                Ref: ...{last4}
-                              </span>
-                              {smsVerified ? (
-                                <span className="text-[10px] font-sans font-medium text-text-dim">Verified</span>
-                              ) : (
-                                <button
-                                  type="button"
-                                  onClick={(e) => handleVerifySmsMatch(o, e)}
-                                  className="text-[10px] font-sans font-bold bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main min-h-[30px] px-2 py-0.5 rounded-md cursor-pointer active:scale-95"
-                                >
-                                  Verify
-                                </button>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-2 pt-2 border-t border-white/5" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      type="button"
-                      onClick={() => setClaimStubOrder(o)}
-                      className="flex-1 bg-white/5 border border-border-glass text-text-main min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
-                        <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                      <span>Claim Slip</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => viewReceipt(o)}
-                      className="flex-1 bg-primary/15 border border-primary/30 text-primary min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
-                    >
-                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                        <polyline points="14 2 14 8 20 8" />
-                        <line x1="16" y1="13" x2="8" y2="13" />
-                        <line x1="16" y1="17" x2="8" y2="17" />
-                        <polyline points="10 9 9 9 8 9" />
-                      </svg>
-                      <span>Receipt</span>
-                    </button>
-                  </div>
-                </div>
-              );
-            })
-          )}
-        </div>
-        <Pagination
-          currentPage={currentPage}
-          totalItems={activeOrders.length}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          pageSizeOptions={[5, 10, 20, 50]}
-          onPageSizeChange={(newSize) => {
-            setPageSize(newSize);
-            setCurrentPage(1);
-          }}
-          itemLabel="orders in queue"
-        />
-      </div>
-
-      {/* Modal: View Receipt Details */}
-      <InvoiceModal
-        isOpen={isReceiptModalOpen}
-        onClose={() => setIsReceiptModalOpen(false)}
-        order={selectedReceipt}
-        transaction={receiptDetails || selectedReceipt}
-        user={receiptDetails?.user || selectedReceipt?.customer}
-        transactionId={receiptDetails?.transactionID || selectedReceipt?.orderId}
-      />
-
-
-
-
-
-      {/* Single Order Claim Stub (Thermal Receipt Format for Store Pickups) */}
-      <ClaimStubModal
-        isOpen={!!claimStubOrder}
-        onClose={() => setClaimStubOrder(null)}
-        order={claimStubOrder}
-      />
-
-      {/* Workshop Emergency Delay Notice Management Modal */}
-      <EmergencyDelayNoticeModal
-        isOpen={isDelayModalOpen}
-        onClose={() => setIsDelayModalOpen(false)}
-        onSuccess={() => {
-          fetchDelayNoticeStatus();
-          refreshData().catch(() => {});
-        }}
-        activeOrdersCount={orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)).length}
-        initialNotice={delayNoticeStatus}
-      />
-
-      {/* Batch Thermal Dispatch Labels Modal (Continuous 4x6 Roll Printing) */}
-      <GlassModal
-        isOpen={batchPrintOrders.length > 0}
-        onClose={() => setBatchPrintOrders([])}
-        title={`Batch Shipping Labels (${batchPrintOrders.length} Parcels)`}
-        maxWidth="max-w-[540px]"
-      >
-        <div className="flex flex-col gap-4 font-sans text-text-main">
-          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs flex items-center justify-between print:hidden">
-            <div className="flex items-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0">
-                <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
-                <path d="M6 14h12v8H6z" />
-              </svg>
-              <div>
-                <p className="font-bold text-text-main m-0">Continuous 4x6" Thermal Print Feed</p>
-                <p className="text-[0.7rem] text-text-dim m-0">
-                  Formatted for thermal sticker roll printers with auto page-breaks
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => printIsolatedElement('batch-thermal-labels', 'Batch Thermal Labels', true)}
-              className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                <rect x="6" y="14" width="12" height="8" />
-              </svg>
-              <span>Print All Labels</span>
-            </button>
-          </div>
-
-          {/* Scrollable preview & continuous print container */}
-          <div
-            id="batch-thermal-labels"
-            className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto pr-1"
-          >
-            {batchPrintOrders.map((ord, idx) => {
-              const pers = (ord.personalization && typeof ord.personalization === 'object') ? ord.personalization : {};
-              const cleanCode = (ord.orderId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-              const isPick = pers.fulfillmentType === 'pickup' ||
-                (typeof ord.address === 'string' && ord.address.toLowerCase().includes('pick-up')) ||
-                (pers.trackingNumber && pers.trackingNumber.startsWith('PU-'));
-              const trackNo = pers.trackingNumber || (isPick ? `PU-LUC-${cleanCode}` : `JNT-PH-78${cleanCode}`);
-              const qrInfo = `DISPATCH|TRACK:${trackNo}|ORDER:${ord.orderId}|CLIENT:${encodeURIComponent(ord.client || 'Customer')}`;
-              const qrImg = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrInfo)}&size=120x120&margin=0`;
-
-              return (
-                <div
-                  key={ord.id || ord._id || idx}
-                  className="bg-white text-black p-4 rounded-xl border border-black shadow-md flex flex-col gap-2 font-mono text-[10px] leading-tight select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full print:break-after-page"
-                >
-                  {/* Top Bar */}
-                  <div className="border-b-2 border-black pb-2 flex justify-between items-center">
-                    <div className="flex items-center gap-1.5">
-                      <div className={`${isPick ? 'bg-emerald-700' : 'bg-[#e11d48]'} text-white px-2 py-0.5 font-black text-xs tracking-wider rounded-sm`}>
-                        {isPick ? 'COUNTER' : 'DISPATCH'}
-                      </div>
-                      <span className="font-black text-xs">{isPick ? 'STORE PICKUP' : 'J&T EXPRESS'}</span>
-                      <span className="text-[9px] font-bold text-black/60">EDS TOWELS & CAPS</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="bg-black text-white px-2 py-0.5 text-[8.5px] font-black uppercase">
-                        PACKAGE #{idx + 1} OF {batchPrintOrders.length}
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Tracking Number Header */}
-                  <div className="flex justify-between items-center py-1 border-b border-black">
-                    <div>
-                      <span className="text-[8px] text-black/60 block font-sans">TRACKING / WAYBILL NO.</span>
-                      <span className="font-mono text-xs font-black tracking-wider">{trackNo}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[8px] text-black/60 block font-sans">ORDER REF</span>
-                      <span className="font-mono text-[11px] font-black">#{ord.orderId}</span>
-                    </div>
-                  </div>
-
-                  {/* Route & Hub */}
-                  <div className="grid grid-cols-2 border-b-2 border-black divide-x-2 divide-black text-center py-1">
-                    <div className="p-0.5">
-                      <span className="text-[7.5px] text-black/60 block font-sans">ORIGIN HUB</span>
-                      <span className="font-black text-[11px]">LCN-PAC-01</span>
-                      <span className="text-[7.5px] block text-black/60">Pacific Mall Lucena</span>
-                    </div>
-                    <div className="p-0.5">
-                      <span className="text-[7.5px] text-black/60 block font-sans">DISPATCH ROUTE</span>
-                      <span className="font-black text-[11px]">CAL-MNL-STD</span>
-                      <span className="text-[7.5px] block text-black/60">Standard Transit</span>
-                    </div>
-                  </div>
-
-                  {/* Shipper & Consignee */}
-                  <div className="grid grid-cols-2 border-b-2 border-black divide-x-2 divide-black py-1 text-[9.5px]">
-                    <div className="pr-1">
-                      <span className="font-sans font-black text-[8px] uppercase block text-black/70">SHIPPER:</span>
-                      <p className="font-bold m-0">Eds Towels & Caps</p>
-                      <p className="m-0 text-[8.5px] text-black/80">Pacific Mall Lucena, Quezon</p>
-                      <p className="m-0 text-[8.5px] font-bold">0928 810 3928</p>
-                    </div>
-                    <div className="pl-1">
-                      <span className="font-sans font-black text-[8px] uppercase block text-black/70">RECIPIENT:</span>
-                      <p className="font-bold m-0">{ord.client || 'Customer'}</p>
-                      <p className="m-0 text-[8.5px] line-clamp-2">{ord.address || 'Pacific Mall Counter Pickup'}</p>
-                    </div>
-                  </div>
-
-                  {/* Footer & QR */}
-                  <div className="flex items-center justify-between pt-1 gap-2 border-t border-black">
-                    <div className="flex-1 text-[8.5px]">
-                      <span className="font-sans font-black text-[7.5px] uppercase block text-black/60">ITEMS:</span>
-                      <p className="font-bold m-0 truncate">
-                        {ord.items && ord.items.length > 0
-                          ? ord.items.map((i: any) => `${i.quantity}x ${i.name}`).join(', ')
-                          : ord.design || 'Custom Embroidery'}
-                      </p>
-                      <p className="text-[7.5px] text-black/60 m-0 mt-0.5">
-                        Amount: ₱{(ord.totalAmount || 0).toFixed(2)} • {ord.paymentMethod?.toUpperCase()}
-                      </p>
-                    </div>
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={qrImg} alt="QR" className="w-12 h-12 border border-black p-0.5 shrink-0" />
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </GlassModal>
-
-      {/* Courier Handover Manifest Modal (1-Page Printable Rider Transmittal) */}
-      <GlassModal
-        isOpen={isManifestOpen}
-        onClose={() => setIsManifestOpen(false)}
-        title="Courier Handover Manifest / Transmittal Sheet"
-        maxWidth="max-w-[700px]"
-      >
-        <div className="flex flex-col gap-4 font-sans text-text-main">
-          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs flex items-center justify-between print:hidden">
-            <div className="flex items-center gap-2">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
-              </svg>
-              <div>
-                <p className="font-bold text-text-main m-0">Standard 1-Page Courier Transmittal Sheet</p>
-                <p className="text-[0.7rem] text-text-dim m-0">
-                  Proof of parcel handover for DSP courier rider or pickup logistics partner
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => printIsolatedElement('courier-handover-manifest', 'Courier Handover Manifest', false)}
-              className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <polyline points="6 9 6 2 18 2 18 9" />
-                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
-                <rect x="6" y="14" width="12" height="8" />
-              </svg>
-              <span>Print Transmittal</span>
-            </button>
-          </div>
-
-          {/* Printable Manifest Document Container */}
-          <div
-            id="courier-handover-manifest"
-            className="bg-white text-black p-6 rounded-xl border border-black shadow-md flex flex-col gap-4 font-sans text-xs select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full"
-          >
-            {/* Header */}
-            <div className="border-b-2 border-black pb-3 flex justify-between items-start">
-              <div>
-                <h3 className="font-black text-base uppercase tracking-tight m-0 text-black">
-                  EDS TOWELS & CAPS — PARCEL HANDOVER MANIFEST
-                </h3>
-                <p className="text-[11px] text-black/70 m-0 mt-0.5">
-                  Origin: Pacific Mall Lucena, M.L. Tagarao St., Lucena City, Quezon Province
-                </p>
-                <p className="text-[10px] text-black/60 m-0">Contact: 0928 810 3928 • Shop Admin Desk</p>
-              </div>
-              <div className="text-right">
-                <span className="font-mono text-xs font-black block">
-                  MANIFEST NO: MNF-{new Date().toISOString().slice(0, 10).replace(/-/g, '')}-{(selectedIds.length).toString().padStart(2, '0')}
-                </span>
-                <span className="text-[10px] text-black/70 block mt-0.5">
-                  Date: {new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                </span>
-                <span className="text-[10px] font-bold text-black block">Total Packages: {selectedIds.length}</span>
-              </div>
-            </div>
-
-            {/* Table of Dispatched Parcels */}
-            <div className="border border-black overflow-hidden">
-              <table className="w-full text-left text-[11px] border-collapse">
-                <thead>
-                  <tr className="bg-black/10 border-b border-black">
-                    <th className="p-2 border-r border-black font-black text-center w-8">#</th>
-                    <th className="p-2 border-r border-black font-black">Order ID</th>
-                    <th className="p-2 border-r border-black font-black">Tracking Number</th>
-                    <th className="p-2 border-r border-black font-black">Recipient</th>
-                    <th className="p-2 border-r border-black font-black">Destination</th>
-                    <th className="p-2 border-r border-black font-black text-right">Amount</th>
-                    <th className="p-2 font-black text-center w-16">Pouch Check</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders
-                    .filter((o) => selectedIds.includes(o.id || o._id))
-                    .map((ord, idx) => {
-                      const pers = (ord.personalization && typeof ord.personalization === 'object') ? ord.personalization : {};
-                      const cleanCode = (ord.orderId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
-                      const isPick = pers.fulfillmentType === 'pickup' ||
-                        (typeof ord.address === 'string' && ord.address.toLowerCase().includes('pick-up'));
-                      const trackNo = pers.trackingNumber || (isPick ? `PU-LUC-${cleanCode}` : `JNT-PH-78${cleanCode}`);
-
-                      return (
-                        <tr key={ord.id || ord._id || idx} className="border-b border-black/30">
-                          <td className="p-2 border-r border-black text-center font-bold">{idx + 1}</td>
-                          <td className="p-2 border-r border-black font-mono font-bold">#{ord.orderId}</td>
-                          <td className="p-2 border-r border-black font-mono text-[10px]">{trackNo}</td>
-                          <td className="p-2 border-r border-black font-bold">{ord.client || 'Valued Customer'}</td>
-                          <td className="p-2 border-r border-black text-[10px] truncate max-w-[150px]">
-                            {ord.address?.split('(Landmark:')[0]?.trim() || ord.address || 'Pacific Mall Counter'}
-                          </td>
-                          <td className="p-2 border-r border-black font-mono font-bold text-right">
-                            ₱{(ord.totalAmount || 0).toFixed(2)}
-                          </td>
-                          <td className="p-2 text-center font-mono">[  ]</td>
-                        </tr>
-                      );
-                    })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Signature & Handover Sign-off Box */}
-            <div className="grid grid-cols-2 gap-6 pt-4 border-t-2 border-black">
-              <div className="border border-black p-3 rounded flex flex-col justify-between h-24">
-                <span className="font-bold text-[10px] uppercase text-black/70">
-                  DISPATCHED BY (EDS TOWELS & CAPS STAFF):
-                </span>
-                <div className="border-t border-black pt-1 flex justify-between text-[10px]">
-                  <span>Signature over Printed Name</span>
-                  <span>Date & Time</span>
-                </div>
-              </div>
-              <div className="border border-black p-3 rounded flex flex-col justify-between h-24">
-                <span className="font-bold text-[10px] uppercase text-black/70">
-                  RECEIVED BY (COURIER RIDER / DSP PARTNER):
-                </span>
-                <div className="border-t border-black pt-1 flex justify-between text-[10px]">
-                  <span>Rider Name & Vehicle / Plate No.</span>
-                  <span>Signature & Date</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </GlassModal>
-    </section>
-  );
-}
+        {/* Status Tab Navigation */}
+        {(() => {
+          const ALL_STATUSES = ['In Queue', 'Preparing Order', 'In Transit', 'Ready For Pick Up'];
+          const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
+          const tabs = [
+            { key: 'all', label: 'All Active', count: allActiveOrders.length },
+            ...ALL_STATUSES.map((s) => ({ key: s, label: s, count: allActiveOrders.filter(o => o.status === s).length }))
+          ];
+          return (
+            <div className="flex gap-2 flex-wrap mb-3 border-b border-border-glass/30 pb-3">
+              {tabs.map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setQueueTab(tab.key)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${queueTab === tab.key
+                      ? 'bg-primary text-white border-primary shadow-sm'
+                      : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                    }`}
+                >
+                  {tab.label}
+                  <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${queueTab === tab.key ? 'bg-white/20 text-white' : 'bg-white/10 text-text-dim'
+                    }`}>
+                    {tab.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+          );
+        })()}
+
+        {/* Batch operations desk (auto-applies when a status is selected) */}
+        <div className="flex items-center gap-3 bg-white/5 border border-border-glass p-2.5 rounded-lg mb-3 flex-wrap">
+          <span className="text-[0.8rem] text-text-dim font-bold">
+            Batch Action ({selectedIds.length} selected):
+          </span>
+          <div className="w-[200px]">
+            <GlassSelect
+              value={batchStatus}
+              onChange={(val) => {
+                setBatchStatus(val);
+                if (val) {
+                  handleBatchStatusApply(val);
+                }
+              }}
+              options={[
+                { value: '', label: 'Select Status to Apply...' },
+                { value: 'Preparing Order', label: 'Preparing Order' },
+                { value: 'Ready For Pick Up', label: 'Ready For Pick Up' },
+                { value: 'Order Delivered', label: 'Claimed / Completed' }
+              ]}
+            />
+          </div>
+
+          {selectedIds.length > 0 && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => {
+                  const selectedList = orders.filter((o) => selectedIds.includes(o.id || o._id));
+                  setBatchPrintOrders(selectedList);
+                }}
+                className="px-3 py-2 rounded-lg bg-primary/20 hover:bg-primary/30 text-primary border border-primary/30 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                title="Print continuous 4x6 inch thermal dispatch labels for selected orders"
+              >
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <polyline points="6 9 6 2 18 2 18 9" />
+                  <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                  <rect x="6" y="14" width="12" height="8" />
+                </svg>
+                <span>Batch Print Labels ({selectedIds.length})</span>
+              </button>
+            </div>
+          )}
+
+          {selectedIds.length > 0 && (
+            <span className="text-xs text-primary font-medium animate-fade">
+              Selecting a status applies immediately to {selectedIds.length} order(s)
+            </span>
+          )}
+        </div>
+
+        {(isSearching || isPageTransitioning || (isSyncing && orders.length === 0)) ? (
+          <div className="max-[1100px]:hidden mb-4 w-full">
+            <TableSkeleton rows={Math.min(pageSize, 8)} cols={7} />
+          </div>
+        ) : (
+          <div className="glass-table-container max-[1100px]:hidden animate-table-fade">
+            <table className="glass-table">
+              <thead>
+                <tr>
+                  <th className="glass-th w-[45px] text-center">
+                    <input
+                      type="checkbox"
+                      checked={activeOrders.length > 0 && selectedIds.length === activeOrders.length}
+                      onChange={toggleSelectAll}
+                      className="cursor-pointer"
+                    />
+                  </th>
+                  <th className="glass-th text-left">Order ID</th>
+                  <th className="glass-th text-left">Client & Date</th>
+                  <th className="glass-th text-left">Items / Custom Design</th>
+                  <th className="glass-th text-left">Amount</th>
+                  <th className="glass-th text-left">Status</th>
+                  <th className="glass-th text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeOrders.length === 0 ? (
+                  <tr className="glass-tr">
+                    <td colSpan={7} className="glass-td text-center text-text-dim">
+                      No active orders found.
+                    </td>
+                  </tr>
+                ) : (
+                  paginatedOrders.map((o) => {
+                    const id = o.id || o._id;
+                    const isChecked = selectedIds.includes(id);
+                    return (
+                      <tr
+                        key={id}
+                        className="glass-tr hover:bg-white/5 transition-all cursor-pointer"
+                        onClick={() => viewReceipt(o)}
+                      >
+                        <td className="glass-td text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => toggleSelect(id)}
+                            className="cursor-pointer"
+                          />
+                        </td>
+                        <td className="glass-td font-mono font-bold text-sm text-text-main text-left">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span>{o.orderId}</span>
+                            {o.isRush && (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
+                                RUSH
+                              </span>
+                            )}
+                            {o.isByog && (
+                              <span className={`px-1.5 py-0.5 rounded text-[10px] font-sans font-semibold border ${
+                                o.garmentsReceivedAt
+                                  ? 'bg-primary/10 text-primary border-primary/25'
+                                  : 'bg-white/5 text-text-dim border-border-glass'
+                              }`}>
+                                {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG Drop-off'}
+                              </span>
+                            )}
+                          </div>
+                          {(() => {
+                            const schedule = getOrderScheduleInfo(o);
+                            return (
+                              <div className="text-[11px] font-sans font-normal text-text-dim mt-1 flex items-center gap-2 flex-wrap">
+                                <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-main font-semibold">
+                                  {schedule.exactTargetLabel}
+                                </span>
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  schedule.isOverdue
+                                    ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
+                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                }`}>
+                                  {schedule.relativeLabel}
+                                </span>
+                                <span className="text-text-dim text-[11px]">
+                                  ⏱ {schedule.stitchLabel}
+                                </span>
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td className="glass-td text-left text-sm">
+                          <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
+                          <div className="text-[0.75rem] text-text-dim mt-0.5">
+                            {new Date(o.date || o.createdAt).toLocaleString()}
+                          </div>
+                        </td>
+                        <td className="glass-td text-left text-sm">
+                          {o.items && Array.isArray(o.items) ? (
+                            <div className="flex flex-col gap-1 max-w-[250px]">
+                              {o.items.map((item: any, idx: number) => {
+                                const rawName = String(item.name || '').trim();
+                                const lowerName = rawName.toLowerCase();
+                                const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                                  .filter(Boolean)
+                                  .map((p: string) => String(p).trim())
+                                  .filter((p: string, pIdx: number, arr: string[]) => {
+                                    if (!p) return false;
+                                    if (lowerName.includes(p.toLowerCase())) return false;
+                                    return arr.indexOf(p) === pIdx;
+                                  });
+                                const variantText = variantParts.join(' • ');
+                                return (
+                                  <div key={idx} className="flex items-center gap-1.5 text-xs truncate">
+                                    
+                                    <span className="font-medium">{item.quantity}x {item.name}</span>
+                                    {variantText && <span className="text-text-dim text-[0.7rem] font-sans">({variantText})</span>}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : (
+                            <span>{o.design || 'Embroidery Design'}</span>
+                          )}
+                        </td>
+                        <td className="glass-td text-left font-mono font-bold text-sm text-primary">
+                          <div>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</div>
+                          {(() => {
+                            const ref = getOrderGcashRef(o);
+                            const smsVerified = isOrderSmsVerified(o);
+                            const isCashOrCounter = String(o.orderId || '').startsWith('WI-') || o.paymentMethod === 'cash';
+                            if (isCashOrCounter && !ref) {
+                              return (
+                                <span className="inline-block mt-1 text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-white/5 text-text-dim border border-white/10">
+                                  Counter / Cash
+                                </span>
+                              );
+                            }
+                            if (!ref) return null;
+                            const prefix = ref.length > 4 ? ref.slice(0, -4) : '';
+                            const last4 = ref.slice(-4);
+                            return (
+                              <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
+                                <div
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
+                                  title={`Full GCash Ref: ${ref}`}
+                                >
+                                  <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
+                                  <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
+                                  <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
+                                    {last4}
+                                  </span>
+                                </div>
+                                {smsVerified ? (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim">
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    Payment Verified
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={(e) => handleVerifySmsMatch(o, e)}
+                                    disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
+                                    title="Tap to verify and approve payment against GCash transaction receipt"
+                                  >
+                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                      <polyline points="20 6 9 17 4 12" />
+                                    </svg>
+                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Verify Payment (...${last4})`}</span>
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
+                        </td>
+                        <td className="glass-td text-left">
+                          <span
+                            className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
+                              ${o.status === 'Preparing Order'
+                                ? 'bg-primary/20 text-primary border border-primary/30'
+                                : o.status === 'In Transit'
+                                  ? 'bg-white/5 text-text-dim border border-border-glass'
+                                  : o.status === 'Ready For Pick Up'
+                                    ? 'bg-success/20 text-success border border-success/30'
+                                    : 'bg-white/10 text-text-dim border border-white/20'
+                              }
+                            `}
+                          >
+                            {o.status}
+                          </span>
+                        </td>
+                        <td className="glass-td text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex gap-2 justify-end">
+                            <button
+                              onClick={() => setClaimStubOrder(o)}
+                              className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
+                              title="Print thermal claim slip / bag stub"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
+                                <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                              <span>Claim Slip</span>
+                            </button>
+                            <button
+                              onClick={() => viewReceipt(o)}
+                              className="bg-white/5 border border-border-glass text-text-main px-2.5 py-1.5 rounded-lg text-xs font-semibold hover:bg-white/10 transition-all cursor-pointer flex items-center gap-1.5"
+                              title="Inspect full invoice & payment details"
+                            >
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                              </svg>
+                              <span>Receipt</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Mobile Grid layout */}
+        <div className="min-[1101px]:hidden grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-2">
+          {(isSearching || isPageTransitioning || (isSyncing && orders.length === 0)) ? (
+            Array.from({ length: 4 }).map((_, i) => (
+              <CardSkeleton key={i} />
+            ))
+          ) : activeOrders.length === 0 ? (
+            <div className="glass-card p-6 text-center text-text-dim col-span-full rounded-xl">No active orders found.</div>
+          ) : (
+            paginatedOrders.map((o) => {
+              const id = o.id || o._id;
+              const isChecked = selectedIds.includes(id);
+              const rawClient = o.client || 'Valued Customer';
+              const cleanClient = String(rawClient).replace(/\s*\([^)]*\)/g, '').trim() || 'Valued Customer';
+
+              return (
+                <div
+                  key={id}
+                  onClick={() => viewReceipt(o)}
+                  className={`bg-bg-card backdrop-blur-[12px] border rounded-xl p-4 flex flex-col justify-between text-left relative shadow-xs hover:border-primary/50 transition-all gap-3 cursor-pointer ${
+                    isChecked ? 'border-primary shadow-sm' : 'border-border-glass'
+                  }`}
+                >
+                  {/* Select Toggle Box */}
+                  <div
+                    className="absolute top-3.5 right-3.5 z-10 p-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isChecked}
+                      onChange={() => toggleSelect(id)}
+                      className="w-5 h-5 cursor-pointer rounded border-border-glass bg-transparent"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 items-start pr-6">
+                    {/* Left Column */}
+                    {(() => {
+                      const schedule = getOrderScheduleInfo(o);
+                      return (
+                        <div className="flex flex-col gap-1.5 text-left">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider w-fit
+                                ${o.status === 'Preparing Order'
+                                  ? 'bg-primary/20 text-primary border border-primary/30'
+                                  : o.status === 'In Transit'
+                                    ? 'bg-white/5 text-text-dim border border-border-glass'
+                                    : o.status === 'Ready For Pick Up'
+                                      ? 'bg-success/20 text-success border border-success/30'
+                                      : 'bg-white/10 text-text-dim border border-white/20'
+                                }
+                              `}
+                            >
+                              {o.status}
+                            </span>
+                            <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              schedule.isOverdue
+                                ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
+                                : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            }`}>
+                              {schedule.relativeLabel}
+                            </span>
+                          </div>
+
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                            {o.isRush && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
+                                RUSH
+                              </span>
+                            )}
+                            {o.isByog && (
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-sans font-semibold border ${
+                                o.garmentsReceivedAt
+                                  ? 'bg-primary/10 text-primary border-primary/25'
+                                  : 'bg-white/5 text-text-dim border-border-glass'
+                              }`}>
+                                {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG'}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="text-xs font-bold text-text-main truncate max-w-[150px]">{cleanClient}</div>
+
+                          <div className="flex flex-col text-[11px] font-semibold text-text-main mt-0.5">
+                            <span>{schedule.exactTargetLabel}</span>
+                            <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
+
+                    {/* Right Column: Items & Total */}
+                    <div className="flex flex-col gap-1.5 text-left border-l border-border-glass/30 pl-3">
+                      <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Items</span>
+                      <div className="flex flex-col gap-1">
+                        {o.items && Array.isArray(o.items) ? (
+                          o.items.map((item: any, idx: number) => {
+                            const rawName = String(item.name || '').trim();
+                            const lowerName = rawName.toLowerCase();
+                            const variantParts = [item.selectedVariant, item.selectedSize ? `Size: ${item.selectedSize}` : null]
+                              .filter(Boolean)
+                              .map((p: string) => String(p).trim())
+                              .filter((p: string, pIdx: number, arr: string[]) => {
+                                if (!p) return false;
+                                if (lowerName.includes(p.toLowerCase())) return false;
+                                return arr.indexOf(p) === pIdx;
+                              });
+                            const variantText = variantParts.join(' • ');
+                            return (
+                              <div key={idx} className="flex items-center justify-between gap-1 py-0.5 border-b border-white/5 last:border-0">
+                                <div className="flex items-center gap-1.5 truncate">
+                                  
+                                  <span className="text-xs font-bold text-text-main truncate">{item.quantity}x {item.name}</span>
+                                </div>
+                                {variantText && <span className="text-text-dim text-[10px] shrink-0 font-sans">({variantText})</span>}
+                              </div>
+                            );
+                          })
+                        ) : (
+                          <div className="text-xs text-text-main font-medium">{o.design || 'Embroidery Design'}</div>
+                        )}
+                      </div>
+
+                      {/* Total Amount & Ref Badge */}
+                      <div className="mt-1 pt-1.5 border-t border-white/5 font-mono font-bold text-primary text-sm flex items-center justify-between gap-1.5 flex-wrap">
+                        <span>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</span>
+                        {(() => {
+                          const ref = getOrderGcashRef(o);
+                          const smsVerified = isOrderSmsVerified(o);
+                          if (!ref) return null;
+                          const last4 = ref.slice(-4);
+                          return (
+                            <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                              <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-bold">
+                                Ref: ...{last4}
+                              </span>
+                              {smsVerified ? (
+                                <span className="text-[10px] font-sans font-medium text-text-dim">Verified</span>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleVerifySmsMatch(o, e)}
+                                  className="text-[10px] font-sans font-bold bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main min-h-[30px] px-2 py-0.5 rounded-md cursor-pointer active:scale-95"
+                                >
+                                  Verify
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 pt-2 border-t border-white/5" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      type="button"
+                      onClick={() => setClaimStubOrder(o)}
+                      className="flex-1 bg-white/5 border border-border-glass text-text-main min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold hover:bg-white/10 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20.59 13.41l-7.17 7.17a2 2 0 01-2.83 0L2 12V2h10l8.59 8.59a2 2 0 010 2.82z" strokeLinecap="round" strokeLinejoin="round" />
+                        <line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                      <span>Claim Slip</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => viewReceipt(o)}
+                      className="flex-1 bg-primary/15 border border-primary/30 text-primary min-h-[40px] py-2 px-3 rounded-xl text-xs font-bold hover:bg-primary/25 transition-all cursor-pointer text-center flex items-center justify-center gap-1.5 active:scale-95"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="16" y1="13" x2="8" y2="13" />
+                        <line x1="16" y1="17" x2="8" y2="17" />
+                        <polyline points="10 9 9 9 8 9" />
+                      </svg>
+                      <span>Receipt</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+        <Pagination
+          currentPage={currentPage}
+          totalItems={activeOrders.length}
+          pageSize={pageSize}
+          onPageChange={handlePageChange}
+          isLoading={isPageTransitioning}
+          pageSizeOptions={[5, 10, 20, 50]}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setCurrentPage(1);
+          }}
+          itemLabel="orders in queue"
+        />
+      </div>
+
+      {/* Modal: View Receipt Details */}
+      <InvoiceModal
+        isOpen={isReceiptModalOpen}
+        onClose={() => setIsReceiptModalOpen(false)}
+        order={selectedReceipt}
+        transaction={receiptDetails || selectedReceipt}
+        user={receiptDetails?.user || selectedReceipt?.customer}
+        transactionId={receiptDetails?.transactionID || selectedReceipt?.orderId}
+      />
+
+
+
+
+
+      {/* Single Order Claim Stub (Thermal Receipt Format for Store Pickups) */}
+      <ClaimStubModal
+        isOpen={!!claimStubOrder}
+        onClose={() => setClaimStubOrder(null)}
+        order={claimStubOrder}
+      />
+
+      {/* Workshop Emergency Delay Notice Management Modal */}
+      <EmergencyDelayNoticeModal
+        isOpen={isDelayModalOpen}
+        onClose={() => setIsDelayModalOpen(false)}
+        onSuccess={() => {
+          fetchDelayNoticeStatus();
+          refreshData().catch(() => {});
+        }}
+        activeOrdersCount={orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status)).length}
+        initialNotice={delayNoticeStatus}
+      />
+
+      {/* Batch Thermal Dispatch Labels Modal (Continuous 4x6 Roll Printing) */}
+      <GlassModal
+        isOpen={batchPrintOrders.length > 0}
+        onClose={() => setBatchPrintOrders([])}
+        title={`Batch Shipping Labels (${batchPrintOrders.length} Parcels)`}
+        maxWidth="max-w-[540px]"
+      >
+        <div className="flex flex-col gap-4 font-sans text-text-main">
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs flex items-center justify-between print:hidden">
+            <div className="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0">
+                <path d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2" />
+                <path d="M6 14h12v8H6z" />
+              </svg>
+              <div>
+                <p className="font-bold text-text-main m-0">Continuous 4x6" Thermal Print Feed</p>
+                <p className="text-[0.7rem] text-text-dim m-0">
+                  Formatted for thermal sticker roll printers with auto page-breaks
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => printIsolatedElement('batch-thermal-labels', 'Batch Thermal Labels', true)}
+              className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              <span>Print All Labels</span>
+            </button>
+          </div>
+
+          {/* Scrollable preview & continuous print container */}
+          <div
+            id="batch-thermal-labels"
+            className="flex flex-col gap-6 max-h-[70vh] overflow-y-auto pr-1"
+          >
+            {batchPrintOrders.map((ord, idx) => {
+              const pers = (ord.personalization && typeof ord.personalization === 'object') ? ord.personalization : {};
+              const cleanCode = (ord.orderId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+              const isPick = pers.fulfillmentType === 'pickup' ||
+                (typeof ord.address === 'string' && ord.address.toLowerCase().includes('pick-up')) ||
+                (pers.trackingNumber && pers.trackingNumber.startsWith('PU-'));
+              const trackNo = pers.trackingNumber || (isPick ? `PU-LUC-${cleanCode}` : `JNT-PH-78${cleanCode}`);
+              const qrInfo = `DISPATCH|TRACK:${trackNo}|ORDER:${ord.orderId}|CLIENT:${encodeURIComponent(ord.client || 'Customer')}`;
+              const qrImg = `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrInfo)}&size=120x120&margin=0`;
+
+              return (
+                <div
+                  key={ord.id || ord._id || idx}
+                  className="bg-white text-black p-4 rounded-xl border border-black shadow-md flex flex-col gap-2 font-mono text-[10px] leading-tight select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full print:break-after-page"
+                >
+                  {/* Top Bar */}
+                  <div className="border-b-2 border-black pb-2 flex justify-between items-center">
+                    <div className="flex items-center gap-1.5">
+                      <div className={`${isPick ? 'bg-emerald-700' : 'bg-[#e11d48]'} text-white px-2 py-0.5 font-black text-xs tracking-wider rounded-sm`}>
+                        {isPick ? 'COUNTER' : 'DISPATCH'}
+                      </div>
+                      <span className="font-black text-xs">{isPick ? 'STORE PICKUP' : 'J&T EXPRESS'}</span>
+                      <span className="text-[9px] font-bold text-black/60">EDS TOWELS & CAPS</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="bg-black text-white px-2 py-0.5 text-[8.5px] font-black uppercase">
+                        PACKAGE #{idx + 1} OF {batchPrintOrders.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tracking Number Header */}
+                  <div className="flex justify-between items-center py-1 border-b border-black">
+                    <div>
+                      <span className="text-[8px] text-black/60 block font-sans">TRACKING / WAYBILL NO.</span>
+                      <span className="font-mono text-xs font-black tracking-wider">{trackNo}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-[8px] text-black/60 block font-sans">ORDER REF</span>
+                      <span className="font-mono text-[11px] font-black">#{ord.orderId}</span>
+                    </div>
+                  </div>
+
+                  {/* Route & Hub */}
+                  <div className="grid grid-cols-2 border-b-2 border-black divide-x-2 divide-black text-center py-1">
+                    <div className="p-0.5">
+                      <span className="text-[7.5px] text-black/60 block font-sans">ORIGIN HUB</span>
+                      <span className="font-black text-[11px]">LCN-PAC-01</span>
+                      <span className="text-[7.5px] block text-black/60">Pacific Mall Lucena</span>
+                    </div>
+                    <div className="p-0.5">
+                      <span className="text-[7.5px] text-black/60 block font-sans">DISPATCH ROUTE</span>
+                      <span className="font-black text-[11px]">CAL-MNL-STD</span>
+                      <span className="text-[7.5px] block text-black/60">Standard Transit</span>
+                    </div>
+                  </div>
+
+                  {/* Shipper & Consignee */}
+                  <div className="grid grid-cols-2 border-b-2 border-black divide-x-2 divide-black py-1 text-[9.5px]">
+                    <div className="pr-1">
+                      <span className="font-sans font-black text-[8px] uppercase block text-black/70">SHIPPER:</span>
+                      <p className="font-bold m-0">Eds Towels & Caps</p>
+                      <p className="m-0 text-[8.5px] text-black/80">Pacific Mall Lucena, Quezon</p>
+                      <p className="m-0 text-[8.5px] font-bold">0928 810 3928</p>
+                    </div>
+                    <div className="pl-1">
+                      <span className="font-sans font-black text-[8px] uppercase block text-black/70">RECIPIENT:</span>
+                      <p className="font-bold m-0">{ord.client || 'Customer'}</p>
+                      <p className="m-0 text-[8.5px] line-clamp-2">{ord.address || 'Pacific Mall Counter Pickup'}</p>
+                    </div>
+                  </div>
+
+                  {/* Footer & QR */}
+                  <div className="flex items-center justify-between pt-1 gap-2 border-t border-black">
+                    <div className="flex-1 text-[8.5px]">
+                      <span className="font-sans font-black text-[7.5px] uppercase block text-black/60">ITEMS:</span>
+                      <p className="font-bold m-0 truncate">
+                        {ord.items && ord.items.length > 0
+                          ? ord.items.map((i: any) => `${i.quantity}x ${i.name}`).join(', ')
+                          : ord.design || 'Custom Embroidery'}
+                      </p>
+                      <p className="text-[7.5px] text-black/60 m-0 mt-0.5">
+                        Amount: ₱{(ord.totalAmount || 0).toFixed(2)} • {ord.paymentMethod?.toUpperCase()}
+                      </p>
+                    </div>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={qrImg} alt="QR" className="w-12 h-12 border border-black p-0.5 shrink-0" />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </GlassModal>
+
+      {/* Courier Handover Manifest Modal (1-Page Printable Rider Transmittal) */}
+      <GlassModal
+        isOpen={isManifestOpen}
+        onClose={() => setIsManifestOpen(false)}
+        title="Courier Handover Manifest / Transmittal Sheet"
+        maxWidth="max-w-[700px]"
+      >
+        <div className="flex flex-col gap-4 font-sans text-text-main">
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 text-xs flex items-center justify-between print:hidden">
+            <div className="flex items-center gap-2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary shrink-0">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+              </svg>
+              <div>
+                <p className="font-bold text-text-main m-0">Standard 1-Page Courier Transmittal Sheet</p>
+                <p className="text-[0.7rem] text-text-dim m-0">
+                  Proof of parcel handover for DSP courier rider or pickup logistics partner
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => printIsolatedElement('courier-handover-manifest', 'Courier Handover Manifest', false)}
+              className="px-3 py-1.5 rounded-lg bg-primary text-white font-bold text-xs hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5"
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="6 9 6 2 18 2 18 9" />
+                <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+                <rect x="6" y="14" width="12" height="8" />
+              </svg>
+              <span>Print Transmittal</span>
+            </button>
+          </div>
+
+          {/* Printable Manifest Document Container */}
+          <div
+            id="courier-handover-manifest"
+            className="bg-white text-black p-6 rounded-xl border border-black shadow-md flex flex-col gap-4 font-sans text-xs select-all print:border-none print:shadow-none print:p-0 print:m-0 print:w-full"
+          >
+            {/* Header */}
+            <div className="border-b-2 border-black pb-3 flex justify-between items-start">
+              <div>
+                <h3 className="font-black text-base uppercase tracking-tight m-0 text-black">
+                  EDS TOWELS & CAPS — PARCEL HANDOVER MANIFEST
+                </h3>
+                <p className="text-[11px] text-black/70 m-0 mt-0.5">
+                  Origin: Pacific Mall Lucena, M.L. Tagarao St., Lucena City, Quezon Province
+                </p>
+                <p className="text-[10px] text-black/60 m-0">Contact: 0928 810 3928 • Shop Admin Desk</p>
+              </div>
+              <div className="text-right">
+                <span className="font-mono text-xs font-black block">
+                  MANIFEST NO: MNF-{new Date().toISOString().slice(0, 10).replace(/-/g, '')}-{(selectedIds.length).toString().padStart(2, '0')}
+                </span>
+                <span className="text-[10px] text-black/70 block mt-0.5">
+                  Date: {new Date().toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+                <span className="text-[10px] font-bold text-black block">Total Packages: {selectedIds.length}</span>
+              </div>
+            </div>
+
+            {/* Table of Dispatched Parcels */}
+            <div className="border border-black overflow-hidden">
+              <table className="w-full text-left text-[11px] border-collapse">
+                <thead>
+                  <tr className="bg-black/10 border-b border-black">
+                    <th className="p-2 border-r border-black font-black text-center w-8">#</th>
+                    <th className="p-2 border-r border-black font-black">Order ID</th>
+                    <th className="p-2 border-r border-black font-black">Tracking Number</th>
+                    <th className="p-2 border-r border-black font-black">Recipient</th>
+                    <th className="p-2 border-r border-black font-black">Destination</th>
+                    <th className="p-2 border-r border-black font-black text-right">Amount</th>
+                    <th className="p-2 font-black text-center w-16">Pouch Check</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders
+                    .filter((o) => selectedIds.includes(o.id || o._id))
+                    .map((ord, idx) => {
+                      const pers = (ord.personalization && typeof ord.personalization === 'object') ? ord.personalization : {};
+                      const cleanCode = (ord.orderId || '').replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
+                      const isPick = pers.fulfillmentType === 'pickup' ||
+                        (typeof ord.address === 'string' && ord.address.toLowerCase().includes('pick-up'));
+                      const trackNo = pers.trackingNumber || (isPick ? `PU-LUC-${cleanCode}` : `JNT-PH-78${cleanCode}`);
+
+                      return (
+                        <tr key={ord.id || ord._id || idx} className="border-b border-black/30">
+                          <td className="p-2 border-r border-black text-center font-bold">{idx + 1}</td>
+                          <td className="p-2 border-r border-black font-mono font-bold">#{ord.orderId}</td>
+                          <td className="p-2 border-r border-black font-mono text-[10px]">{trackNo}</td>
+                          <td className="p-2 border-r border-black font-bold">{ord.client || 'Valued Customer'}</td>
+                          <td className="p-2 border-r border-black text-[10px] truncate max-w-[150px]">
+                            {ord.address?.split('(Landmark:')[0]?.trim() || ord.address || 'Pacific Mall Counter'}
+                          </td>
+                          <td className="p-2 border-r border-black font-mono font-bold text-right">
+                            ₱{(ord.totalAmount || 0).toFixed(2)}
+                          </td>
+                          <td className="p-2 text-center font-mono">[  ]</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Signature & Handover Sign-off Box */}
+            <div className="grid grid-cols-2 gap-6 pt-4 border-t-2 border-black">
+              <div className="border border-black p-3 rounded flex flex-col justify-between h-24">
+                <span className="font-bold text-[10px] uppercase text-black/70">
+                  DISPATCHED BY (EDS TOWELS & CAPS STAFF):
+                </span>
+                <div className="border-t border-black pt-1 flex justify-between text-[10px]">
+                  <span>Signature over Printed Name</span>
+                  <span>Date & Time</span>
+                </div>
+              </div>
+              <div className="border border-black p-3 rounded flex flex-col justify-between h-24">
+                <span className="font-bold text-[10px] uppercase text-black/70">
+                  RECEIVED BY (COURIER RIDER / DSP PARTNER):
+                </span>
+                <div className="border-t border-black pt-1 flex justify-between text-[10px]">
+                  <span>Rider Name & Vehicle / Plate No.</span>
+                  <span>Signature & Date</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </GlassModal>
+    </section>
+  );
+}

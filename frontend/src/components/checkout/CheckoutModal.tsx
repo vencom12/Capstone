@@ -82,6 +82,9 @@ export default function CheckoutModal({
 
   const [emergencyNotice, setEmergencyNotice] = useState<{
     active: boolean;
+    isScheduled?: boolean;
+    isCurrentlyClosed?: boolean;
+    startDate?: string | null;
     policy?: 'ALLOW_WITH_DELAY' | 'PAUSE_ORDERS';
     reason?: string | null;
     message?: string | null;
@@ -794,9 +797,31 @@ export default function CheckoutModal({
           </div>
         )}
 
-        {/* Emergency Workshop Leave Banner (Option A or Option B) */}
+        {/* Emergency Workshop Leave Banner (Option A or Option B, or Scheduled) */}
         {emergencyNotice?.active && (
-          emergencyNotice.policy === 'PAUSE_ORDERS' ? (
+          emergencyNotice.isScheduled ? (
+            <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-left mb-2 flex flex-col gap-1.5">
+              <div className="flex items-center gap-2 font-bold text-text-main text-[0.8rem]">
+                <svg className="w-3.5 h-3.5 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                <span>Upcoming Workshop Break Notice</span>
+              </div>
+              <p className="text-[11px] text-text-dim leading-relaxed m-0">
+                Our workshop will be on scheduled break (<strong>{emergencyNotice.reason}</strong>)
+                {emergencyNotice.startDate ? (
+                  <> from <strong className="text-text-main">{new Date(emergencyNotice.startDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}</strong></>
+                ) : ''}
+                {emergencyNotice.resumeDate ? (
+                  <> to <strong className="text-text-main">{new Date(emergencyNotice.resumeDate).toLocaleDateString([], { month: 'short', day: 'numeric' })}</strong></>
+                ) : ''}.
+                You can reserve your priority queue spot now; production continues in queue order upon reopening.
+              </p>
+            </div>
+          ) : emergencyNotice.policy === 'PAUSE_ORDERS' ? (
             <div className="p-2.5 rounded-lg bg-white/[0.04] border border-border-glass text-xs text-left mb-2 flex flex-col gap-1.5">
               <div className="flex items-center gap-2 font-bold text-text-main text-[0.8rem]">
                 <svg className="w-3.5 h-3.5 shrink-0 text-text-main" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth="2">

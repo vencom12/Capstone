@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { api } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import Pagination from '@/components/ui/Pagination';
+import { CardSkeleton } from '@/components/ui/Skeletons';
 
 export interface FeedbackItem {
   id: string;
@@ -86,6 +87,13 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [totalItems, setTotalItems] = useState<number>(() => cached?.totalItems || 0);
   const [pageSize, setPageSize] = useState<number>(30);
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === currentPage) return;
+    setIsPageTransitioning(true);
+    setCurrentPage(newPage);
+  };
 
   // Expanded review state: Only display details when clicked
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -99,10 +107,12 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
 
   // Fetch reviews from API
   const fetchFeedbacks = useCallback(
-    async (isSilent = false) => {
+    async (isSilent = false, isPageSwitch = false) => {
       const hasCached = Boolean(reviewsCache[role || 'admin']);
-      if (!isSilent && !hasCached) setIsLoading(true);
+      if (isPageSwitch) setIsPageTransitioning(true);
+      else if (!isSilent && !hasCached) setIsLoading(true);
       setIsSyncing(true);
+      const minDelay = isPageSwitch ? new Promise((r) => setTimeout(r, 280)) : Promise.resolve();
       try {
         const params = new URLSearchParams();
 
@@ -124,12 +134,15 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
         params.append('page', currentPage.toString());
         params.append('limit', pageSize.toString());
 
-        const res = await api.get<{
-          success: boolean;
-          feedbacks: FeedbackItem[];
-          pagination: { total: number; page: number; totalPages: number };
-          metrics: FeedbackMetrics;
-        }>(`${apiPrefix}?${params.toString()}`);
+        const [res] = await Promise.all([
+          api.get<{
+            success: boolean;
+            feedbacks: FeedbackItem[];
+            pagination: { total: number; page: number; totalPages: number };
+            metrics: FeedbackMetrics;
+          }>(`${apiPrefix}?${params.toString()}`),
+          minDelay,
+        ]);
 
         if (res && res.success) {
           const loadedFeedbacks = res.feedbacks || [];
@@ -150,6 +163,7 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
       } finally {
         setIsLoading(false);
         setIsSyncing(false);
+        setIsPageTransitioning(false);
       }
     },
     [apiPrefix, role, ratingFilter, statusFilter, searchQuery, currentPage, pageSize]
@@ -438,10 +452,10 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
 
       {/* REVIEWS LIST: Clean, friendly cards */}
       <div className="space-y-3">
-        {isLoading ? (
-          <div className="py-12 text-center text-xs text-text-dim bg-bg-surface border border-border-glass rounded-xl">
-            Loading customer reviews...
-          </div>
+        {(isPageTransitioning || (isLoading && feedbacks.length === 0)) ? (
+          Array.from({ length: 4 }).map((_, i) => (
+            <CardSkeleton key={i} />
+          ))
         ) : feedbacks.length === 0 ? (
           <div className="py-12 text-center text-xs text-text-dim bg-bg-surface border border-border-glass rounded-xl flex flex-col items-center gap-2">
             <span>No customer reviews found.</span>
@@ -660,7 +674,8 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
         currentPage={currentPage}
         totalItems={totalItems}
         pageSize={pageSize}
-        onPageChange={setCurrentPage}
+        onPageChange={handlePageChange}
+        isLoading={isPageTransitioning}
         pageSizeOptions={[5, 10, 20, 50]}
         onPageSizeChange={(newSize) => {
           setPageSize(newSize);

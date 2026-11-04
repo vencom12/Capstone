@@ -633,6 +633,15 @@ export default function PanelRawMaterials({
   };
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    setIsSearching(true);
+    const timer = setTimeout(() => setIsSearching(false), 240);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [isLoadingLogs, setIsLoadingLogs] = useState(false);
 
@@ -1234,6 +1243,16 @@ export default function PanelRawMaterials({
   // Pagination for Inventory Table
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === currentPage) return;
+    setIsPageTransitioning(true);
+    setCurrentPage(newPage);
+    setTimeout(() => {
+      setIsPageTransitioning(false);
+    }, 280);
+  };
 
   useEffect(() => {
     setCurrentPage(1);
@@ -1572,12 +1591,12 @@ export default function PanelRawMaterials({
           </div>
         </div>
 
-        {isSyncing && inventory.length === 0 ? (
-          <div className="max-[1024px]:hidden mb-4 w-full animate-pulse">
-            <TableSkeleton rows={5} cols={4} />
+        {(isSearching || isPageTransitioning || (isSyncing && inventory.length === 0)) ? (
+          <div className="max-[1024px]:hidden mb-4 w-full">
+            <TableSkeleton rows={Math.min(pageSize, 8)} cols={4} />
           </div>
         ) : (
-          <div className="glass-table-container max-[1024px]:hidden">
+          <div className="glass-table-container max-[1024px]:hidden animate-table-fade">
             <table className="glass-table">
               <thead>
                 <tr>
@@ -1717,7 +1736,7 @@ export default function PanelRawMaterials({
 
         {/* Mobile Card Blocks View */}
         <div className="min-[1025px]:hidden grid grid-cols-2 gap-4 animate-fade">
-          {isSyncing && inventory.length === 0 ? (
+          {(isSearching || isPageTransitioning || (isSyncing && inventory.length === 0)) ? (
             Array.from({ length: 4 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))
@@ -1799,7 +1818,8 @@ export default function PanelRawMaterials({
           currentPage={currentPage}
           totalItems={filteredInventory.length}
           pageSize={pageSize}
-          onPageChange={setCurrentPage}
+          onPageChange={handlePageChange}
+          isLoading={isPageTransitioning}
           pageSizeOptions={[5, 10, 20, 50]}
           onPageSizeChange={(newSize) => {
             setPageSize(newSize);

@@ -99,9 +99,10 @@ export default function AdminPage() {
 
   const hasLoadedHistoryOnceRef = useRef(false);
 
-  const fetchArchivedOrders = async (query = historySearch, date = historyDate, page = 1, limit = archivedPageSize, silent = false) => {
+  const fetchArchivedOrders = async (query = historySearch, date = historyDate, page = 1, limit = archivedPageSize, silent = false, isPageSwitch = false) => {
     if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated || useAuthStore.getState().isLoggingOut) return;
-    if (!silent) setIsLoadingArchived(true);
+    if (isPageSwitch || !silent) setIsLoadingArchived(true);
+    const minDelay = isPageSwitch ? new Promise((r) => setTimeout(r, 280)) : Promise.resolve();
     try {
       const params = new URLSearchParams();
       if (query && query.trim()) params.append('search', query.trim());
@@ -109,7 +110,10 @@ export default function AdminPage() {
       params.append('page', String(page));
       params.append('limit', String(limit));
 
-      const res = await api.get<any>(`/api/admin/orders/history?${params.toString()}`);
+      const [res] = await Promise.all([
+        api.get<any>(`/api/admin/orders/history?${params.toString()}`),
+        minDelay
+      ]);
       if (isLoggingOutRef.current || !useAuthStore.getState().isAuthenticated) return;
       if (res && res.orders) {
         setArchivedOrders(res.orders);
@@ -297,8 +301,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (!isHydrated || !isAuthenticated || !checkAccess('admin')) return;
     if (activeTab !== 'history' || !hasLoadedHistoryOnceRef.current) return;
+    setIsLoadingArchived(true);
     const timer = setTimeout(() => {
-      fetchArchivedOrders(historySearch, historyDate, 1, archivedPageSize, false);
+      fetchArchivedOrders(historySearch, historyDate, 1, archivedPageSize, false, true);
     }, 250);
     return () => clearTimeout(timer);
   }, [historySearch, historyDate]);
@@ -562,7 +567,7 @@ export default function AdminPage() {
               ) : (
                 <>
                   {/* Desktop Table */}
-                  <div className="glass-table-container max-[1024px]:hidden">
+                  <div className="glass-table-container max-[1024px]:hidden animate-table-fade">
                     <table className="glass-table">
                       <thead>
                         <tr>
@@ -701,7 +706,8 @@ export default function AdminPage() {
                     currentPage={archivedPage}
                     totalItems={archivedTotal}
                     pageSize={archivedPageSize}
-                    onPageChange={(p) => fetchArchivedOrders(historySearch, historyDate, p, archivedPageSize)}
+                    onPageChange={(p) => fetchArchivedOrders(historySearch, historyDate, p, archivedPageSize, false, true)}
+                    isLoading={isLoadingArchived}
                     pageSizeOptions={[10, 15, 25, 50]}
                     onPageSizeChange={(newSize) => {
                       setArchivedPageSize(newSize);

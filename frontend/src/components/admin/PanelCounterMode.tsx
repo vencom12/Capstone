@@ -18,6 +18,7 @@ import {
   parseBulkLetteringLines,
 } from '@/lib/letteringPricing';
 import Pagination from '@/components/ui/Pagination';
+import { CardSkeleton } from '@/components/ui/Skeletons';
 
 interface PanelCounterModeProps {
   orders: any[];
@@ -207,6 +208,24 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [turnOverSearch, setTurnOverSearch] = useState('');
   const [turnOverPage, setTurnOverPage] = useState(1);
   const [turnOverPageSize, setTurnOverPageSize] = useState(30);
+  const [isTurnOverPageChanging, setIsTurnOverPageChanging] = useState(false);
+  const [isTurnOverSearching, setIsTurnOverSearching] = useState(false);
+
+  useEffect(() => {
+    if (!turnOverSearch) return;
+    setIsTurnOverSearching(true);
+    const timer = setTimeout(() => setIsTurnOverSearching(false), 240);
+    return () => clearTimeout(timer);
+  }, [turnOverSearch]);
+
+  const handleTurnOverPageChange = (newPage: number) => {
+    if (newPage === turnOverPage) return;
+    setIsTurnOverPageChanging(true);
+    setTurnOverPage(newPage);
+    setTimeout(() => {
+      setIsTurnOverPageChanging(false);
+    }, 280);
+  };
   const [verifyingOrderForRelease, setVerifyingOrderForRelease] = useState<any | null>(null);
   const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
 
@@ -2314,8 +2333,14 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
                 {turnOverSearch ? 'Check the claim slip code or order number on the customer slip.' : 'No bags currently waiting on the side for pickup.'}
               </span>
             </div>
-          ) : (
+          ) : (isTurnOverSearching || isTurnOverPageChanging) ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <CardSkeleton key={i} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-table-fade">
               {paginatedClaimOrders.map((order) => {
                 const isReady = order.status === 'Ready For Pick Up' || order.status === 'Ready for Pickup';
                 const isStitching = ['Preparing Order', 'In Production', 'Processing'].includes(order.status);
@@ -2435,7 +2460,8 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
               currentPage={turnOverPage}
               totalItems={filteredClaimOrders.length}
               pageSize={turnOverPageSize}
-              onPageChange={setTurnOverPage}
+              onPageChange={handleTurnOverPageChange}
+              isLoading={isTurnOverPageChanging}
               pageSizeOptions={[4, 8, 12, 24]}
               onPageSizeChange={(newSize) => {
                 setTurnOverPageSize(newSize);

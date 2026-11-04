@@ -27,10 +27,28 @@ export default function PanelStaffing({
 }: PanelStaffingProps) {
   const { user: currentAdmin } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    setIsSearching(true);
+    const timer = setTimeout(() => setIsSearching(false), 240);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(30);
+  const [isPageTransitioning, setIsPageTransitioning] = useState(false);
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage === currentPage) return;
+    setIsPageTransitioning(true);
+    setCurrentPage(newPage);
+    setTimeout(() => {
+      setIsPageTransitioning(false);
+    }, 280);
+  };
 
   // Modals state
   const [isOpen, setIsOpen] = useState(false);
@@ -529,12 +547,12 @@ export default function PanelStaffing({
         </div>
 
         {/* Desktop View */}
-        {isSyncing && users.length === 0 ? (
-          <div className="max-[650px]:hidden mb-4 w-full animate-pulse">
-            <TableSkeleton rows={5} cols={6} />
+        {(isSearching || isPageTransitioning || (isSyncing && users.length === 0)) ? (
+          <div className="max-[650px]:hidden mb-4 w-full">
+            <TableSkeleton rows={Math.min(pageSize, 8)} cols={6} />
           </div>
         ) : (
-          <div className="glass-table-container max-[650px]:hidden overflow-x-auto w-full">
+          <div className="glass-table-container max-[650px]:hidden overflow-x-auto w-full animate-table-fade">
             <table className="glass-table w-full">
               <thead>
                 <tr>
@@ -710,7 +728,7 @@ export default function PanelStaffing({
 
         {/* Mobile View */}
         <div className="min-[651px]:hidden flex flex-col gap-4">
-          {isSyncing && users.length === 0 ? (
+          {(isSearching || isPageTransitioning || (isSyncing && users.length === 0)) ? (
             Array.from({ length: 4 }).map((_, i) => (
               <CardSkeleton key={i} />
             ))
@@ -836,7 +854,8 @@ export default function PanelStaffing({
         currentPage={currentPage}
         totalItems={filteredUsers.length}
         pageSize={pageSize}
-        onPageChange={setCurrentPage}
+        onPageChange={handlePageChange}
+        isLoading={isPageTransitioning}
         pageSizeOptions={[5, 10, 20, 50]}
         onPageSizeChange={(newSize) => {
           setPageSize(newSize);

@@ -7,6 +7,7 @@ import { matchesProductSearch } from '@/lib/searchUtils';
 import ProductCard from './ProductCard';
 import { ProductCardSkeleton } from '@/components/ui/Skeletons';
 import Pagination from '@/components/ui/Pagination';
+import { usePageTransition } from '@/hooks/usePageTransition';
 
 interface ProductGridProps {
   onQuickView: (product: Product) => void;
@@ -36,7 +37,12 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
 
   const baseProducts = customProducts || products;
 
-  const [page, setPage] = useState(1);
+  const {
+    page,
+    isTransitioning: isPageTransitioning,
+    handlePageChange,
+    resetPage,
+  } = usePageTransition({ initialPage: 1, duration: 280 });
   const [pageSize] = useState(30);
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -94,26 +100,19 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
     return () => clearTimeout(timer);
   }, [page, searchQuery, selectedCategory]);
 
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery) return;
+    setIsSearching(true);
+    const timer = setTimeout(() => setIsSearching(false), 240);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
   // Reset to first page whenever search or category changes
   useEffect(() => {
-    setPage(1);
-  }, [searchQuery, selectedCategory]);
-
-  const handlePageChange = (newPage: number) => {
-    if (newPage === page) return;
-    setPage(newPage);
-    if (typeof window !== 'undefined') {
-      const el = document.getElementById('products-section') || gridRef.current;
-      if (el) {
-        const headerOffset = 90;
-        const elementPosition = el.getBoundingClientRect().top + window.scrollY;
-        window.scrollTo({
-          top: Math.max(0, elementPosition - headerOffset),
-          behavior: 'smooth'
-        });
-      }
-    }
-  };
+    resetPage(1);
+  }, [searchQuery, selectedCategory, resetPage]);
 
   const paginatedProducts = useMemo(() => {
     return filteredProducts.slice((page - 1) * pageSize, page * pageSize);
@@ -216,8 +215,8 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
       )}
 
       {/* Products Grid or Loading Skeleton */}
-      {(isSyncing && filteredProducts.length === 0) ? (
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 animate-pulse">
+      {(isSearching || isPageTransitioning || (isSyncing && filteredProducts.length === 0)) ? (
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
           {Array.from({ length: Math.min(8, paginatedProducts.length || 8) }).map((_, i) => (
             <ProductCardSkeleton key={i} />
           ))}
@@ -246,7 +245,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
         </div>
       ) : (
         /* Products Grid */
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5">
+        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5 sm:gap-4 md:gap-5 animate-table-fade">
           {paginatedProducts.map((product, idx) => (
             <ProductCard
               key={product.id || product._id}
@@ -266,6 +265,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
           totalItems={filteredProducts.length}
           pageSize={pageSize}
           onPageChange={handlePageChange}
+          isLoading={isPageTransitioning}
           className="-mt-3.5 sm:-mt-2.5"
         />
       )}

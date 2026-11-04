@@ -333,9 +333,27 @@ exports.submitOrder = async (req, res) => {
         }
 
         // Emergency delay notice / leave policy guard:
-        if (globalSettings?.emergencyNoticeActive && globalSettings.emergencyOrderingPolicy === 'PAUSE_ORDERS' && !isBypassActive) {
-            const resumeDateStr = globalSettings.emergencyNoticeResumeDate
-                ? new Date(globalSettings.emergencyNoticeResumeDate).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        const now = new Date();
+        let emergencyStartDate = globalSettings?.emergencyNoticeCreatedAt;
+        if (globalSettings?.availableThreadColors) {
+            let tc = globalSettings.availableThreadColors;
+            if (typeof tc === 'string') { try { tc = JSON.parse(tc); } catch (e) {} }
+            if (Array.isArray(tc)) {
+                const em = tc.find(c => c && c.id === '__emergency_meta__');
+                if (em?.startDate) emergencyStartDate = em.startDate;
+            }
+        }
+        const emStart = emergencyStartDate ? new Date(emergencyStartDate) : now;
+        const emResume = globalSettings?.emergencyNoticeResumeDate ? new Date(globalSettings.emergencyNoticeResumeDate) : null;
+        const isCurrentlyClosed = Boolean(
+            globalSettings?.emergencyNoticeActive &&
+            emStart.getTime() <= now.getTime() &&
+            (!emResume || emResume.getTime() > now.getTime())
+        );
+
+        if (isCurrentlyClosed && globalSettings.emergencyOrderingPolicy === 'PAUSE_ORDERS' && !isBypassActive) {
+            const resumeDateStr = emResume
+                ? emResume.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                 : 'soon';
             return res.status(400).json({
                 message: `Online ordering is temporarily paused while our workshop is closed (${globalSettings.emergencyNoticeReason || 'Scheduled Leave'}). Ordering will resume on ${resumeDateStr}.`
@@ -526,14 +544,18 @@ exports.submitOrder = async (req, res) => {
                 orderPersonalization.preOrderAcknowledgedAt = new Date().toISOString();
             }
 
-            if (globalSettings?.emergencyNoticeActive && globalSettings.emergencyOrderingPolicy === 'ALLOW_WITH_DELAY') {
+            if (globalSettings?.emergencyNoticeActive) {
+                const isScheduledNotice = emStart.getTime() > now.getTime();
                 orderPersonalization.delayNotice = {
                     active: true,
                     reason: globalSettings.emergencyNoticeReason || 'Workshop Leave',
                     message: globalSettings.emergencyNoticeMessage || '',
+                    startDate: emStart.toISOString(),
                     resumeDate: globalSettings.emergencyNoticeResumeDate,
                     delayHours: globalSettings.emergencyNoticeDelayHours || 0,
-                    policy: 'ALLOW_WITH_DELAY',
+                    policy: globalSettings.emergencyOrderingPolicy || 'ALLOW_WITH_DELAY',
+                    isScheduled: isScheduledNotice,
+                    isCurrentlyClosed,
                     acknowledgedAt: new Date().toISOString()
                 };
             }

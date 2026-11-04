@@ -1189,6 +1189,10 @@ exports.getSettings = async (req, res) => {
         }
         res.json({
             ...settings,
+            artisanSecondsPerLetter: 4.0,
+            artisanHandlingMinutes: 0.33,
+            artisanCapOffsetMinutes: 0.0,
+            artisanDailyMinutes: 500.0,
             availableThreadColors: cleanColors,
             smallGarmentLetterRate,
             bigGarmentLetterRate,
@@ -1220,22 +1224,12 @@ exports.updateSettings = async (req, res) => {
             const val = parseInt(updateData.largeOrderQuoteThreshold, 10) || 100;
             updateData.largeOrderQuoteThreshold = Math.min(1000, Math.max(10, val));
         }
-        if (updateData.artisanSecondsPerLetter !== undefined) {
-            const val = parseFloat(updateData.artisanSecondsPerLetter) || 12.0;
-            updateData.artisanSecondsPerLetter = Math.min(60.0, Math.max(2.0, val));
-        }
-        if (updateData.artisanHandlingMinutes !== undefined) {
-            const val = parseFloat(updateData.artisanHandlingMinutes) || 1.0;
-            updateData.artisanHandlingMinutes = Math.min(15.0, Math.max(0.2, val));
-        }
-        if (updateData.artisanCapOffsetMinutes !== undefined) {
-            const val = parseFloat(updateData.artisanCapOffsetMinutes) || 0.5;
-            updateData.artisanCapOffsetMinutes = Math.min(5.0, Math.max(0.0, val));
-        }
-        if (updateData.artisanDailyMinutes !== undefined) {
-            const val = parseFloat(updateData.artisanDailyMinutes) || 500.0;
-            updateData.artisanDailyMinutes = Math.min(1200.0, Math.max(60.0, val));
-        }
+        // Standardized workshop physics locked for BSIT Capstone Defense:
+        // 4s per letter, 20s handling per garment (~0.333 min), 0s cap offset, 500 min/day operating capacity
+        updateData.artisanSecondsPerLetter = 4.0;
+        updateData.artisanHandlingMinutes = 20.0 / 60.0;
+        updateData.artisanCapOffsetMinutes = 0.0;
+        updateData.artisanDailyMinutes = 500.0;
         if (updateData.expressLanePercent !== undefined) {
             const val = parseFloat(updateData.expressLanePercent) || 65.0;
             updateData.expressLanePercent = Math.min(95.0, Math.max(5.0, val));
@@ -2061,6 +2055,7 @@ exports.getDelayNoticeStatus = async (req, res) => {
                 emergencyNoticeCreatedAt: true,
                 emergencyNoticeUpdatedBy: true,
                 emergencyOrderingPolicy: true,
+                availableThreadColors: true
             }
         });
 
@@ -2070,11 +2065,32 @@ exports.getDelayNoticeStatus = async (req, res) => {
             }
         });
 
+        let rawColors = settings?.availableThreadColors;
+        if (typeof rawColors === 'string') {
+            try { rawColors = JSON.parse(rawColors); } catch (e) {}
+        }
+        let metaStartDate = null;
+        if (Array.isArray(rawColors)) {
+            const meta = rawColors.find(c => c && c.id === '__emergency_meta__');
+            if (meta?.startDate) metaStartDate = meta.startDate;
+        }
+
+        const now = new Date();
+        const active = Boolean(settings?.emergencyNoticeActive);
+        const startDate = metaStartDate ? new Date(metaStartDate) : (settings?.emergencyNoticeCreatedAt ? new Date(settings.emergencyNoticeCreatedAt) : now);
+        const resumeDate = settings?.emergencyNoticeResumeDate ? new Date(settings.emergencyNoticeResumeDate) : null;
+
+        const isScheduled = Boolean(active && startDate && startDate.getTime() > now.getTime());
+        const isCurrentlyClosed = Boolean(active && (!startDate || startDate.getTime() <= now.getTime()) && (!resumeDate || resumeDate.getTime() > now.getTime()));
+
         res.json({
-            active: Boolean(settings?.emergencyNoticeActive),
+            active,
+            isScheduled,
+            isCurrentlyClosed,
             reason: settings?.emergencyNoticeReason || null,
             message: settings?.emergencyNoticeMessage || '',
             delayHours: settings?.emergencyNoticeDelayHours || 0,
+            startDate: metaStartDate || (settings?.emergencyNoticeCreatedAt ? settings.emergencyNoticeCreatedAt.toISOString() : null),
             resumeDate: settings?.emergencyNoticeResumeDate || null,
             createdAt: settings?.emergencyNoticeCreatedAt || null,
             updatedBy: settings?.emergencyNoticeUpdatedBy || null,
@@ -2093,17 +2109,51 @@ exports.getDelayNoticeStatus = async (req, res) => {
  */
 exports.broadcastDelayNotice = async (req, res) => {
     try {
-        const { reason, message, delayHours = 24, resumeDate, orderingPolicy = 'ALLOW_WITH_DELAY', notifyCustomers = true } = req.body;
+        const {
+            reason,
+            message,
+            delayHours = 24,
+            startDate,
+            resumeDate,
+            orderingPolicy = 'ALLOW_WITH_DELAY',
+            notifyCustomers = true
+        } = req.body;
 
         if (!reason || !reason.trim()) {
-            return res.status(400).json({ message: 'A reason for the workshop delay notice is required.' });
+            return res.status(400).json({ message: 'A reason for the workshop notice is required.' });
         }
 
-        const hours = Math.max(1, parseInt(delayHours) || 24);
-        const resumeDateTime = resumeDate ? new Date(resumeDate) : new Date(Date.now() + hours * 3600 * 1000);
         const now = new Date();
         const updatedBy = req.user?.username || 'Admin';
         const sanitizedPolicy = orderingPolicy === 'PAUSE_ORDERS' ? 'PAUSE_ORDERS' : 'ALLOW_WITH_DELAY';
+
+        // Parse start and resume timestamps
+        const startDateTime = startDate ? new Date(startDate) : now;
+        const isFutureScheduled = startDateTime.getTime() > now.getTime();
+
+        let resumeDateTime = null;
+        let hours = 24;
+        if (resumeDate) {
+            resumeDateTime = new Date(resumeDate);
+            hours = Math.max(1, Math.round((resumeDateTime.getTime() - startDateTime.getTime()) / (3600 * 1000)));
+        } else {
+            hours = Math.max(1, parseInt(delayHours) || 24);
+            resumeDateTime = new Date(startDateTime.getTime() + hours * 3600 * 1000);
+        }
+
+        // Fetch existing settings to preserve availableThreadColors
+        const existingSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let rawColors = existingSettings?.availableThreadColors;
+        if (typeof rawColors === 'string') {
+            try { rawColors = JSON.parse(rawColors); } catch (e) {}
+        }
+        let colors = Array.isArray(rawColors) ? rawColors.filter(c => !c || c.id !== '__emergency_meta__') : [];
+        colors.push({
+            id: '__emergency_meta__',
+            startDate: startDateTime.toISOString(),
+            resumeDate: resumeDateTime.toISOString(),
+            isScheduled: isFutureScheduled
+        });
 
         // 1. Update SystemSettings in DB
         await prisma.systemSettings.upsert({
@@ -2116,7 +2166,8 @@ exports.broadcastDelayNotice = async (req, res) => {
                 emergencyNoticeResumeDate: resumeDateTime,
                 emergencyNoticeCreatedAt: now,
                 emergencyNoticeUpdatedBy: updatedBy,
-                emergencyOrderingPolicy: sanitizedPolicy
+                emergencyOrderingPolicy: sanitizedPolicy,
+                availableThreadColors: colors
             },
             create: {
                 id: 'global',
@@ -2127,7 +2178,8 @@ exports.broadcastDelayNotice = async (req, res) => {
                 emergencyNoticeResumeDate: resumeDateTime,
                 emergencyNoticeCreatedAt: now,
                 emergencyNoticeUpdatedBy: updatedBy,
-                emergencyOrderingPolicy: sanitizedPolicy
+                emergencyOrderingPolicy: sanitizedPolicy,
+                availableThreadColors: colors
             }
         });
 
@@ -2142,66 +2194,77 @@ exports.broadcastDelayNotice = async (req, res) => {
         const { sendDelayNotificationEmail } = require('../../utils/emailService');
         const affectedUpdatedOrders = [];
 
-        // 3. Atomically shift each order's schedule
+        // 3. Atomically shift orders that intersect the closure window
         for (const ord of activeOrders) {
             const currentPers = (ord.personalization && typeof ord.personalization === 'object') ? { ...ord.personalization } : {};
             const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
 
-            let newReadyDate = null;
-            if (currentPers.estimatedReadyDate) {
-                newReadyDate = new Date(new Date(currentPers.estimatedReadyDate).getTime() + (hours * 3600 * 1000));
-            } else if (ord.dueDate) {
-                newReadyDate = new Date(new Date(ord.dueDate).getTime() + (hours * 3600 * 1000));
-            } else {
-                newReadyDate = resumeDateTime;
-            }
+            const targetDue = currentPers.estimatedReadyDate
+                ? new Date(currentPers.estimatedReadyDate)
+                : (ord.dueDate ? new Date(ord.dueDate) : now);
 
-            currentPers.estimatedReadyDate = newReadyDate.toISOString();
-            currentPers.delayNotice = {
-                active: true,
-                reason: reason.trim(),
-                message: (message || '').trim(),
-                delayHours: hours,
-                appliedAt: now.toISOString(),
-                newReadyDate: newReadyDate.toISOString()
-            };
+            // An order is affected if notice is immediate OR if order's target due date falls after vacation starts
+            const orderAffected = !isFutureScheduled || (targetDue.getTime() >= startDateTime.getTime());
 
-            history.push({
-                status: ord.status,
-                timestamp: now.toISOString(),
-                actor: updatedBy,
-                hub: 'Eds Towels Pacific Mall Lucena Hub',
-                note: `Workshop Delay Notice: ${reason.trim()} (+${hours}h). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
-            });
-            currentPers.statusHistory = history;
-
-            let updatedDueDate = ord.dueDate;
-            if (ord.dueDate) {
-                updatedDueDate = new Date(new Date(ord.dueDate).getTime() + (hours * 3600 * 1000));
-            }
-
-            const updatedOrder = await prisma.order.update({
-                where: { id: ord.id },
-                data: {
-                    personalization: currentPers,
-                    dueDate: updatedDueDate
+            if (orderAffected) {
+                let newReadyDate = null;
+                if (targetDue.getTime() <= resumeDateTime.getTime()) {
+                    // Order was supposed to finish during vacation -> shifts to after workshop reopens
+                    const remainingMinsAfterStart = Math.max(30, Math.round((targetDue.getTime() - startDateTime.getTime()) / 60000));
+                    newReadyDate = new Date(resumeDateTime.getTime() + Math.max(0, remainingMinsAfterStart * 60000));
+                } else {
+                    newReadyDate = new Date(targetDue.getTime() + (hours * 3600 * 1000));
                 }
-            });
-            affectedUpdatedOrders.push(updatedOrder);
 
-            // Send notification email if requested and customer email exists
-            if (notifyCustomers && typeof sendDelayNotificationEmail === 'function') {
-                const targetEmail = currentPers.customerEmail || ord.user?.email;
-                const targetName = ord.client || ord.user?.username || 'Customer';
-                if (targetEmail && targetEmail.includes('@')) {
-                    sendDelayNotificationEmail(targetEmail, targetName, updatedOrder, {
-                        reason: reason.trim(),
-                        message: (message || '').trim(),
-                        delayHours: hours,
-                        newReadyDate
-                    }).catch(emailErr => {
-                        console.warn(`[Delay Notice Email Fail for ${ord.orderId}]:`, emailErr.message);
-                    });
+                currentPers.estimatedReadyDate = newReadyDate.toISOString();
+                currentPers.delayNotice = {
+                    active: true,
+                    reason: reason.trim(),
+                    message: (message || '').trim(),
+                    startDate: startDateTime.toISOString(),
+                    newReadyDate: newReadyDate.toISOString(),
+                    delayHours: hours,
+                    appliedAt: now.toISOString(),
+                    isScheduled: isFutureScheduled
+                };
+
+                history.push({
+                    status: ord.status,
+                    timestamp: now.toISOString(),
+                    actor: updatedBy,
+                    hub: 'Eds Towels Pacific Mall Lucena Hub',
+                    note: isFutureScheduled
+                        ? `Scheduled Workshop Vacation: ${reason.trim()} (${startDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })} – ${resumeDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })}). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                        : `Workshop Delay Notice: ${reason.trim()} (+${hours}h). Revised target pickup: ${newReadyDate.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}`
+                });
+                currentPers.statusHistory = history;
+
+                let updatedDueDate = ord.dueDate ? newReadyDate : ord.dueDate;
+
+                const updatedOrder = await prisma.order.update({
+                    where: { id: ord.id },
+                    data: {
+                        personalization: currentPers,
+                        dueDate: updatedDueDate
+                    }
+                });
+                affectedUpdatedOrders.push(updatedOrder);
+
+                // Send notification email if requested and customer email exists
+                if (notifyCustomers && typeof sendDelayNotificationEmail === 'function') {
+                    const targetEmail = currentPers.customerEmail || ord.user?.email;
+                    const targetName = ord.client || ord.user?.username || 'Customer';
+                    if (targetEmail && targetEmail.includes('@')) {
+                        sendDelayNotificationEmail(targetEmail, targetName, updatedOrder, {
+                            reason: reason.trim(),
+                            message: (message || '').trim(),
+                            delayHours: hours,
+                            startDate: startDateTime,
+                            newReadyDate
+                        }).catch(emailErr => {
+                            console.warn(`[Delay Notice Email Fail for ${ord.orderId}]:`, emailErr.message);
+                        });
+                    }
                 }
             }
         }
@@ -2222,16 +2285,22 @@ exports.broadcastDelayNotice = async (req, res) => {
                 reason: reason.trim(),
                 message: (message || '').trim(),
                 delayHours: hours,
-                resumeDate: resumeDateTime.toISOString()
+                startDate: startDateTime.toISOString(),
+                resumeDate: resumeDateTime.toISOString(),
+                isScheduled: isFutureScheduled
             });
             io.emit('ordersUpdated', { reason: 'emergency_delay_notice' });
         }
 
         res.json({
             success: true,
-            message: `Emergency delay notice posted. Shifted ${affectedUpdatedOrders.length} active orders by ${hours} hours.`,
+            message: isFutureScheduled
+                ? `Scheduled vacation break saved for ${startDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })} to ${resumeDateTime.toLocaleDateString([], { month: 'short', day: 'numeric' })}. Shifted ${affectedUpdatedOrders.length} intersecting orders.`
+                : `Emergency delay notice posted. Shifted ${affectedUpdatedOrders.length} active orders by ${hours} hours.`,
             affectedCount: affectedUpdatedOrders.length,
-            resumeDate: resumeDateTime
+            startDate: startDateTime,
+            resumeDate: resumeDateTime,
+            isScheduled: isFutureScheduled
         });
     } catch (err) {
         console.error('broadcastDelayNotice error:', err);
@@ -2247,17 +2316,27 @@ exports.liftDelayNotice = async (req, res) => {
         const now = new Date();
         const updatedBy = req.user?.username || 'Admin';
 
+        // Clear __emergency_meta__ from availableThreadColors
+        const existingSettings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
+        let rawColors = existingSettings?.availableThreadColors;
+        if (typeof rawColors === 'string') {
+            try { rawColors = JSON.parse(rawColors); } catch (e) {}
+        }
+        let colors = Array.isArray(rawColors) ? rawColors.filter(c => !c || c.id !== '__emergency_meta__') : [];
+
         // 1. Update SystemSettings in DB
         await prisma.systemSettings.upsert({
             where: { id: 'global' },
             update: {
                 emergencyNoticeActive: false,
-                emergencyNoticeUpdatedBy: updatedBy
+                emergencyNoticeUpdatedBy: updatedBy,
+                availableThreadColors: colors
             },
             create: {
                 id: 'global',
                 emergencyNoticeActive: false,
-                emergencyNoticeUpdatedBy: updatedBy
+                emergencyNoticeUpdatedBy: updatedBy,
+                availableThreadColors: colors
             }
         });
 
