@@ -516,10 +516,8 @@ export default function ProductModal({
     return `Estimated ready in ~${totalDays}–${totalDays + 2} days`;
   }, [capacityData, quantity, letteringRates.preOrderPrepDays]);
 
-  if (!product) return null;
-
-  const productId = product.id || product._id || '';
-  const effectivePrice = selectedVariant?.priceOverride ?? product.price;
+  const productId = product ? (product.id || product._id || '') : '';
+  const effectivePrice = product ? (selectedVariant?.priceOverride ?? product.price ?? 0) : 0;
   const totalExtraLetteringCost =
     isMultiLine
       ? bulkSummary.totalExtraCost
@@ -533,9 +531,9 @@ export default function ProductModal({
   const totalOrderPrice = effectivePrice * quantity + totalExtraLetteringCost;
 
   // Check if product actually has defined variants
-  const hasVariants = Boolean(product.variants && Array.isArray(product.variants) && product.variants.length > 0);
+  const hasVariants = Boolean(product?.variants && Array.isArray(product.variants) && product.variants.length > 0);
   const availableSizes = hasVariants 
-    ? [...new Set(product.variants!.map((v: any) => v.size).filter(Boolean))] 
+    ? [...new Set(product!.variants!.map((v: any) => v.size).filter(Boolean))] 
     : [];
   const hasSizes = availableSizes.length > 0;
 
@@ -543,8 +541,8 @@ export default function ProductModal({
   const selectedVariantStock = selectedVariant
     ? (selectedVariant.availableStock !== undefined ? selectedVariant.availableStock : (selectedVariant.stock ?? 0))
     : (hasVariants
-        ? (product.variants || []).reduce((sum: number, v: any) => sum + (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)), 0)
-        : (product.availableStock !== undefined ? product.availableStock : (product.count ?? 0)));
+        ? (product?.variants || []).reduce((sum: number, v: any) => sum + (v.availableStock !== undefined ? v.availableStock : (v.stock ?? 0)), 0)
+        : (product?.availableStock !== undefined ? product.availableStock : (product?.count ?? 0)));
   const effectiveStock = selectedVariantStock;
   const isOutOfStock = effectiveStock <= 0;
 
@@ -561,11 +559,20 @@ export default function ProductModal({
 
   // Dynamic highly-accurate pickup readiness calculation (respects Pacific Mall Lucena store hours 10 AM - 8 PM)
   const calculatedReadyTime = useMemo(() => {
+    const letters = isMultiLine
+      ? bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0)
+      : (customText.replace(/\s+/g, '').length || 5);
+    const stitchMins = isMultiLine
+      ? Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + letters * 0.2))
+      : Math.max(1, Math.ceil((1.0 + letters * 0.2) * quantity));
+
     if (requiresPreOrder) {
       const prepDays = capacityData?.preOrderPrepDays ?? letteringRates.preOrderPrepDays ?? 3;
       return {
-        label: `In ~${prepDays}–5 days (Pre-Order)`,
-        detail: 'Workshop preparation & materials schedule',
+        label: `In ~${prepDays} to 5 days (Pre-Order)`,
+        detail: 'Workshop preparation and materials schedule',
+        stitchMins,
+        totalMinutesNeeded: 0,
       };
     }
 
@@ -578,30 +585,29 @@ export default function ProductModal({
     if (!isPersonalized) {
       if (currentMins >= openMins && currentMins < closeMins - 10) {
         return {
-          label: 'Today in 2–5 mins (Packaging)',
+          label: 'Today in 2 to 5 mins (Packaging)',
           detail: 'Direct counter packaging at Pacific Mall Lucena',
+          stitchMins: 0,
+          totalMinutesNeeded: 5,
         };
       }
       if (currentMins >= closeMins - 10) {
         return {
           label: 'Tomorrow at 10:05 AM (Store Opening)',
           detail: 'Store closes at 8:00 PM • Ready at store opening',
+          stitchMins: 0,
+          totalMinutesNeeded: 5,
         };
       }
       return {
         label: 'Today at 10:05 AM (Store Opening)',
         detail: 'Store opens at 10:00 AM • Ready shortly after opening',
+        stitchMins: 0,
+        totalMinutesNeeded: 5,
       };
     }
 
     // Personalized item: exact letters + queue backlog + machine stitching
-    const letters = isMultiLine
-      ? bulkSummary.lines.reduce((s, l) => s + l.sanitizedLine.replace(/\s+/g, '').length, 0)
-      : (customText.replace(/\s+/g, '').length || 5);
-    const stitchMins = isMultiLine
-      ? Math.max(2, Math.ceil(bulkSummary.lineCount * 1.0 + letters * 0.2))
-      : Math.max(1, Math.ceil((1.0 + letters * 0.2) * quantity));
-
     const queueWait = capacityData?.queueWaitMinutes ?? (capacityData?.activeOrders ? capacityData.activeOrders * 4 : 0);
     const totalMinutesNeeded = queueWait + stitchMins;
 
@@ -675,6 +681,7 @@ export default function ProductModal({
   }, [requiresPreOrder, isPersonalized, isMultiLine, bulkSummary, customText, quantity, capacityData, letteringRates]);
 
   const validateAndBuildBasketItem = (): BasketItem | null => {
+    if (!product) return null;
     setActionError(null);
     setMonogramError(null);
 
@@ -775,7 +782,7 @@ export default function ProductModal({
 
   const handleAddToBasket = () => {
     const item = validateAndBuildBasketItem();
-    if (!item) return;
+    if (!item || !product) return;
 
     addItem({
       productId: item.productId,
@@ -834,16 +841,15 @@ export default function ProductModal({
   const isOrderStep4Done = isOrderSubmitted;
 
   const orderActiveStep = !isOrderStep1Done ? 1 : !isOrderStep2Done ? 2 : !isOrderStep3Done ? 3 : 4;
-  const orderPercentage = isOrderStep4Done ? 100 : orderActiveStep === 4 ? 75 : orderActiveStep * 25;
+  const isOrderFullyConfigured = isOrderStep1Done && isOrderStep2Done && isOrderStep3Done;
+  const orderPercentage = (isOrderStep4Done || isOrderFullyConfigured) ? 100 : Math.round(((orderActiveStep - 1) / 3) * 100);
 
-  const orderTrackFillPercent = isOrderStep4Done
+  const orderTrackFillPercent = (isOrderStep4Done || isOrderFullyConfigured)
     ? 100
     : orderActiveStep === 1
     ? 0
     : orderActiveStep === 2
     ? 33
-    : orderActiveStep === 3
-    ? 66
     : 66;
 
   const orderSteps = [
@@ -852,6 +858,8 @@ export default function ProductModal({
     { id: 3, label: 'Quantity', shortLabel: 'Quantity', done: isOrderStep3Done },
     { id: 4, label: 'Order / Basket', shortLabel: 'Finish', done: isOrderStep4Done },
   ];
+
+  if (!product) return null;
 
   return (
     <GlassModal isOpen={isOpen} onClose={onClose} maxWidth="max-w-[850px]" noPadding>
@@ -1071,7 +1079,6 @@ export default function ProductModal({
               <div className="pt-1 pb-3 border-b border-border-glass mb-2">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                     <span className="text-[11px] font-bold text-text-main">
                       Step {orderActiveStep} of 4:
                     </span>

@@ -294,6 +294,31 @@ export default function CheckoutModal({
     };
   }, [selectedDateStr, availableDates, estimatedReadyDate]);
 
+  const hasPersonalizedItems = items.some((i) => Boolean(i.personalization?.text));
+
+  const plainPackagingReadiness = useMemo(() => {
+    const now = new Date();
+    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const openMins = 10 * 60; // 10:00 AM
+    const closeMins = 20 * 60; // 8:00 PM
+    if (currentMins >= openMins && currentMins < closeMins - 10) {
+      return {
+        label: 'Today in 2 to 5 mins (Packaging)',
+        detail: 'Direct counter packaging at Pacific Mall Lucena',
+      };
+    }
+    if (currentMins >= closeMins - 10) {
+      return {
+        label: 'Tomorrow at 10:05 AM (Store Opening)',
+        detail: 'Store closes at 8:00 PM • Ready at store opening',
+      };
+    }
+    return {
+      label: 'Today at 10:05 AM (Store Opening)',
+      detail: 'Store opens at 10:00 AM • Ready shortly after opening',
+    };
+  }, []);
+
   const itemsTotal = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const finalTotal = itemsTotal;
 
@@ -866,7 +891,9 @@ export default function CheckoutModal({
                   </span>
                   <span className="text-[0.62rem] text-text-dim">
                     {hasPreOrderItems
-                      ? 'Studio Pre-Order (+3 prep days)'
+                      ? `Studio Pre-Order (+${preOrderPrepDays} prep days)`
+                      : !hasPersonalizedItems
+                      ? plainPackagingReadiness.detail
                       : activeQueueOrdersCount > 0
                       ? `${activeQueueOrdersCount} active orders ahead in workshop queue`
                       : 'Workshop ready for immediate crafting'}
@@ -875,10 +902,12 @@ export default function CheckoutModal({
                 <div className="flex flex-col items-end text-right">
                   <strong className="text-text-main font-mono text-xs font-bold">
                     {hasPreOrderItems
-                      ? `In ~${preOrderPrepDays}–5 days`
+                      ? `In ~${preOrderPrepDays} to 5 days`
+                      : !hasPersonalizedItems
+                      ? plainPackagingReadiness.label
                       : readyLabel || 'Today during mall hours'}
                   </strong>
-                  {!hasPreOrderItems && estimatedMinutes && (
+                  {!hasPreOrderItems && hasPersonalizedItems && estimatedMinutes && (
                     <span className="text-[0.62rem] text-text-dim font-mono">
                       (~{estimatedMinutes} mins total)
                     </span>
