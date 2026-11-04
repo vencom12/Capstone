@@ -1922,7 +1922,7 @@ export default function ProductModal({
                           <div className="mt-2 p-3 rounded-xl bg-primary/10 border border-primary/25 flex flex-col gap-1 text-xs">
                             <div className="flex items-center gap-1.5 text-primary font-bold text-[0.72rem]">
                               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                              <span>Official Store Response — Eds Towels &amp; Caps</span>
+                              <span>Management</span>
                               <span className="text-[0.65rem] text-text-dim ml-auto font-normal">
                                 {review.merchantReplyAt
                                   ? new Date(review.merchantReplyAt).toLocaleDateString(undefined, {
@@ -1930,7 +1930,7 @@ export default function ProductModal({
                                       month: 'short',
                                       day: 'numeric',
                                     })
-                                  : 'Store Owner'}
+                                  : null}
                               </span>
                             </div>
                             <p className="m-0 text-text-main text-[0.78rem] leading-relaxed italic">
