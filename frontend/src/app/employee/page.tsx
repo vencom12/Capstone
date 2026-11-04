@@ -28,6 +28,7 @@ import { playOrderChime, isChimeEnabled, setChimeEnabled } from '@/lib/audioAler
 import { printBagSlip } from '@/lib/printBagSlip';
 import BulkNameRosterModal from '@/components/employee/BulkNameRosterModal';
 import { WorkshopRosterData } from '@/components/employee/BulkNameRosterModal';
+import { getOrderScheduleInfo } from '@/lib/orderSchedule';
 
 export default function EmployeePage() {
   const router = useRouter();
@@ -824,7 +825,7 @@ export default function EmployeePage() {
                   <thead>
                     <tr>
                       <th className="glass-th text-left">Order ID & Status</th>
-                      <th className="glass-th text-left">Priority / Est. Time</th>
+                      <th className="glass-th text-left">Target Completion & Status</th>
                       <th className="glass-th text-left">Client & Date</th>
                       <th className="glass-th text-left">Design / Items</th>
                       <th className="glass-th text-left">Total</th>
@@ -863,33 +864,41 @@ export default function EmployeePage() {
                               </div>
                             </td>
                             <td className="glass-td text-left">
-                              <div className="flex flex-col">
-                                <div className="flex items-center gap-1.5">
-                                  
-                                  <span className="font-bold text-text-main text-sm">
-                                    Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}
-                                  </span>
-                                  {o.isRush && (
-                                    <span className="text-[0.65rem] bg-danger/25 text-danger font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                                      Rush
-                                    </span>
-                                  )}
-                                </div>
-                                <span className="text-[0.75rem] text-text-dim mt-0.5">
-                                  Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}
-                                </span>
-                              </div>
+                              {(() => {
+                                const schedule = getOrderScheduleInfo(o);
+                                return (
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="font-bold text-text-main text-xs">
+                                        {schedule.exactTargetLabel}
+                                      </span>
+                                      {o.isRush && (
+                                        <span className="text-[0.65rem] bg-danger/25 text-danger font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                          Rush
+                                        </span>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                        schedule.isOverdue
+                                          ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
+                                          : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                      }`}>
+                                        {schedule.relativeLabel}
+                                      </span>
+                                      <span className="text-[11px] text-text-dim">
+                                        ⏱ {schedule.stitchLabel}
+                                      </span>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="glass-td text-text-main text-sm font-medium text-left">
                               <div>{o.client || 'Valued Customer'}</div>
                               <div className="text-[0.75rem] text-text-dim mt-0.5">
-                                {new Date(o.date || o.createdAt).toLocaleString()}
+                                Ordered: {new Date(o.date || o.createdAt).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                               </div>
-                              {o.dueDate && (
-                                <div className={`text-[0.7rem] font-extrabold mt-1 uppercase ${new Date(o.dueDate).getTime() < Date.now() ? 'text-danger animate-pulse' : 'text-primary'}`}>
-                                  {getRelativeTime(o.dueDate)}
-                                </div>
-                              )}
                             </td>
                             <td className="glass-td text-text-main text-sm text-left">
                               {o.items && Array.isArray(o.items) ? (
@@ -1134,54 +1143,58 @@ export default function EmployeePage() {
                     >
                       {/* Top Split Body: Left Info / Right Items */}
                       <div className="grid grid-cols-2 gap-3 items-start">
-                        {/* Left Column: Status Badge, Order ID, Date, Priority, Client */}
-                        <div className="flex flex-col gap-1.5 text-left">
-                          {/* Status Badge */}
-                          <span className={`inline-flex items-center text-[11px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider w-fit
-                            ${o.status === 'Preparing Order' ? 'bg-primary/10 text-primary border border-primary/20' :
-                              o.status === 'Ready For Pick Up' ? 'bg-success/10 text-success border border-success/20' :
-                                'bg-white/5 text-text-dim border border-border-glass'
-                            }
-                          `}>
-                            {o.status} ({o.progress || 0}%)
-                          </span>
+                        {/* Left Column: ID, Status, Target Ready, Overdue / Remaining, Client */}
+                        {(() => {
+                          const schedule = getOrderScheduleInfo(o);
+                          return (
+                            <div className="flex flex-col gap-1.5 text-left">
+                              {/* Status Pill & Live Overdue/Remaining Badge */}
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider w-fit
+                                  ${o.status === 'Preparing Order' ? 'bg-primary/10 text-primary border border-primary/20' :
+                                    o.status === 'Ready For Pick Up' ? 'bg-success/10 text-success border border-success/20' :
+                                      'bg-white/5 text-text-dim border border-border-glass'
+                                  }
+                                `}>
+                                  {o.status} ({o.progress || 0}%)
+                                </span>
+                                <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  schedule.isOverdue
+                                    ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
+                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                }`}>
+                                  {schedule.relativeLabel}
+                                </span>
+                              </div>
 
-                          {/* Order ID & Claim Code */}
-                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                            <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
-                            {(o.claimCode || o.personalization?.claimCode) && (
-                              <span className="text-[10.5px] font-mono text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
-                                {o.claimCode || o.personalization?.claimCode}
-                              </span>
-                            )}
-                            {o.isRush && (
-                              <span className="text-[9px] bg-danger/25 text-danger font-extrabold px-1 rounded uppercase">
-                                Rush
-                              </span>
-                            )}
-                          </div>
+                              {/* Order ID & Claim Code & Rush */}
+                              <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                                {(o.claimCode || o.personalization?.claimCode) && (
+                                  <span className="text-[10.5px] font-mono text-text-dim bg-white/5 border border-border-glass px-1.5 py-0.5 rounded">
+                                    {o.claimCode || o.personalization?.claimCode}
+                                  </span>
+                                )}
+                                {o.isRush && (
+                                  <span className="text-[9px] bg-danger/25 text-danger font-extrabold px-1 rounded uppercase">
+                                    Rush
+                                  </span>
+                                )}
+                              </div>
 
-                          {/* Date & Time */}
-                          <span className="text-[11px] text-text-dim">
-                            {new Date(o.date || o.createdAt).toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' })}, {new Date(o.date || o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                              {/* Client Name (Clean without redundant label) */}
+                              <div className="text-xs font-bold text-text-main truncate max-w-[150px]" title={rawClient}>
+                                {cleanClient}
+                              </div>
 
-                          {/* Priority Score & Est */}
-                          <div className="flex items-center gap-1.5 text-[11px] font-semibold text-text-main">
-                            
-                            <span>Score: {o.priorityScore !== undefined ? o.priorityScore.toFixed(0) : '0'}</span>
-                            <span className="text-text-dim font-normal">•</span>
-                            <span className="text-text-dim font-normal">Est: {o.estimatedTime !== undefined && o.estimatedTime !== null ? `${o.estimatedTime}m` : 'N/A'}</span>
-                          </div>
-
-                          {/* Client Name */}
-                          <div className="mt-1">
-                            <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Client</span>
-                            <span className="text-xs font-bold text-text-main truncate block max-w-[150px]" title={rawClient}>
-                              {cleanClient}
-                            </span>
-                          </div>
-                        </div>
+                              {/* Target Completion Time & Stitch Duration */}
+                              <div className="flex flex-col text-[11px] font-semibold text-text-main mt-0.5">
+                                <span>{schedule.exactTargetLabel}</span>
+                                <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
+                              </div>
+                            </div>
+                          );
+                        })()}
 
                         {/* Right Column: Orders / Items (Clean & Finger-Friendly) */}
                         <div className="flex flex-col gap-1.5 text-left border-l border-border-glass/30 pl-3">

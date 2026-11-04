@@ -8,6 +8,7 @@ import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import ClaimStubModal from '@/components/admin/ClaimStubModal';
 import EmergencyDelayNoticeModal from '@/components/admin/EmergencyDelayNoticeModal';
 import { api } from '@/lib/api';
+import { getOrderScheduleInfo } from '@/lib/orderSchedule';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import Pagination from '@/components/ui/Pagination';
@@ -657,27 +658,26 @@ export default function PanelOverview({
                               </span>
                             )}
                           </div>
-                          {(o.estimatedTime || o.dueDate) && (
-                            <div className="text-[11px] font-sans font-normal text-text-dim mt-1 flex items-center gap-2 flex-wrap">
-                              {o.estimatedTime ? (
-                                <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-main">
-                                  ⏱ ~{o.estimatedTime}m stitch
+                          {(() => {
+                            const schedule = getOrderScheduleInfo(o);
+                            return (
+                              <div className="text-[11px] font-sans font-normal text-text-dim mt-1 flex items-center gap-2 flex-wrap">
+                                <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-main font-semibold">
+                                  {schedule.exactTargetLabel}
                                 </span>
-                              ) : null}
-                              {(() => {
-                                const createdTime = new Date(o.date || o.createdAt).getTime();
-                                const isCorruptedDue = o.dueDate && !isNaN(createdTime) && new Date(o.dueDate).getTime() < createdTime;
-                                const effectiveDue = isCorruptedDue
-                                  ? (o.personalization?.estimatedReadyDate || o.dueDate)
-                                  : (o.dueDate || o.personalization?.estimatedReadyDate);
-                                return effectiveDue ? (
-                                  <span className="text-primary font-medium">
-                                    Ready: {new Date(effectiveDue).toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                ) : null;
-                              })()}
-                            </div>
-                          )}
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                  schedule.isOverdue
+                                    ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
+                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                }`}>
+                                  {schedule.relativeLabel}
+                                </span>
+                                <span className="text-text-dim text-[11px]">
+                                  ⏱ {schedule.stitchLabel}
+                                </span>
+                              </div>
+                            );
+                          })()}
                         </td>
                         <td className="glass-td text-left text-sm">
                           <div className="font-semibold text-text-main">{o.client || 'Valued Customer'}</div>
@@ -855,49 +855,61 @@ export default function PanelOverview({
 
                   <div className="grid grid-cols-2 gap-3 items-start pr-6">
                     {/* Left Column */}
-                    <div className="flex flex-col gap-1.5 text-left">
-                      <span
-                        className={`inline-flex items-center text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider w-fit
-                          ${o.status === 'Preparing Order'
-                            ? 'bg-primary/20 text-primary border border-primary/30'
-                            : o.status === 'In Transit'
-                              ? 'bg-white/5 text-text-dim border border-border-glass'
-                              : o.status === 'Ready For Pick Up'
-                                ? 'bg-success/20 text-success border border-success/30'
-                                : 'bg-white/10 text-text-dim border border-white/20'
-                          }
-                        `}
-                      >
-                        {o.status}
-                      </span>
+                    {(() => {
+                      const schedule = getOrderScheduleInfo(o);
+                      return (
+                        <div className="flex flex-col gap-1.5 text-left">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span
+                              className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider w-fit
+                                ${o.status === 'Preparing Order'
+                                  ? 'bg-primary/20 text-primary border border-primary/30'
+                                  : o.status === 'In Transit'
+                                    ? 'bg-white/5 text-text-dim border border-border-glass'
+                                    : o.status === 'Ready For Pick Up'
+                                      ? 'bg-success/20 text-success border border-success/30'
+                                      : 'bg-white/10 text-text-dim border border-white/20'
+                                }
+                              `}
+                            >
+                              {o.status}
+                            </span>
+                            <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                              schedule.isOverdue
+                                ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
+                                : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                            }`}>
+                              {schedule.relativeLabel}
+                            </span>
+                          </div>
 
-                      <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
-                        <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
-                        {o.isRush && (
-                          <span className="px-1.5 py-0.2 rounded text-[9px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
-                            RUSH
-                          </span>
-                        )}
-                        {o.isByog && (
-                          <span className={`px-1.5 py-0.2 rounded text-[9px] font-sans font-semibold border ${
-                            o.garmentsReceivedAt
-                              ? 'bg-primary/10 text-primary border-primary/25'
-                              : 'bg-white/5 text-text-dim border-border-glass'
-                          }`}>
-                            {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG'}
-                          </span>
-                        )}
-                      </div>
+                          <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                            <span className="font-mono text-sm font-bold text-text-main">{o.orderId}</span>
+                            {o.isRush && (
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-sans font-extrabold bg-primary/15 text-primary border border-primary/30">
+                                RUSH
+                              </span>
+                            )}
+                            {o.isByog && (
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-sans font-semibold border ${
+                                o.garmentsReceivedAt
+                                  ? 'bg-primary/10 text-primary border-primary/25'
+                                  : 'bg-white/5 text-text-dim border-border-glass'
+                              }`}>
+                                {o.garmentsReceivedAt ? 'BYOG ✓' : 'BYOG'}
+                              </span>
+                            )}
+                          </div>
 
-                      <span className="text-[11px] text-text-dim">
-                        {new Date(o.date || o.createdAt).toLocaleDateString([], { month: 'numeric', day: 'numeric', year: '2-digit' })}, {new Date(o.date || o.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                          <div className="text-xs font-bold text-text-main truncate max-w-[150px]">{cleanClient}</div>
 
-                      <div className="mt-1">
-                        <span className="text-text-dim text-[10px] uppercase tracking-wider block font-bold">Client</span>
-                        <span className="text-xs font-bold text-text-main truncate block max-w-[150px]">{cleanClient}</span>
-                      </div>
-                    </div>
+                          <div className="flex flex-col text-[11px] font-semibold text-text-main mt-0.5">
+                            <span>{schedule.exactTargetLabel}</span>
+                            <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Right Column: Items & Total */}
                     <div className="flex flex-col gap-1.5 text-left border-l border-border-glass/30 pl-3">
