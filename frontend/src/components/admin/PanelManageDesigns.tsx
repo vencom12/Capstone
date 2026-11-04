@@ -1001,7 +1001,7 @@ export default function PanelManageDesigns({
           pageSize={pageSize}
           onPageChange={setCurrentPage}
           showInfo={false}
-          className="mt-6 pt-0 border-t-0 justify-center"
+          className="mt-3.5"
         />
       </div>
 

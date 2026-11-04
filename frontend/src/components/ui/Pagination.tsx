@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 
 interface PaginationProps {
   currentPage: number;
@@ -21,8 +21,42 @@ export default function Pagination({
   onPageChange,
   className = '',
 }: PaginationProps) {
+  const dockRef = useRef<HTMLDivElement>(null);
   const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
   if (totalItems <= 0) return null;
+
+  const handlePageSelect = (p: number) => {
+    if (p === currentPage || p < 1 || p > totalPages) return;
+    onPageChange(p);
+
+    if (typeof window !== 'undefined') {
+      // 1. Scroll window to top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      // 2. Scroll any ancestor scroll container (e.g. overflow-y-auto in admin and employee dashboards)
+      if (dockRef.current) {
+        let el = dockRef.current.parentElement;
+        while (el && el !== document.body) {
+          const style = window.getComputedStyle(el);
+          if (style.overflowY === 'auto' || style.overflowY === 'scroll') {
+            el.scrollTo({ top: 0, behavior: 'smooth' });
+          }
+          el = el.parentElement;
+        }
+      }
+
+      // 3. Scroll to section anchor if present (e.g. storefront products section)
+      const catalogEl = document.getElementById('products-section');
+      if (catalogEl) {
+        const headerOffset = 90;
+        const elementPosition = catalogEl.getBoundingClientRect().top + window.scrollY;
+        window.scrollTo({
+          top: Math.max(0, elementPosition - headerOffset),
+          behavior: 'smooth'
+        });
+      }
+    }
+  };
 
   // Generate page numbers with ellipsis if many pages
   const getPageNumbers = () => {
@@ -43,13 +77,14 @@ export default function Pagination({
 
   return (
     <div
-      className={`flex items-center justify-center flex-wrap gap-3 pt-4 mt-4 border-t border-border-glass text-xs text-text-dim w-full ${className}`}
+      ref={dockRef}
+      className={`flex items-center justify-center w-full mt-3 ${className}`}
     >
       <div className="inline-flex items-center gap-1 p-1 rounded-xl bg-bg-card/95 backdrop-blur-[16px] border border-border-glass shadow-xs">
         <button
           type="button"
           disabled={currentPage <= 1}
-          onClick={() => onPageChange(currentPage - 1)}
+          onClick={() => handlePageSelect(currentPage - 1)}
           className="w-7 h-7 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer flex items-center justify-center text-xs active:scale-95"
           aria-label="Previous page"
           title="Previous page"
@@ -72,7 +107,7 @@ export default function Pagination({
               <button
                 key={pageNum}
                 type="button"
-                onClick={() => onPageChange(pageNum)}
+                onClick={() => handlePageSelect(pageNum)}
                 className={`w-7 h-7 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer flex items-center justify-center ${
                   isActive
                     ? 'bg-primary text-white shadow-xs'
@@ -89,7 +124,7 @@ export default function Pagination({
         <button
           type="button"
           disabled={currentPage >= totalPages}
-          onClick={() => onPageChange(currentPage + 1)}
+          onClick={() => handlePageSelect(currentPage + 1)}
           className="w-7 h-7 rounded-lg text-text-main hover:bg-bg-surface hover:text-primary disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-text-main transition-all cursor-pointer flex items-center justify-center text-xs active:scale-95"
           aria-label="Next page"
           title="Next page"

@@ -235,7 +235,7 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
             pageSize={pageSize}
             onPageChange={setPage}
             showInfo={false}
-            className="mt-6 pt-0 border-t-0 justify-center"
+            className="mt-3.5"
           />
         </>
       )}

@@ -265,7 +265,7 @@ export default function ProductGrid({ onQuickView, products: customProducts }: P
             pageSize={pageSize}
             onPageChange={handlePageChange}
             showInfo={false}
-            className="mt-4 pt-0 border-t-0 justify-center"
+            className="mt-2"
           />
         </>
       )}
