@@ -16,6 +16,7 @@ export default function ProductImagePlaceholder({
   className = '',
 }: ProductImagePlaceholderProps) {
   const combinedText = `${name} ${tag}`.toLowerCase();
+  const safeId = (name || 'blank').toLowerCase().replace(/[^a-z0-9]/g, '-');
 
   // Category determination
   let category: 'cap' | 'towel' | 'fan' | 'embroidery' = 'embroidery';
@@ -33,11 +34,11 @@ export default function ProductImagePlaceholder({
   if (size === 'thumb') {
     return (
       <div
-        className={`w-full h-full relative overflow-hidden bg-gradient-to-br from-bg-surface via-bg-card to-bg-surface flex items-center justify-center select-none ${className}`}
+        className={`w-full h-full relative overflow-hidden bg-gradient-to-br from-bg-surface via-bg-card to-bg-surface flex items-center justify-center select-none border border-border-glass/40 ${className}`}
         title={name || 'Embroidery Item'}
       >
         <svg
-          className="w-5 h-5 text-primary/70 shrink-0"
+          className="w-5 h-5 text-primary shrink-0"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -79,19 +80,19 @@ export default function ProductImagePlaceholder({
   if (size === 'modal') {
     return (
       <div
-        className={`w-full h-full relative overflow-hidden bg-gradient-to-b from-[#0f1422] via-[#0b0e17] to-[#070a10] flex flex-col items-center justify-center p-6 text-center select-none ${className}`}
+        className={`w-full h-full relative overflow-hidden bg-gradient-to-b from-bg-surface via-bg-card to-bg-surface flex flex-col items-center justify-center p-6 text-center select-none ${className}`}
       >
-        {/* Subtle Linen Weave Grid Overlay */}
+        {/* Subtle Linen Weave Grid Overlay following theme text-dim */}
         <svg
-          className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.06] text-white"
+          className="absolute inset-0 w-full h-full pointer-events-none opacity-20 text-text-dim/40"
           xmlns="http://www.w3.org/2000/svg"
         >
           <defs>
-            <pattern id="modal-linen-weave" width="20" height="20" patternUnits="userSpaceOnUse">
+            <pattern id={`modal-linen-weave-${safeId}`} width="20" height="20" patternUnits="userSpaceOnUse">
               <path d="M 0 10 L 20 10 M 10 0 L 10 20" fill="none" stroke="currentColor" strokeWidth="0.8" strokeDasharray="2 2" />
             </pattern>
           </defs>
-          <rect width="100%" height="100%" fill="url(#modal-linen-weave)" />
+          <rect width="100%" height="100%" fill={`url(#modal-linen-weave-${safeId})`} />
         </svg>
 
         {/* Ambient Subtle Radial Glow */}
@@ -99,7 +100,7 @@ export default function ProductImagePlaceholder({
 
         {/* Crisp Center Emblem */}
         <div className="relative z-10 flex flex-col items-center max-w-sm">
-          <div className="w-20 h-20 rounded-3xl bg-white/[0.04] border border-border-glass shadow-xl flex items-center justify-center text-primary backdrop-blur-md mb-4 transition-transform duration-300 hover:scale-105">
+          <div className="w-20 h-20 rounded-3xl bg-bg-card border border-border-glass shadow-md flex items-center justify-center text-primary backdrop-blur-md mb-4 transition-transform duration-300 hover:scale-105">
             {category === 'cap' ? (
               <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-10 h-10">
                 <path d="M8 28c0-8.837 7.163-16 16-16s16 7.163 16 16v4H8v-4z" />
@@ -157,27 +158,27 @@ export default function ProductImagePlaceholder({
   // Card view (default, used in storefront product cards)
   return (
     <div
-      className={`w-full h-full relative overflow-hidden bg-gradient-to-b from-[#111624] via-[#0c101a] to-[#080b12] flex flex-col items-center justify-center p-4 text-center select-none ${className}`}
+      className={`w-full h-full relative overflow-hidden bg-gradient-to-b from-bg-surface via-bg-card to-bg-surface flex flex-col items-center justify-center p-4 text-center select-none ${className}`}
     >
-      {/* Subtle Linen Weave Grid Overlay */}
+      {/* Subtle Linen Weave Grid Overlay following theme text-dim */}
       <svg
-        className="absolute inset-0 w-full h-full pointer-events-none opacity-[0.06] text-white"
+        className="absolute inset-0 w-full h-full pointer-events-none opacity-20 text-text-dim/40"
         xmlns="http://www.w3.org/2000/svg"
       >
         <defs>
-          <pattern id={`card-linen-weave-${name}`} width="18" height="18" patternUnits="userSpaceOnUse">
+          <pattern id={`card-linen-weave-${safeId}`} width="18" height="18" patternUnits="userSpaceOnUse">
             <path d="M 0 9 L 18 9 M 9 0 L 9 18" fill="none" stroke="currentColor" strokeWidth="0.7" strokeDasharray="2 2" />
           </pattern>
         </defs>
-        <rect width="100%" height="100%" fill={`url(#card-linen-weave-${name})`} />
+        <rect width="100%" height="100%" fill={`url(#card-linen-weave-${safeId})`} />
       </svg>
 
       {/* Subtle Center Glow */}
-      <div className="absolute w-36 h-36 rounded-full bg-primary/10 blur-2xl pointer-events-none -translate-y-4" />
+      <div className="absolute w-36 h-36 rounded-full bg-primary/5 blur-2xl pointer-events-none -translate-y-4" />
 
       {/* Crisp Center Vector Emblem */}
       <div className="relative z-10 flex flex-col items-center">
-        <div className="w-14 h-14 rounded-2xl bg-white/[0.04] border border-border-glass shadow-inner flex items-center justify-center text-primary/80 group-hover:scale-105 group-hover:border-primary/40 group-hover:text-primary transition-all duration-300">
+        <div className="w-14 h-14 rounded-2xl bg-bg-card border border-border-glass shadow-xs flex items-center justify-center text-primary group-hover:scale-105 group-hover:border-primary/40 transition-all duration-300">
           {category === 'cap' ? (
             <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-7 h-7">
               <path d="M8 28c0-8.837 7.163-16 16-16s16 7.163 16 16v4H8v-4z" />
@@ -216,15 +217,14 @@ export default function ProductImagePlaceholder({
           )}
         </div>
 
-        <span className="mt-2.5 px-2.5 py-0.5 rounded-full bg-white/[0.04] border border-border-glass text-[9px] font-bold uppercase tracking-wider text-text-muted">
+        <span className="mt-2.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-[9px] font-bold uppercase tracking-wider text-primary">
           {tagLabel}
         </span>
 
-        <span className="mt-1 text-[11px] font-medium text-text-dim/80 tracking-wide">
+        <span className="mt-1 text-[11px] font-medium text-text-dim tracking-wide">
           Custom Made to Order
         </span>
       </div>
     </div>
   );
 }
-
