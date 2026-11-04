@@ -139,17 +139,9 @@ export default function ProductImagePlaceholder({
             )}
           </div>
 
-          <span className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold uppercase tracking-wider mb-2">
+          <span className="px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold uppercase tracking-wider">
             {tagLabel} Atelier Blank
           </span>
-
-          <h3 className="text-base font-semibold text-text-main m-0">
-            Custom Embroidery Design
-          </h3>
-
-          <p className="mt-1.5 text-xs text-text-dim leading-relaxed">
-            Direct atelier stitch preview. Personalize with your choice of thread colors, custom text, and placement in the configuration panel.
-          </p>
         </div>
       </div>
     );
