@@ -1947,13 +1947,17 @@ Output ONLY a JSON object:
 
         // === STEP 4: Automated Verdict Determination ===
         const allChecksPassed = auditFailures.length === 0 && isAmountMatch && isPassedGate;
-        const willAutoApproveToQueue = allChecksPassed && !isHighValue;
+        // AI is a pre-screener only: it extracts and flags, but NEVER approves payment.
+        // Staff confirm every GCash order against the store's real GCash inbox before it enters the queue.
+        const willAutoApproveToQueue = false;
 
         let flaggedReason = null;
         if (auditFailures.length > 0) {
             flaggedReason = auditFailures[0];
         } else if (!isPassedGate) {
             flaggedReason = "We couldn't clearly read your payment receipt. Please upload a clear, full screenshot of your GCash payment confirmation.";
+        } else if (allChecksPassed) {
+            flaggedReason = "Receipt received! Our staff will confirm your GCash payment shortly, then your order enters the queue.";
         } else if (isHighValue) {
             flaggedReason = `Receipt received! Since this is a custom order of ₱${numOrderTotal.toFixed(2)}, our team does a quick confirmation before placing your items in the embroidery queue.`;
         }
@@ -2037,8 +2041,8 @@ Output ONLY a JSON object:
             }
         }
 
-        const customerMessage = willAutoApproveToQueue
-            ? "Payment confirmed! We received your GCash payment and your order is now in the queue."
+        const customerMessage = allChecksPassed
+            ? "Receipt received! Our staff will confirm your GCash payment shortly, then your order enters the queue."
             : (isHighValue && allChecksPassed
                 ? `Receipt received! Since this is a larger custom order (₱${numOrderTotal.toFixed(2)}), our team will quickly verify the transfer so our embroidery team can get to work right away.`
                 : (flaggedReason || "We received your receipt! Our team will quickly review your payment."));

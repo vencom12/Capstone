@@ -124,12 +124,12 @@ exports.submitOrder = async (req, res) => {
             return res.json(cached.response);
         }
 
-        // Allow test bypass in development mode OR for testing accounts with isTestBypass/TEST- reference
-        const isBypassActive = Boolean(
+        // Test bypass: development only and ONLY when explicitly requested.
+        // It only skips the screenshot upload — it NEVER marks an order as paid.
+        const isBypassActive = process.env.NODE_ENV !== 'production' && Boolean(
             isTestBypass === true ||
             paymentMethod === 'test_mode' ||
-            (referenceNumber && String(referenceNumber).startsWith('TEST-')) ||
-            (process.env.NODE_ENV !== 'production' || req.user?.role === 'admin' || req.user?.role === 'employee')
+            (referenceNumber && String(referenceNumber).startsWith('TEST-'))
         );
 
         // If this is a manual reference confirmation for an existing order in 'Awaiting Payment', update it
@@ -146,19 +146,13 @@ exports.submitOrder = async (req, res) => {
                     referenceNumber: cleanRef
                 };
 
-                const itemsList = Array.isArray(existingOrder.items) ? existingOrder.items : [];
-                const orderNeedsStitching = itemsList.some(item => Boolean(item.personalization?.text && String(item.personalization.text).trim().length > 0));
-                const validatedStatus = isBypassActive ? (orderNeedsStitching ? 'In Queue' : 'Ready For Pick Up') : existingOrder.status;
-                const validatedProgress = isBypassActive ? (orderNeedsStitching ? 5 : 90) : existingOrder.progress;
-
+                // Record the reference only. Payment stays UNPAID until staff confirm it
+                // against the store's real GCash inbox (adminController.verifyOrderPayment).
                 const updatedOrder = await prisma.order.update({
                     where: { id: existingOrder.id },
                     data: {
                         personalization: updatedPersonalization,
-                        notes: notes || existingOrder.notes,
-                        status: validatedStatus,
-                        paymentStatus: isBypassActive ? 'paid' : existingOrder.paymentStatus,
-                        progress: validatedProgress,
+                        notes: notes || existingOrder.notes
                     }
                 });
 
@@ -167,17 +161,7 @@ exports.submitOrder = async (req, res) => {
                         where: { id: existingOrder.receipt.id },
                         data: {
                             referenceId: cleanRef || existingOrder.receipt.referenceId,
-                            status: isBypassActive ? 'Paid' : existingOrder.receipt.status,
-                            aiVerificationStatus: isBypassActive ? 'verified' : existingOrder.receipt.aiVerificationStatus,
-                        }
-                    });
-                }
-
-                if (existingOrder.transaction && isBypassActive) {
-                    await prisma.transaction.update({
-                        where: { id: existingOrder.transaction.id },
-                        data: {
-                            status: 'completed'
+                            status: 'Manual Review'
                         }
                     });
                 }
@@ -187,15 +171,7 @@ exports.submitOrder = async (req, res) => {
                     socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
                 }
 
-                // If bypass or marked paid, trigger confirmation email to customer only
-                if (isBypassActive && user.email) {
-                    const { sendOrderConfirmationEmail } = require('../../utils/emailService');
-                    sendOrderConfirmationEmail(user.email, user.username, updatedOrder).catch(err => {
-                        console.error('[EmailService] Order confirmation email dispatch failed:', err.message);
-                    });
-                }
-
-                return res.json({ message: 'Order reference number recorded successfully.', order: updatedOrder, receiptID: existingOrder.receipt?.receiptID });
+                return res.json({ message: 'Reference number recorded. Awaiting staff payment confirmation.', order: updatedOrder, receiptID: existingOrder.receipt?.receiptID });
             }
         }
 
@@ -212,11 +188,13 @@ exports.submitOrder = async (req, res) => {
         }
 
         // Instant approval for genuine wallet, admin test mode, or test bypass
-        const isInstantApproved = (paymentMethod === 'wallet' || (paymentMethod === 'test_mode' && process.env.NODE_ENV !== 'production' && req.user?.role === 'admin') || isBypassActive);
+        // Only store-wallet payments are instantly approved (balance is deducted atomically below).
+        // GCash orders ALWAYS wait for staff confirmation — a screenshot is never proof of payment.
+        const isInstantApproved = paymentMethod === 'wallet';
 
         // User is already resolved at function start
 
-        if (!user.isEmailVerified && !isBypassActive) {
+        if (!user.isEmailVerified) {
             return res.status(403).json({ message: 'Please check your email to verify your account before placing an order.' });
         }
 
@@ -351,7 +329,7 @@ exports.submitOrder = async (req, res) => {
             (!emResume || emResume.getTime() > now.getTime())
         );
 
-        if (isCurrentlyClosed && globalSettings.emergencyOrderingPolicy === 'PAUSE_ORDERS' && !isBypassActive) {
+        if (isCurrentlyClosed && globalSettings.emergencyOrderingPolicy === 'PAUSE_ORDERS') {
             const resumeDateStr = emResume
                 ? emResume.toLocaleDateString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
                 : 'soon';

@@ -487,9 +487,8 @@ export default function CheckoutModal({
           showToast('Receipt received! Please confirm your GCash Reference Number below.', 'info');
         } else {
           setPaymentVerified(true);
-          const amountText = verifyRes.aiResult?.extractedAmount ? `₱${verifyRes.aiResult.extractedAmount.toFixed(2)}` : `₱${finalTotal.toFixed(2)}`;
-          setAiVerificationResult(`Payment Confirmed — ${amountText}`);
-          showToast('Payment confirmed! Your order is now in the queue.', 'success');
+          setAiVerificationResult('Receipt received — awaiting staff payment confirmation.');
+          showToast('Order placed! Our staff will confirm your GCash payment shortly.', 'success');
           try {
             await refreshUser();
             await fetchDashboardState();
@@ -582,7 +581,7 @@ export default function CheckoutModal({
       setPaymentVerified(true);
       setLatestCreatedOrder(res?.order);
       setAiVerificationResult(`GCash Reference Saved: ${cleanRef}`);
-      showToast('Order received! Thank you for your payment.', 'success');
+      showToast('Order placed! Our staff will confirm your GCash payment shortly.', 'success');
       handleModalClose(true, res?.order);
       refreshUser().catch(() => {});
       fetchDashboardState().catch(() => {});
@@ -673,7 +672,7 @@ export default function CheckoutModal({
       setPaymentVerified(true);
       setLatestCreatedOrder(bypassRes?.order);
       setAiVerificationResult(`Test Mode: GCash payment bypassed & auto-approved (${testRef})`);
-      showToast('Test Mode: GCash Payment Bypassed & Order Placed!', 'success');
+      showToast('Test Mode: Order placed — awaiting staff payment confirmation.', 'success');
       handleModalClose(true, bypassRes?.order);
       refreshUser().catch(() => {});
       fetchDashboardState().catch(() => {});
