@@ -1719,13 +1719,14 @@ exports.verifyReceipt = async (req, res) => {
         
         try {
             localOcrResult = await parseReceiptWithLocalOCR(receiptUrl);
-            if (localOcrResult && localOcrResult.isValidReceipt && localOcrResult.referenceId && localOcrResult.extractedAmount !== null) {
-                console.log(`[Payment Verification] Tier 1 SUCCESS: Extracted amount ₱${localOcrResult.extractedAmount}, Ref: ${localOcrResult.referenceId}`);
+            // Require verified transactionDate from Tier 1; otherwise escalate to Tier 2 AI Vision to parse the exact receipt timestamp
+            if (localOcrResult && localOcrResult.isValidReceipt && localOcrResult.referenceId && localOcrResult.extractedAmount !== null && localOcrResult.transactionDate) {
+                console.log(`[Payment Verification] Tier 1 SUCCESS: Extracted amount ₱${localOcrResult.extractedAmount}, Ref: ${localOcrResult.referenceId}, Date: ${localOcrResult.transactionDate}`);
                 aiResult = {
                     isValidReceipt: true,
                     extractedAmount: localOcrResult.extractedAmount,
                     referenceId: localOcrResult.referenceId,
-                    transactionDate: localOcrResult.transactionDate || new Date().toISOString(),
+                    transactionDate: localOcrResult.transactionDate,
                     recipientName: localOcrResult.recipientName || aiSettings.businessName,
                     paymentPlatform: localOcrResult.paymentPlatform,
                     isAmountMatch: Math.abs(localOcrResult.extractedAmount - numOrderTotal) < 0.05 || localOcrResult.extractedAmount >= numOrderTotal,
@@ -1915,25 +1916,27 @@ Output ONLY a JSON object:
                 const txDate = new Date(aiResult.transactionDate);
                 const now = new Date();
                 
-                // Reject dates far in the future (>15 minutes)
-                if (txDate.getTime() > now.getTime() + 15 * 60 * 1000) {
-                    auditFailures.push(`The date on this receipt appears to be in the future. Please upload your official GCash receipt.`);
-                }
+                if (!isNaN(txDate.getTime())) {
+                    // Reject dates far in the future (>15 minutes)
+                    if (txDate.getTime() > now.getTime() + 15 * 60 * 1000) {
+                        auditFailures.push(`The date on this receipt appears to be in the future. Please upload your official GCash receipt.`);
+                    }
 
-                // Reject dates older than 48 hours in production
-                const hoursAgo = (now - txDate) / (1000 * 60 * 60);
-                const isDev = process.env.NODE_ENV === 'development';
-                if (!isDev && hoursAgo > 48) {
-                    auditFailures.push(`This receipt is from a payment made a few days ago. Please upload the recent GCash receipt for this order.`);
-                }
+                    // Strict Outdated Receipt Protection: Reject receipts older than 24 hours in all environments
+                    const hoursAgo = (now.getTime() - txDate.getTime()) / (1000 * 60 * 60);
+                    if (hoursAgo > 24) {
+                        const dateLabel = txDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+                        auditFailures.push(`This receipt is outdated (${dateLabel}). Please upload the recent GCash receipt for this order.`);
+                    }
 
-                // Cross-check against Order creation timestamp
-                const orderRecord = await prisma.order.findFirst({ where: { orderId: orderId } });
-                if (orderRecord && orderRecord.createdAt && !isDev) {
-                    const orderCreatedAt = new Date(orderRecord.createdAt);
-                    const hoursBeforeOrder = (orderCreatedAt.getTime() - txDate.getTime()) / (1000 * 60 * 60);
-                    if (hoursBeforeOrder > 4) {
-                        auditFailures.push(`This payment was made before this order was placed. Please upload the receipt for this order.`);
+                    // Cross-check against Order creation timestamp: cannot be paid prior to placing order
+                    const orderRecord = await prisma.order.findFirst({ where: { orderId: orderId } });
+                    if (orderRecord && orderRecord.createdAt) {
+                        const orderCreatedAt = new Date(orderRecord.createdAt);
+                        const hoursBeforeOrder = (orderCreatedAt.getTime() - txDate.getTime()) / (1000 * 60 * 60);
+                        if (hoursBeforeOrder > 2) {
+                            auditFailures.push(`This payment was made before this order was placed. Please upload the receipt for this order.`);
+                        }
                     }
                 }
             } catch (dateErr) {
