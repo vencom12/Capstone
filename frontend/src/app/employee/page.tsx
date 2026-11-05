@@ -646,7 +646,13 @@ export default function EmployeePage() {
       new Date(o.date || o.createdAt).toISOString().split('T')[0] === ordersDateFilter
     );
 
-    const matchesTab = ordersQueueTab === 'all' || o.status === ordersQueueTab;
+    const matchesTab = ordersQueueTab === 'all'
+      ? true
+      : ordersQueueTab === 'awaiting_management'
+      ? (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
+      : ordersQueueTab === 'In Queue'
+      ? (o.status === 'In Queue' && o.paymentStatus !== 'unpaid')
+      : o.status === ordersQueueTab;
 
     return matchesSearch && matchesDate && matchesTab;
   });
@@ -811,11 +817,16 @@ export default function EmployeePage() {
 
             {/* Status Tab Navigation */}
             {(() => {
-              const ALL_STATUSES = ['In Queue', 'Preparing Order', 'Ready For Pick Up'];
               const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
+              const unverifiedOrders = allActiveOrders.filter(o => o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid');
+              const inQueueVerified = allActiveOrders.filter(o => o.status === 'In Queue' && o.paymentStatus !== 'unpaid');
+
               const tabs = [
                 { key: 'all', label: 'All Active', count: allActiveOrders.length },
-                ...ALL_STATUSES.map((s) => ({ key: s, label: s, count: allActiveOrders.filter(o => o.status === s).length }))
+                { key: 'awaiting_management', label: 'Being Processed by Management', count: unverifiedOrders.length, isSpecial: true },
+                { key: 'In Queue', label: 'In Queue', count: inQueueVerified.length },
+                { key: 'Preparing Order', label: 'Preparing Order', count: allActiveOrders.filter(o => o.status === 'Preparing Order').length },
+                { key: 'Ready For Pick Up', label: 'Ready For Pick Up', count: allActiveOrders.filter(o => o.status === 'Ready For Pick Up').length }
               ];
               return (
                 <div className="flex gap-2 flex-wrap mb-4 border-b border-border-glass/30 pb-3">
@@ -824,12 +835,14 @@ export default function EmployeePage() {
                       key={tab.key}
                       onClick={() => setOrdersQueueTab(tab.key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${ordersQueueTab === tab.key
-                          ? 'bg-bg-surface text-text-main border-primary/60 shadow-sm'
-                          : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
+                          ? (tab.isSpecial ? 'bg-amber-500/25 text-amber-200 border-amber-500/50 shadow-sm' : 'bg-bg-surface text-text-main border-primary/60 shadow-sm')
+                          : (tab.isSpecial && tab.count > 0 ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20' : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main')
                         }`}
                     >
                       {tab.label}
-                      <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${ordersQueueTab === tab.key ? 'bg-primary/20 text-primary' : 'bg-white/10 text-text-dim'
+                      <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${ordersQueueTab === tab.key
+                          ? (tab.isSpecial ? 'bg-amber-500/40 text-amber-100' : 'bg-primary/20 text-primary')
+                          : (tab.isSpecial && tab.count > 0 ? 'bg-amber-500/20 text-amber-300' : 'bg-white/10 text-text-dim')
                         }`}>
                         {tab.count}
                       </span>
@@ -878,12 +891,13 @@ export default function EmployeePage() {
                                   )}
                                 </div>
                                 <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
-                                   ${o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                    o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
-                                      'bg-white/10 text-text-dim border border-white/20'
-                                  }
+                                   ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+                                     o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
+                                     o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
+                                       'bg-white/10 text-text-dim border border-white/20'
+                                   }
                                  `}>
-                                  {o.status} ({o.progress || 0}%)
+                                  {(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
                                 </span>
                               </div>
                             </td>
@@ -1175,12 +1189,13 @@ export default function EmployeePage() {
                               {/* Status Pill & Live Overdue/Remaining Badge */}
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider w-fit
-                                  ${o.status === 'Preparing Order' ? 'bg-primary/10 text-primary border border-primary/20' :
+                                  ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                    o.status === 'Preparing Order' ? 'bg-primary/10 text-primary border border-primary/20' :
                                     o.status === 'Ready For Pick Up' ? 'bg-success/10 text-success border border-success/20' :
                                       'bg-white/5 text-text-dim border border-border-glass'
                                   }
                                 `}>
-                                  {o.status} ({o.progress || 0}%)
+                                  {(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
                                 </span>
                                 <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${
                                   schedule.isOverdue

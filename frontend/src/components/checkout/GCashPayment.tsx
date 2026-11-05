@@ -341,7 +341,7 @@ export default function GCashPayment({
                   <span className="text-primary text-[0.68rem] font-bold">✓ Ready</span>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 min-w-0">
+              <div className="flex flex-col gap-2 w-full">
                 <input
                   type="text"
                   maxLength={19}
@@ -352,7 +352,7 @@ export default function GCashPayment({
                     if (refTouched) validateManualRef(e.target.value);
                   }}
                   onBlur={handleManualRefBlur}
-                  className={`min-w-0 flex-1 bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.82rem] outline-none transition-all ${
+                  className={`w-full bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.82rem] outline-none transition-all ${
                     refTouched && refError
                       ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
                       : 'border-border-glass focus:border-primary'
@@ -368,9 +368,10 @@ export default function GCashPayment({
                     handleConfirmManualRef();
                   }}
                   disabled={!isEmailVerified}
-                  className="bg-primary text-white font-bold px-3.5 py-2 rounded-lg text-[0.76rem] hover:bg-primary/90 transition-all cursor-pointer shadow-sm shrink-0 whitespace-nowrap text-center disabled:opacity-40 disabled:cursor-not-allowed"
+                  className="w-full bg-primary text-white font-bold px-4 py-2.5 rounded-lg text-xs hover:bg-primary/90 transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  Confirm Order →
+                  <span>Confirm Order</span>
+                  <span aria-hidden="true">→</span>
                 </button>
               </div>
               {refTouched && refError && (

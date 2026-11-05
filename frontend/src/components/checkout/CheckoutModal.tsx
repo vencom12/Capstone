@@ -487,8 +487,8 @@ export default function CheckoutModal({
           showToast('Receipt received! Please confirm your GCash Reference Number below.', 'info');
         } else {
           setPaymentVerified(true);
-          setAiVerificationResult('Receipt received — awaiting staff payment confirmation.');
-          showToast('Order placed! Our staff will confirm your GCash payment shortly.', 'success');
+          setAiVerificationResult('Being processed by management — awaiting payment confirmation.');
+          showToast('Order placed! It is now being processed by management.', 'success');
           try {
             await refreshUser();
             await fetchDashboardState();
@@ -581,7 +581,7 @@ export default function CheckoutModal({
       setPaymentVerified(true);
       setLatestCreatedOrder(res?.order);
       setAiVerificationResult(`GCash Reference Saved: ${cleanRef}`);
-      showToast('Order placed! Our staff will confirm your GCash payment shortly.', 'success');
+      showToast('Order placed! It is now being processed by management.', 'success');
       handleModalClose(true, res?.order);
       refreshUser().catch(() => {});
       fetchDashboardState().catch(() => {});
@@ -671,8 +671,8 @@ export default function CheckoutModal({
 
       setPaymentVerified(true);
       setLatestCreatedOrder(bypassRes?.order);
-      setAiVerificationResult(`Test Mode: GCash payment bypassed & auto-approved (${testRef})`);
-      showToast('Test Mode: Order placed — awaiting staff payment confirmation.', 'success');
+      setAiVerificationResult(`Test Mode: Order placed — being processed by management (${testRef})`);
+      showToast('Test Mode: Order placed — being processed by management.', 'success');
       handleModalClose(true, bypassRes?.order);
       refreshUser().catch(() => {});
       fetchDashboardState().catch(() => {});

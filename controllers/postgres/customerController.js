@@ -1023,7 +1023,9 @@ exports.trackOrder = async (req, res) => {
 
         // Calculate stage & wait
         let stage = 'queue';
-        if (['Preparing Order', 'In Production', 'Processing'].includes(order.status)) {
+        if (order.status === 'Awaiting Payment' || order.paymentStatus === 'unpaid') {
+            stage = 'awaiting_management';
+        } else if (['Preparing Order', 'In Production', 'Processing'].includes(order.status)) {
             stage = 'stitching';
         } else if (['Ready For Pick Up', 'Ready for Pickup'].includes(order.status)) {
             stage = 'ready';
@@ -1049,7 +1051,10 @@ exports.trackOrder = async (req, res) => {
         let estimatedMinutesLeft = estMins;
         let readyLabel = '';
 
-        if (stage === 'stitching') {
+        if (stage === 'awaiting_management') {
+            estimatedMinutesLeft = 0;
+            readyLabel = 'Being Processed by Management';
+        } else if (stage === 'stitching') {
             const elapsedMinutes = Math.floor((Date.now() - new Date(order.updatedAt).getTime()) / 60000);
             estimatedMinutesLeft = Math.max(1, estMins - Math.min(elapsedMinutes, estMins - 1));
             const sched = calculatePickupSchedule({

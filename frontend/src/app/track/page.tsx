@@ -12,7 +12,7 @@ interface TrackedOrder {
   design: string;
   monogramText: string | null;
   status: string;
-  stage: 'queue' | 'stitching' | 'ready' | 'completed';
+  stage: 'awaiting_management' | 'queue' | 'stitching' | 'ready' | 'completed';
   ordersAhead: number;
   estimatedMinutesLeft: number;
   readyLabel?: string;
@@ -302,9 +302,10 @@ function OrderTrackerContent() {
     );
   }
 
+  const isAwaitingManagement = order.stage === 'awaiting_management' || order.status === 'Awaiting Payment' || order.paymentStatus === 'unpaid';
   const isReady = order.stage === 'ready';
   const isStitching = order.stage === 'stitching';
-  const isQueue = order.stage === 'queue';
+  const isQueue = order.stage === 'queue' && !isAwaitingManagement;
   const isCompleted = order.stage === 'completed';
 
   return (
@@ -409,7 +410,9 @@ function OrderTrackerContent() {
 
           <div
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 shadow-xs ${
-              isReady
+              isAwaitingManagement
+                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                : isReady
                 ? 'bg-white/20 text-text-main border-white/30'
                 : isStitching
                 ? 'bg-white/15 text-text-main border-white/20'
@@ -418,9 +421,11 @@ function OrderTrackerContent() {
                 : 'bg-white/10 text-text-main border-border-glass'
             }`}
           >
-            <span className="w-2 h-2 rounded-full bg-text-main inline-block" />
+            <span className={`w-2 h-2 rounded-full inline-block ${isAwaitingManagement ? 'bg-amber-400 animate-pulse' : 'bg-text-main'}`} />
             <span>
-              {isReady
+              {isAwaitingManagement
+                ? 'BEING PROCESSED BY MANAGEMENT'
+                : isReady
                 ? 'READY FOR CLAIM'
                 : isStitching
                 ? 'NOW STITCHING'
@@ -435,18 +440,22 @@ function OrderTrackerContent() {
         <div className="py-2 flex items-center justify-between relative">
           <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-1 bg-white/10 z-0" />
 
-          {/* Step 1: Queue */}
+          {/* Step 1: Queue / Management Review */}
           <div className="flex flex-col items-center gap-1 relative z-10">
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                isQueue || isStitching || isReady || isCompleted
+                isAwaitingManagement
+                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                  : isQueue || isStitching || isReady || isCompleted
                   ? 'bg-white/20 text-text-main border border-white/30 shadow-xs'
                   : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
             >
               1
             </div>
-            <span className="text-[10px] font-bold text-text-dim">Queue</span>
+            <span className="text-[10px] font-bold text-text-dim">
+              {isAwaitingManagement ? 'Management' : 'Queue'}
+            </span>
           </div>
 
           {/* Step 2: Stitching */}
@@ -479,7 +488,16 @@ function OrderTrackerContent() {
         </div>
 
         {/* Turnaround Status Notice */}
-        {isReady ? (
+        {isAwaitingManagement ? (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-center">
+            <span className="text-xs text-amber-300 font-bold block">
+              Being Processed by Management
+            </span>
+            <span className="text-[11px] text-text-dim mt-1 block leading-relaxed">
+              Our store management is reviewing your order and confirming payment details. Once approved, your order will immediately enter the embroidery queue.
+            </span>
+          </div>
+        ) : isReady ? (
           <div className="bg-white/10 border border-border-glass rounded-xl p-3.5 text-center">
             <div className="text-sm font-bold text-text-main">
               Your order is ready for pickup!

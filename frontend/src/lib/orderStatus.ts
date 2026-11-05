@@ -16,9 +16,9 @@ export interface OrderStage {
 export const TOTAL_STEPS = 5;
 
 export const STEP_LABELS = [
-  'Order confirmed',
-  'Preparing design',
-  'Being embroidered',
+  'Being Processed by Management',
+  'Order Confirmed & In Queue',
+  'Being Embroidered',
   'Ready for Store Pick-up',
   'Claimed / Completed',
 ];
@@ -41,7 +41,7 @@ export function getOrderStage(order: Order): OrderStage {
     return { label: 'Ready for Pick-up', hint: 'Claim at Eds Towels & Caps, Pacific Mall Lucena (10AM-8PM).', step: 4, tone: 'shipping', isActive: true };
   }
   if (status.includes('awaiting') || status === 'pending') {
-    return { label: 'Confirming your payment', hint: 'We are checking your payment. This usually takes a short while.', step: 1, tone: 'pending', isActive: true };
+    return { label: 'Being Processed by Management', hint: 'Our management team is reviewing your order and confirming payment details before queueing.', step: 1, tone: 'pending', isActive: true };
   }
   if (progress >= 45) {
     return { label: 'Being embroidered', hint: 'Our team is stitching your design.', step: 3, tone: 'progress', isActive: true };
@@ -63,7 +63,7 @@ export function getOrderTitle(order: Order): string {
 }
 
 export const TONE_CLASSES: Record<OrderTone, string> = {
-  pending: 'bg-white/5 text-text-dim border-border-glass',
+  pending: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
   progress: 'bg-primary/15 text-primary border-primary/30',
   shipping: 'bg-secondary/15 text-secondary border-secondary/30',
   done: 'bg-success/15 text-success border-success/30',

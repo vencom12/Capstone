@@ -1961,7 +1961,7 @@ Output ONLY a JSON object:
         } else if (!isPassedGate) {
             flaggedReason = "We couldn't clearly read your payment receipt. Please upload a clear, full screenshot of your GCash payment confirmation.";
         } else if (allChecksPassed) {
-            flaggedReason = "Receipt received! Our staff will confirm your GCash payment shortly, then your order enters the queue.";
+            flaggedReason = "Receipt received! Your order is now being processed by management.";
         } else if (isHighValue) {
             flaggedReason = `Receipt received! Since this is a custom order of ₱${numOrderTotal.toFixed(2)}, our team does a quick confirmation before placing your items in the embroidery queue.`;
         }
@@ -2046,10 +2046,10 @@ Output ONLY a JSON object:
         }
 
         const customerMessage = allChecksPassed
-            ? "Receipt received! Our staff will confirm your GCash payment shortly, then your order enters the queue."
+            ? "Receipt received! Your order is now being processed by management."
             : (isHighValue && allChecksPassed
-                ? `Receipt received! Since this is a larger custom order (₱${numOrderTotal.toFixed(2)}), our team will quickly verify the transfer so our embroidery team can get to work right away.`
-                : (flaggedReason || "We received your receipt! Our team will quickly review your payment."));
+                ? `Receipt received! Since this is a larger custom order (₱${numOrderTotal.toFixed(2)}), your order is now being processed by management.`
+                : (flaggedReason || "We received your receipt! Your order is being processed by management."));
 
         res.json({
             success: allChecksPassed,
