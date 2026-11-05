@@ -569,6 +569,11 @@ exports.createProduct = async (req, res) => {
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const [enrichedProduct] = await enrichProductsWithStock([newProduct]);
 
+        try {
+            const cacheManager = require('../../utils/cacheManager');
+            cacheManager.del('catalog:enriched_products');
+        } catch {}
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.CREATE, ENTITIES.PRODUCT, enrichedProduct);
         res.json({ message: 'Product created', product: enrichedProduct });
     } catch (err) {
@@ -664,6 +669,11 @@ exports.updateProduct = async (req, res) => {
         const { enrichProductsWithStock } = require('../../utils/inventoryManager');
         const [enrichedProduct] = await enrichProductsWithStock([product]);
 
+        try {
+            const cacheManager = require('../../utils/cacheManager');
+            cacheManager.del('catalog:enriched_products');
+        } catch {}
+
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enrichedProduct);
         res.json({ message: 'Product updated', product: enrichedProduct });
     } catch (err) {
@@ -681,6 +691,10 @@ exports.deleteProduct = async (req, res) => {
             });
         }
         await prisma.product.delete({ where: { id: req.params.id } });
+        try {
+            const cacheManager = require('../../utils/cacheManager');
+            cacheManager.del('catalog:enriched_products');
+        } catch {}
         socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.DELETE, ENTITIES.PRODUCT, { id: req.params.id });
         res.json({ message: 'Product deleted' });
     } catch (err) {

@@ -639,6 +639,7 @@ export default function PanelManageDesigns({
     const numericCount = totalVariantStock;
     const numericMin = minThreshold ? parseInt(minThreshold.trim(), 10) : (editingDesign?.minThreshold ?? 5);
 
+    const optimisticBlobUrl = imageFile ? URL.createObjectURL(imageFile) : null;
     const optimisticProduct = {
       ...(editingDesign || {}),
       name: capitalizedName,
@@ -652,19 +653,20 @@ export default function PanelManageDesigns({
       count: numericCount,
       availableStock: numericCount,
       minThreshold: numericMin,
-      ...(imageFile ? { imageUrl: URL.createObjectURL(imageFile) } : {})
+      _isUploadingImage: Boolean(imageFile),
+      ...(optimisticBlobUrl ? { imageUrl: optimisticBlobUrl } : {})
     };
 
     const prevProducts = [...products];
     const isEdit = !!editingDesign;
+    const editTargetId = editingDesign ? (editingDesign.id || editingDesign._id) : null;
     const tempId = `temp_${Date.now()}`;
 
     // Optimistically update products immediately (0ms UI latency)
     if (setProducts) {
       if (isEdit) {
-        const targetId = editingDesign.id || editingDesign._id;
         setProducts((prev) =>
-          prev.map((p) => ((p.id || p._id) === targetId ? { ...p, ...optimisticProduct } : p))
+          prev.map((p) => ((p.id || p._id) === editTargetId ? { ...p, ...optimisticProduct } : p))
         );
       } else {
         setProducts((prev) => [{ ...optimisticProduct, id: tempId, _id: tempId }, ...prev]);
@@ -676,10 +678,11 @@ export default function PanelManageDesigns({
 
     try {
       const method = isEdit ? 'PATCH' : 'POST';
-      const path = isEdit ? `/api/admin/products/${editingDesign.id || editingDesign._id}` : '/api/admin/products';
+      const path = isEdit ? `/api/admin/products/${editTargetId}` : '/api/admin/products';
 
       const response = await fetch(`${API_BASE}${path}`, {
         method,
+        headers: { 'X-Portal': 'admin' },
         body: formData,
         credentials: 'include'
       });
@@ -689,9 +692,32 @@ export default function PanelManageDesigns({
       }
 
       const resData = await response.json().catch(() => null);
-      if (!isEdit && resData?.product && setProducts) {
+      if (resData?.product && setProducts) {
+        // Preload the remote Cloudinary image before swapping out the local blob preview so it never blinks
+        if (resData.product.imageUrl && optimisticBlobUrl) {
+          await new Promise<void>((resolve) => {
+            const img = new window.Image();
+            const timeout = window.setTimeout(resolve, 2000);
+            img.onload = () => {
+              window.clearTimeout(timeout);
+              resolve();
+            };
+            img.onerror = () => {
+              window.clearTimeout(timeout);
+              resolve();
+            };
+            img.src = resData.product.imageUrl;
+          });
+        }
+
         setProducts((prev) =>
-          prev.map((p) => (p.id === tempId || p._id === tempId ? { ...p, ...resData.product } : p))
+          prev.map((p) => {
+            const pid = p.id || p._id;
+            if ((isEdit && pid === editTargetId) || (!isEdit && pid === tempId)) {
+              return { ...p, ...resData.product, _isUploadingImage: false };
+            }
+            return p;
+          })
         );
       }
 

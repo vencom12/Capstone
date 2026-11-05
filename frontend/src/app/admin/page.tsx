@@ -193,7 +193,20 @@ export default function AdminPage() {
       if (data) {
         setOrders(data.orders || []);
         setInventory(data.inventory || data.rawMaterials || []);
-        setProducts(data.products || []);
+        setProducts((prev) => {
+          const incoming = data.products || [];
+          if (!prev || prev.length === 0) return incoming;
+          const tempItems = prev.filter((p) => String(p.id || p._id || '').startsWith('temp_'));
+          const merged = incoming.map((serverProd: any) => {
+            const targetId = serverProd.id || serverProd._id;
+            const existing = prev.find((p) => (p.id || p._id) === targetId);
+            if (existing && existing._isUploadingImage) {
+              return existing;
+            }
+            return serverProd;
+          });
+          return [...tempItems, ...merged];
+        });
         setUsers(data.users || []);
       }
       setLoadError(null);
@@ -341,8 +354,12 @@ export default function AdminPage() {
           }
           scheduleFetchAdminData();
         } else if (data.entity === 'PRODUCT') {
-          if (data.action === 'CREATE') {
-            showToast('New Custom storefront catalog published!', 'success');
+          const prodPayload = data.data || data.payload;
+          if (prodPayload && (prodPayload.id || prodPayload._id)) {
+            const targetId = prodPayload.id || prodPayload._id;
+            setProducts((prev) =>
+              prev.map((p) => ((p.id || p._id) === targetId ? { ...p, ...prodPayload, _isUploadingImage: false } : p))
+            );
           }
           scheduleFetchAdminData();
         } else if (['INVENTORY', 'INVENTORY_LOG', 'MACHINE', 'USER'].includes(data.entity)) {
