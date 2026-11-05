@@ -71,25 +71,6 @@ export default function CheckoutModal({
   const [batchThrottlePeriod, setBatchThrottlePeriod] = useState<string>('week');
   const [preOrderPrepDays, setPreOrderPrepDays] = useState<number>(3);
 
-  // PSA/Retail Style Appointment Window Selection (Option 1: Modern Retail Model)
-  // Claim Date Selection (Customer chooses target day; pick up anytime during store hours)
-  const [selectedDateStr, setSelectedDateStr] = useState<string>('');
-  const [pickupDateError, setPickupDateError] = useState(false);
-  const [shakePickupDate, setShakePickupDate] = useState(false);
-  const pickupDateSectionRef = useRef<HTMLDivElement>(null);
-
-  const triggerPickupDateAttention = () => {
-    setPickupDateError(true);
-    setShakePickupDate(true);
-    setTimeout(() => setShakePickupDate(false), 650);
-    if (pickupDateSectionRef.current) {
-      pickupDateSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-    setTimeout(() => {
-      const selectEl = document.getElementById('pickup-date-select');
-      selectEl?.focus();
-    }, 350);
-  };
 
   // Pick-up Fulfillment & Special Instructions
   const [fulfillmentType] = useState<'pickup'>('pickup');
@@ -329,6 +310,9 @@ export default function CheckoutModal({
     return list;
   }, [estimatedReadyDate, extraScheduleDays]);
 
+  // Pick-up date is auto-assigned to the earliest ready date (no manual selection needed)
+  const selectedDateStr = availableDates[0]?.dateStr || '';
+
   const { chosenDueDate, chosenDeliveryTimeLabel } = useMemo(() => {
     const dateObj = availableDates.find(d => d.dateStr === selectedDateStr);
 
@@ -384,15 +368,8 @@ export default function CheckoutModal({
     }
   };
 
-  const processReceiptFile = async (file: File, dateOverride?: string) => {
-    const activeDateStr = dateOverride ?? selectedDateStr;
+  const processReceiptFile = async (file: File) => {
     setReceiptFile(file);
-
-    if (!activeDateStr) {
-      triggerPickupDateAttention();
-      showToast('Receipt attached! Now please select your Pick-up Date highlighted above.', 'info');
-      return;
-    }
 
     if (isOrderingPaused) {
       showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`, 'error');
@@ -410,14 +387,8 @@ export default function CheckoutModal({
       return;
     }
 
-    const dateObj = availableDates.find(d => d.dateStr === activeDateStr);
-    let resolvedDueDate = chosenDueDate;
-    let resolvedDeliveryLabel = chosenDeliveryTimeLabel;
-    if (dateObj) {
-      const [year, month, day] = activeDateStr.split('-').map(Number);
-      resolvedDueDate = new Date(year, month - 1, day, 10, 0, 0).toISOString();
-      resolvedDeliveryLabel = `Pick-up: ${dateObj.friendlyLabel} (10 AM–8 PM)`;
-    }
+    const resolvedDueDate = chosenDueDate;
+    const resolvedDeliveryLabel = chosenDeliveryTimeLabel;
 
     setAiAnalyzing(true);
     setPaymentVerified(false);
@@ -571,11 +542,6 @@ export default function CheckoutModal({
       return;
     }
 
-    if (!selectedDateStr) {
-      triggerPickupDateAttention();
-      showToast('Please choose your preferred pick-up date highlighted above first.', 'error');
-      return;
-    }
 
     if (isOrderingPaused) {
       showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`, 'error');
@@ -646,8 +612,6 @@ export default function CheckoutModal({
     setAllowManualRef(false);
     setPaymentVerified(false);
     setLatestCreatedOrder(null);
-    setPickupDateError(false);
-    setShakePickupDate(false);
     onClose();
     if (wasSuccessful && onSuccess) {
       onSuccess(createdOrder);
@@ -665,11 +629,6 @@ export default function CheckoutModal({
       return;
     }
 
-    if (!selectedDateStr) {
-      triggerPickupDateAttention();
-      showToast('Please choose your preferred pick-up date highlighted above first.', 'error');
-      return;
-    }
 
     if (isOrderingPaused) {
       showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`, 'error');
@@ -733,31 +692,25 @@ export default function CheckoutModal({
     }
   };
 
-  // 4-Step Customer Checkout Progress (Schedule -> Store Pickup/Review -> GCash Payment -> Place Order)
-  const isCheckoutStep1Done = Boolean(selectedDateStr);
-  const isCheckoutStep2Done = Boolean(selectedDateStr && items.length > 0);
-  const isCheckoutStep3Done = Boolean(paymentVerified || receiptUrl || manualRef.trim());
-  // Step 4 is ONLY done when the customer clicks Place Order or payment is completed!
-  const isCheckoutStep4Done = Boolean(paymentVerified || isProcessing || isBypassing);
+  // 3-Step Customer Checkout Progress (Store Pickup/Review -> GCash Payment -> Place Order)
+  const isCheckoutStep1Done = Boolean(items.length > 0);
+  const isCheckoutStep2Done = Boolean(paymentVerified || receiptUrl || manualRef.trim());
+  // Step 3 is done when the customer clicks Place Order or payment is completed
+  const isCheckoutStep3Done = Boolean(paymentVerified || isProcessing || isBypassing);
 
-  const checkoutActiveStep = !isCheckoutStep1Done ? 1 : !isCheckoutStep2Done ? 2 : !isCheckoutStep3Done ? 3 : 4;
-  const checkoutPercentage = isCheckoutStep4Done ? 100 : checkoutActiveStep === 4 ? 75 : checkoutActiveStep * 25;
+  const checkoutActiveStep = !isCheckoutStep1Done ? 1 : !isCheckoutStep2Done ? 2 : 3;
+  const checkoutPercentage = isCheckoutStep3Done ? 100 : checkoutActiveStep === 3 ? 66 : 33;
 
-  const checkoutTrackFillPercent = isCheckoutStep4Done
+  const checkoutTrackFillPercent = isCheckoutStep3Done
     ? 100
     : checkoutActiveStep === 1
     ? 0
-    : checkoutActiveStep === 2
-    ? 33
-    : checkoutActiveStep === 3
-    ? 66
-    : 66;
+    : 50;
 
   const checkoutSteps = [
-    { id: 1, label: 'Claim Date', shortLabel: 'Date', done: isCheckoutStep1Done },
-    { id: 2, label: 'Store Pickup', shortLabel: 'Review', done: isCheckoutStep2Done },
-    { id: 3, label: 'GCash Payment', shortLabel: 'GCash', done: isCheckoutStep3Done },
-    { id: 4, label: 'Place Order', shortLabel: 'Finish', done: isCheckoutStep4Done },
+    { id: 1, label: 'Store Pickup', shortLabel: 'Review', done: isCheckoutStep1Done },
+    { id: 2, label: 'GCash Payment', shortLabel: 'GCash', done: isCheckoutStep2Done },
+    { id: 3, label: 'Place Order', shortLabel: 'Finish', done: isCheckoutStep3Done },
   ];
 
   return (
@@ -791,16 +744,16 @@ export default function CheckoutModal({
           </div>
         </div>
 
-        {/* 4-Step Sticky Checkout Progress Bar with Checkpoints (Fixed on scroll) */}
+        {/* 3-Step Sticky Checkout Progress Bar with Checkpoints (Fixed on scroll) */}
         <div className="sticky top-0 z-20 -mx-4 sm:-mx-5 px-4 sm:px-5 pt-1.5 pb-2 bg-bg-card/95 backdrop-blur-md border-b border-border-glass transition-all -mt-3 mb-3">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
               
               <span className="text-[11px] font-bold text-text-main">
-                Step {checkoutActiveStep} of 4:
+                Step {checkoutActiveStep} of 3:
               </span>
               <span className="text-[11px] text-text-dim font-medium">
-                {isCheckoutStep4Done ? 'Order Placed!' : checkoutActiveStep === 4 ? 'Click Place Order' : checkoutSteps[checkoutActiveStep - 1]?.label || 'Checkout'}
+                {isCheckoutStep3Done ? 'Order Placed!' : checkoutActiveStep === 3 ? 'Click Place Order' : checkoutSteps[checkoutActiveStep - 1]?.label || 'Checkout'}
               </span>
             </div>
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-primary/25 bg-primary/10 text-primary transition-all">
@@ -812,11 +765,11 @@ export default function CheckoutModal({
 
           {/* Checkpoints & Connecting Progress Line (Finish checkpoint sits precisely at the end of the bar) */}
           <div className="relative flex items-center justify-between px-3 pt-1 pb-0.5">
-            {/* Connected Track: Bounded strictly between center of node 1 (x=24px) and center of node 4 (x=calc(100%-24px)) */}
+            {/* Connected Track: Bounded strictly between center of node 1 (x=24px) and center of node 3 (x=calc(100%-24px)) */}
             <div className="absolute left-[24px] right-[24px] top-4 -translate-y-1/2 h-1 bg-bg-surface border border-border-glass rounded-full overflow-hidden z-0">
               <div 
                 className={`h-full bg-gradient-to-r from-primary to-secondary rounded-full transition-all duration-500 ease-out z-0 ${
-                  isCheckoutStep4Done ? 'shadow-[0_0_12px_var(--color-primary-glow)] animate-pulse' : 'shadow-[0_0_6px_var(--color-primary-glow)]'
+                  isCheckoutStep3Done ? 'shadow-[0_0_12px_var(--color-primary-glow)] animate-pulse' : 'shadow-[0_0_6px_var(--color-primary-glow)]'
                 }`}
                 style={{
                   width: `${checkoutTrackFillPercent}%`
@@ -824,7 +777,7 @@ export default function CheckoutModal({
               />
             </div>
 
-            {/* 4 Checkpoints */}
+            {/* 3 Checkpoints */}
             {checkoutSteps.map((s) => {
               const isCompleted = s.done;
               const isCurrent = checkoutActiveStep === s.id && !s.done;
@@ -1049,117 +1002,22 @@ export default function CheckoutModal({
                 </div>
               </div>
 
-              {/* Single Pick-up Date Dropdown Picker */}
-              <div
-                ref={pickupDateSectionRef}
-                className={`flex flex-col gap-1.5 rounded-xl transition-all ${
-                  shakePickupDate ? 'animate-shake' : ''
-                } ${
-                  pickupDateError && !selectedDateStr
-                    ? 'p-2.5 -mx-1 bg-danger/10 border-2 border-danger/60 ring-4 ring-danger/15'
-                    : ''
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <label htmlFor="pickup-date-select" className={`text-[0.68rem] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
-                    pickupDateError && !selectedDateStr ? 'text-danger' : 'text-text-main'
-                  }`}>
-                    <span>Pick-up Date <span className="text-primary">*</span></span>
-                    {pickupDateError && !selectedDateStr && (
-                      <span className="px-1.5 py-0.5 rounded bg-danger text-white text-[0.58rem] font-bold tracking-normal normal-case animate-pulse">
-                        Required First
-                      </span>
-                    )}
-                  </label>
-                  <span className="text-[0.6rem] text-text-dim font-mono">Held 30 Days Free • 100% Upfront</span>
-                </div>
-
-                {isBulkOrPreOrder && (
-                  <div className="px-2.5 py-2 rounded-lg bg-bg-surface border border-border-glass text-[0.68rem] text-text-dim leading-relaxed flex items-start gap-2">
-                    <span className="shrink-0">⏳</span>
-                    <div>
-                      <strong className="text-text-main block">
-                        {hasPreOrderItems ? 'Pre-Order & Extended Workshop Schedule' : 'Bulk Production Schedule'}
-                      </strong>
-                      <span>
-                        Your order of <strong>{totalCheckoutPieces} pcs</strong> is scheduled based on our workshop capacity ({maxBulkPiecesPerPeriod} pcs/{batchThrottlePeriod}
-                        {queuedBulkPieces > 0 ? ` • ${queuedBulkPieces} pcs currently queued` : ''}
-                        {hasPreOrderItems ? ` • +${preOrderPrepDays} prep days` : ''}). Selectable pick-up dates below reflect your earliest ready date.
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                <div className="relative">
-                  <select
-                    id="pickup-date-select"
-                    value={selectedDateStr}
-                    onChange={(e) => {
-                      const nextDate = e.target.value;
-                      setSelectedDateStr(nextDate);
-                      setPickupDateError(false);
-                      if (nextDate && receiptFile && !receiptUrl && !aiAnalyzing && !paymentVerified) {
-                        processReceiptFile(receiptFile, nextDate);
-                      }
-                    }}
-                    style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
-                    className={`w-full bg-bg-surface border text-text-main text-xs rounded-xl px-3 py-2.5 outline-none cursor-pointer font-medium transition-all ${
-                      pickupDateError && !selectedDateStr
-                        ? 'border-danger ring-2 ring-danger/30 bg-danger/[0.04]'
-                        : !selectedDateStr
-                        ? 'border-primary/50 bg-primary/[0.03]'
-                        : 'border-border-glass focus:border-white/40'
-                    }`}
-                  >
-                    <option value="" disabled className="bg-[#12141c] text-text-dim">
-                      -- Please select your pick-up date --
-                    </option>
-                    {availableDates.map((item) => (
-                      <option key={item.dateStr} value={item.dateStr} className="bg-[#12141c] text-white">
-                        {item.friendlyLabel} (Mall Hours: 10:00 AM – 8:00 PM)
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-text-dim flex items-center">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="m6 9 6 6 6-6" />
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Prompt user or confirm chosen date */}
-                {!selectedDateStr ? (
-                  <div className={`px-2.5 py-1.5 rounded-lg text-[0.68rem] font-semibold flex items-center gap-1.5 ${
-                    pickupDateError
-                      ? 'bg-danger/15 border border-danger/40 text-danger'
-                      : 'bg-white/[0.03] border border-border-glass text-text-dim font-medium'
-                  }`}>
-                    {pickupDateError ? (
-                      <>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
-                          <circle cx="12" cy="12" r="10" />
-                          <line x1="12" y1="8" x2="12" y2="12" />
-                          <line x1="12" y1="16" x2="12.01" y2="16" />
-                        </svg>
-                        <span>
-                          {receiptFile
-                            ? 'Receipt ready! Select your pick-up date above to automatically scan & submit.'
-                            : 'Step 1 Required: Please choose your pick-up date from the dropdown above first.'}
-                        </span>
-                      </>
-                    ) : (
-                      <span>Please choose your pick-up date from the dropdown above.</span>
-                    )}
-                  </div>
-                ) : (
-                  <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass text-[0.68rem] text-text-main font-medium flex items-center justify-between">
-                    <span>Ready for claim on selected date (Mall hours: 10:00 AM – 8:00 PM)</span>
-                    <span className="font-mono text-text-main font-bold text-[11px]">
-                      {availableDates.find(d => d.dateStr === selectedDateStr)?.friendlyLabel || selectedDateStr}
+              {/* Bulk / Pre-Order Schedule Notice (pick-up date auto-assigned to earliest ready date) */}
+              {isBulkOrPreOrder && (
+                <div className="px-2.5 py-2 rounded-lg bg-bg-surface border border-border-glass text-[0.68rem] text-text-dim leading-relaxed flex items-start gap-2">
+                  <span className="shrink-0">⏳</span>
+                  <div>
+                    <strong className="text-text-main block">
+                      {hasPreOrderItems ? 'Pre-Order & Extended Workshop Schedule' : 'Bulk Production Schedule'}
+                    </strong>
+                    <span>
+                      Your order of <strong>{totalCheckoutPieces} pcs</strong> is scheduled based on our workshop capacity ({maxBulkPiecesPerPeriod} pcs/{batchThrottlePeriod}
+                      {queuedBulkPieces > 0 ? ` • ${queuedBulkPieces} pcs currently queued` : ''}
+                      {hasPreOrderItems ? ` • +${preOrderPrepDays} prep days` : ''}). We will notify you once it is ready for pick-up.
                     </span>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
 
             {/* Pick-up Note (Compact Single-line) */}
