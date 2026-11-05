@@ -1714,10 +1714,11 @@ exports.verifyReceipt = async (req, res) => {
         const { parseReceiptWithLocalOCR } = require('../../services/payments/localOcrService');
         
         let aiResult = null;
+        let localOcrResult = null;
         let extractionEngine = 'In-House Local OCR (Tesseract.js)';
         
         try {
-            const localOcrResult = await parseReceiptWithLocalOCR(receiptUrl);
+            localOcrResult = await parseReceiptWithLocalOCR(receiptUrl);
             if (localOcrResult && localOcrResult.isValidReceipt && localOcrResult.referenceId && localOcrResult.extractedAmount !== null) {
                 console.log(`[Payment Verification] Tier 1 SUCCESS: Extracted amount ₱${localOcrResult.extractedAmount}, Ref: ${localOcrResult.referenceId}`);
                 aiResult = {
@@ -2068,17 +2069,24 @@ Output ONLY a JSON object:
 
     } catch (error) {
         console.error('[AI Vision Error]:', error?.message || error);
-        
-        // Resilience Fallback: If AI Vision is temporarily unavailable,
-        // do not disrupt customer experience. Mark receipt for staff manual review.
+
+        // If Tier 1 Local OCR already scanned the image and found NO GCash/receipt markers,
+        // reject the image immediately rather than letting a non-receipt image pass on AI fallback.
+        const failedLocalOcr = !localOcrResult || !localOcrResult.isValidReceipt;
+        const rejectMessage = failedLocalOcr
+            ? "The uploaded image does not appear to be an authentic payment receipt. Please upload a clear screenshot of your GCash transaction confirmation."
+            : "We couldn't automatically verify this screenshot. Please confirm your 13-digit GCash Reference Number below for staff review.";
+
         try {
             if (receipt && receipt.id) {
                 await prisma.receipt.update({
                     where: { id: receipt.id },
                     data: {
-                        aiVerificationStatus: 'pending_manual_verification',
-                        flaggedReason: 'Queued for store staff verification',
-                        status: 'Pending'
+                        aiVerificationStatus: failedLocalOcr ? 'rejected' : 'pending_manual_verification',
+                        flaggedReason: failedLocalOcr
+                            ? 'Invalid document: The uploaded image is not a recognized payment receipt.'
+                            : 'Queued for store staff verification',
+                        status: failedLocalOcr ? 'Rejected' : 'Manual Review'
                     }
                 });
             }
@@ -2087,15 +2095,16 @@ Output ONLY a JSON object:
         }
 
         return res.json({
-            success: true,
-            verificationStatus: 'pending_manual_verification',
-            needsManualRef: true,
-            message: "Receipt uploaded successfully! Please enter your GCash Reference Number below so our team can confirm your payment.",
+            success: false,
+            verificationStatus: failedLocalOcr ? 'rejected' : 'pending_manual_verification',
+            flaggedReason: failedLocalOcr ? 'invalid_document' : 'manual_review_required',
+            needsManualRef: !failedLocalOcr,
+            message: rejectMessage,
             aiResult: {
-                isValidReceipt: true,
-                extractedAmount: numOrderTotal || 0,
-                isAmountMatch: true,
-                confidence: 1.0
+                isValidReceipt: false,
+                extractedAmount: null,
+                isAmountMatch: false,
+                confidence: 0
             }
         });
     } finally {
