@@ -324,18 +324,18 @@ export default function CheckoutModal({
     const closeMins = 20 * 60; // 8:00 PM
     if (currentMins >= openMins && currentMins < closeMins - 10) {
       return {
-        label: 'Today in 2 to 5 mins (Packaging)',
+        label: 'Today in 2 to 5 mins',
         detail: 'Direct counter packaging at Pacific Mall Lucena',
       };
     }
     if (currentMins >= closeMins - 10) {
       return {
-        label: 'Tomorrow at 10:05 AM (Store Opening)',
+        label: 'Tomorrow at 10:05 AM',
         detail: 'Store closes at 8:00 PM • Ready at store opening',
       };
     }
     return {
-      label: 'Today at 10:05 AM (Store Opening)',
+      label: 'Today at 10:05 AM',
       detail: 'Store opens at 10:00 AM • Ready shortly after opening',
     };
   }, []);

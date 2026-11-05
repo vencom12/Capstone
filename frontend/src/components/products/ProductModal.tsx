@@ -607,7 +607,7 @@ export default function ProductModal({
     if (requiresPreOrder) {
       const prepDays = capacityData?.preOrderPrepDays ?? letteringRates.preOrderPrepDays ?? 3;
       return {
-        label: `In ~${prepDays} to 5 days (Pre-Order)`,
+        label: `In ~${prepDays} to 5 days`,
         detail: 'Workshop preparation and materials schedule',
         stitchMins,
         totalMinutesNeeded: 0,
@@ -642,7 +642,7 @@ export default function ProductModal({
           reopenDate.setMinutes(reopenDate.getMinutes() + 5);
         }
         return {
-          label: `${reopenDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${reopenDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} (After Reopening)`,
+          label: `${reopenDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${reopenDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}`,
           detail: `Shifted for ${emergencyNotice?.reason || 'workshop break'}`,
           stitchMins: 0,
           totalMinutesNeeded: 5,
@@ -650,7 +650,7 @@ export default function ProductModal({
       }
       if (currentMins >= openMins && currentMins < closeMins - 10) {
         return {
-          label: 'Today in 2 to 5 mins (Packaging)',
+          label: 'Today in 2 to 5 mins',
           detail: 'Direct counter packaging at Pacific Mall Lucena',
           stitchMins: 0,
           totalMinutesNeeded: 5,
@@ -658,14 +658,14 @@ export default function ProductModal({
       }
       if (currentMins >= closeMins - 10) {
         return {
-          label: 'Tomorrow at 10:05 AM (Store Opening)',
+          label: 'Tomorrow at 10:05 AM',
           detail: 'Store closes at 8:00 PM • Ready at store opening',
           stitchMins: 0,
           totalMinutesNeeded: 5,
         };
       }
       return {
-        label: 'Today at 10:05 AM (Store Opening)',
+        label: 'Today at 10:05 AM',
         detail: 'Store opens at 10:00 AM • Ready shortly after opening',
         stitchMins: 0,
         totalMinutesNeeded: 5,
@@ -1516,7 +1516,7 @@ export default function ProductModal({
             {!isPersonalized && (
               <div className="flex items-center justify-between px-3 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-xs mt-1">
                 <span className="text-[0.72rem] text-text-dim font-medium">
-                  Estimated Ready for Pick-up:
+                  Claim Time:
                 </span>
                 <strong className="text-text-main font-mono text-xs font-bold">
                   {calculatedReadyTime.label}
@@ -1530,7 +1530,7 @@ export default function ProductModal({
                 <div className="flex flex-col gap-1.5 px-3 py-2.5 rounded-xl bg-bg-surface border border-border-glass text-xs">
                   <div className="flex items-center justify-between">
                     <span className="text-[0.72rem] text-text-dim font-medium">
-                      Estimated Ready for Pick-up:
+                      Claim Time:
                     </span>
                     <strong className="text-text-main font-mono text-xs font-bold">
                       {calculatedReadyTime.label}
@@ -1709,15 +1709,8 @@ export default function ProductModal({
 
           {/* Quantity Stepper & Direct Typing */}
           <div className="flex flex-col gap-2 border-t border-border-glass pt-3">
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex flex-col min-w-0">
-                <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Quantity</span>
-                <span className="text-[10px] text-text-dim/70 leading-snug">
-                  {isMultiLine
-                    ? `Auto-synced to ${bulkSummary.lineCount} pasted ${bulkSummary.lineCount === 1 ? 'line' : 'lines'}`
-                    : 'Type directly or step for bulk & pre-orders'}
-                </span>
-              </div>
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-text-dim uppercase tracking-wider">Quantity</span>
               <QuantityInput
                 value={!hasVariants ? 0 : quantity}
                 onChange={(q) => {
@@ -1728,8 +1721,7 @@ export default function ProductModal({
                 max={1000}
                 disabled={!hasVariants || isMultiLine}
                 size="md"
-                showPresets={hasVariants && !isMultiLine}
-                presets={[10, 25, 50, 100]}
+                showPresets={false}
                 ariaLabel={`Quantity for ${product.name}`}
               />
             </div>
