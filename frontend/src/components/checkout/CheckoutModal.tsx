@@ -820,11 +820,10 @@ export default function CheckoutModal({
 
         {/* Email Verification Required Alert Banner */}
         {isUnverifiedUser && (
-          <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/35 text-xs text-left mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+          <div className="p-3 rounded-xl bg-white/[0.04] border border-border-glass text-xs text-left mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
             <div className="flex items-start gap-2.5">
-              <span className="text-base leading-none shrink-0 mt-0.5">⚠️</span>
               <div className="flex flex-col leading-snug">
-                <strong className="font-bold text-amber-300">
+                <strong className="font-bold text-text-main">
                   Email Verification Required
                 </strong>
                 <span className="text-text-dim text-[11px] mt-0.5">
@@ -836,7 +835,7 @@ export default function CheckoutModal({
               type="button"
               onClick={handleResendVerification}
               disabled={isResendingEmail}
-              className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0 self-start sm:self-auto"
+              className="bg-primary hover:bg-primary/90 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0 self-start sm:self-auto"
             >
               {isResendingEmail ? 'Sending...' : 'Resend Verification Email'}
             </button>

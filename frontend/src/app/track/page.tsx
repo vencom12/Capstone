@@ -411,7 +411,7 @@ function OrderTrackerContent() {
           <div
             className={`px-3 py-1.5 rounded-xl text-xs font-semibold border flex items-center gap-1.5 shadow-xs ${
               isAwaitingManagement
-                ? 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                ? 'bg-white/10 text-text-main border-border-glass'
                 : isReady
                 ? 'bg-white/20 text-text-main border-white/30'
                 : isStitching
@@ -421,7 +421,7 @@ function OrderTrackerContent() {
                 : 'bg-white/10 text-text-main border-border-glass'
             }`}
           >
-            <span className={`w-2 h-2 rounded-full inline-block ${isAwaitingManagement ? 'bg-amber-400 animate-pulse' : 'bg-text-main'}`} />
+            <span className="w-2 h-2 rounded-full bg-text-main inline-block" />
             <span>
               {isAwaitingManagement
                 ? 'BEING PROCESSED BY MANAGEMENT'
@@ -444,9 +444,7 @@ function OrderTrackerContent() {
           <div className="flex flex-col items-center gap-1 relative z-10">
             <div
               className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
-                isAwaitingManagement
-                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
-                  : isQueue || isStitching || isReady || isCompleted
+                isAwaitingManagement || isQueue || isStitching || isReady || isCompleted
                   ? 'bg-white/20 text-text-main border border-white/30 shadow-xs'
                   : 'bg-bg-surface text-text-dim border border-border-glass'
               }`}
@@ -489,8 +487,8 @@ function OrderTrackerContent() {
 
         {/* Turnaround Status Notice */}
         {isAwaitingManagement ? (
-          <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3.5 text-center">
-            <span className="text-xs text-amber-300 font-bold block">
+          <div className="bg-white/5 border border-border-glass rounded-xl p-3.5 text-center">
+            <span className="text-xs text-text-main font-bold block">
               Being Processed by Management
             </span>
             <span className="text-[11px] text-text-dim mt-1 block leading-relaxed">

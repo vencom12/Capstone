@@ -835,14 +835,14 @@ export default function EmployeePage() {
                       key={tab.key}
                       onClick={() => setOrdersQueueTab(tab.key)}
                       className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer border ${ordersQueueTab === tab.key
-                          ? (tab.isSpecial ? 'bg-amber-500/25 text-amber-200 border-amber-500/50 shadow-sm' : 'bg-bg-surface text-text-main border-primary/60 shadow-sm')
-                          : (tab.isSpecial && tab.count > 0 ? 'bg-amber-500/10 text-amber-300 border-amber-500/30 hover:bg-amber-500/20' : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main')
+                          ? 'bg-bg-surface text-text-main border-primary/60 shadow-sm'
+                          : 'bg-white/5 text-text-dim border-border-glass hover:bg-white/10 hover:text-text-main'
                         }`}
                     >
                       {tab.label}
                       <span className={`px-1.5 py-0.5 rounded-full text-[0.6rem] font-extrabold ${ordersQueueTab === tab.key
-                          ? (tab.isSpecial ? 'bg-amber-500/40 text-amber-100' : 'bg-primary/20 text-primary')
-                          : (tab.isSpecial && tab.count > 0 ? 'bg-amber-500/20 text-amber-300' : 'bg-white/10 text-text-dim')
+                          ? 'bg-primary/20 text-primary'
+                          : 'bg-white/10 text-text-dim'
                         }`}>
                         {tab.count}
                       </span>
@@ -891,7 +891,7 @@ export default function EmployeePage() {
                                   )}
                                 </div>
                                 <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
-                                   ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40' :
+                                   ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-white/10 text-text-main border border-border-glass' :
                                      o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
                                      o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
                                        'bg-white/10 text-text-dim border border-white/20'
@@ -1189,7 +1189,7 @@ export default function EmployeePage() {
                               {/* Status Pill & Live Overdue/Remaining Badge */}
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider w-fit
-                                  ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30' :
+                                  ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-white/5 text-text-main border border-border-glass' :
                                     o.status === 'Preparing Order' ? 'bg-primary/10 text-primary border border-primary/20' :
                                     o.status === 'Ready For Pick Up' ? 'bg-success/10 text-success border border-success/20' :
                                       'bg-white/5 text-text-dim border border-border-glass'

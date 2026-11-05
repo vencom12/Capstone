@@ -243,7 +243,7 @@ export default function GCashPayment({
           }}
           className={`border border-dashed rounded-xl p-3 text-center transition-all ${
             !isEmailVerified
-              ? 'border-amber-500/30 bg-amber-500/[0.02] cursor-not-allowed opacity-70'
+              ? 'border-border-glass bg-white/[0.01] cursor-not-allowed opacity-50'
               : isDragging
               ? 'border-primary bg-primary/10 ring-2 ring-primary/40 cursor-pointer'
               : 'border-border-glass hover:border-white/40 bg-white/[0.01] hover:bg-white/[0.03] cursor-pointer'

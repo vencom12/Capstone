@@ -40,7 +40,7 @@ export function getOrderStage(order: Order): OrderStage {
   if (status === 'in transit' || progress >= 75) {
     return { label: 'Ready for Pick-up', hint: 'Claim at Eds Towels & Caps, Pacific Mall Lucena (10AM-8PM).', step: 4, tone: 'shipping', isActive: true };
   }
-  if (status.includes('awaiting') || status === 'pending') {
+  if (status.includes('awaiting') || status === 'pending' || (order as any).paymentStatus === 'unpaid') {
     return { label: 'Being Processed by Management', hint: 'Our management team is reviewing your order and confirming payment details before queueing.', step: 1, tone: 'pending', isActive: true };
   }
   if (progress >= 45) {
@@ -63,7 +63,7 @@ export function getOrderTitle(order: Order): string {
 }
 
 export const TONE_CLASSES: Record<OrderTone, string> = {
-  pending: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+  pending: 'bg-white/10 text-text-main border-white/20',
   progress: 'bg-primary/15 text-primary border-primary/30',
   shipping: 'bg-secondary/15 text-secondary border-secondary/30',
   done: 'bg-success/15 text-success border-success/30',
