@@ -251,7 +251,7 @@ export default function GCashPayment({
           }`}
         >
           <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
-          {receiptFile ? (
+          {receiptFile && !aiVerificationResult ? (
             <div className="flex items-center gap-3 p-1">
               {previewUrl && (
                 <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
@@ -259,24 +259,12 @@ export default function GCashPayment({
                 </div>
               )}
               <div className="flex flex-col text-left min-w-0 flex-1">
-                <span className="text-[0.78rem] text-text-main font-bold truncate">{receiptFile.name}</span>
-                <span className="text-[0.62rem] text-text-dim font-semibold flex items-center gap-1">
-                  <span>✓</span>
-                  <span>{(receiptFile.size / 1024).toFixed(0)} KB • Ready for scan</span>
+                <span className="text-[0.72rem] text-text-dim font-medium">
+                  Receipt attached — verifying...
                 </span>
               </div>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  document.getElementById('gcash-upload')?.click();
-                }}
-                className="text-[0.65rem] text-text-dim hover:text-text-main bg-white/5 hover:bg-white/10 px-2 py-1 rounded border border-border-glass cursor-pointer shrink-0"
-              >
-                Replace
-              </button>
             </div>
-          ) : (
+          ) : !receiptFile ? (
             <div className="flex flex-col items-center gap-1.5 py-1">
               <div className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${
                 isDragging
@@ -296,7 +284,7 @@ export default function GCashPayment({
                 Drop screenshot file, tap to choose photo, or press <strong className="text-text-main font-mono">Ctrl + V</strong> to paste
               </span>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
 
@@ -316,73 +304,79 @@ export default function GCashPayment({
 
       {/* Verification Notice or Friendly Encouragement Box */}
       {aiVerificationResult && !analyzing && (
-        <div className="flex flex-col gap-2 p-2.5 rounded-lg text-[0.72rem] font-medium border border-border-glass bg-white/[0.04] text-text-main">
-          <div className="flex items-center gap-1.5 font-bold">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-text-main">
-              {verified ? <polyline points="20 6 9 17 4 12" /> : <circle cx="12" cy="12" r="10" />}
-            </svg>
-            <span className="leading-relaxed">{aiVerificationResult}</span>
-          </div>
+        <div className="flex gap-3 p-2.5 rounded-lg text-[0.72rem] font-medium border border-border-glass bg-white/[0.04] text-text-main">
+          {/* Thumbnail beside message when receipt was rejected */}
+          {receiptFile && previewUrl && !verified && (
+            <div className="w-14 h-14 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0 mt-0.5">
+              <img src={previewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
+            </div>
+          )}
+          <div className="flex flex-col gap-2 flex-1 min-w-0">
+            <div className="flex items-start gap-1.5 font-bold">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="shrink-0 text-text-main mt-0.5">
+                {verified ? <polyline points="20 6 9 17 4 12" /> : <circle cx="12" cy="12" r="10" />}
+              </svg>
+              <span className="leading-relaxed">{aiVerificationResult}</span>
+            </div>
           
-          {!verified && !allowManualRef ? (
-            <div className="flex flex-col gap-2.5 border-t border-white/10 pt-2.5 mt-1">
+            {!verified && !allowManualRef ? (
               <button
                 type="button"
                 onClick={() => document.getElementById('gcash-upload')?.click()}
-                className="w-full bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-[0.78rem] transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-xl text-[0.75rem] transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                Upload Official GCash Receipt
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                Re-upload Receipt
               </button>
-            </div>
-          ) : !verified && allowManualRef ? (
-            <div className={`flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1 ${shakeManualRef ? 'animate-shake' : ''}`}>
-              <div className="flex items-center justify-between">
-                <span className="text-[0.75rem] text-text-main font-bold">
-                  Can't read clearly? You can also type your GCash Reference Number below:
-                </span>
-                {refTouched && !refError && manualRef.trim() && (
-                  <span className="text-primary text-[0.68rem] font-bold">✓ Ready</span>
+            ) : !verified && allowManualRef ? (
+              <div className={`flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1 ${shakeManualRef ? 'animate-shake' : ''}`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[0.75rem] text-text-main font-bold">
+                    Can't read clearly? You can also type your GCash Reference Number below:
+                  </span>
+                  {refTouched && !refError && manualRef.trim() && (
+                    <span className="text-primary text-[0.68rem] font-bold">✓ Ready</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-2 w-full">
+                  <input
+                    type="text"
+                    maxLength={19}
+                    placeholder="e.g. 1002 9384 1029"
+                    value={manualRef}
+                    onChange={(e) => {
+                      handleRefChange(e.target.value);
+                      if (refTouched) validateManualRef(e.target.value);
+                    }}
+                    onBlur={handleManualRefBlur}
+                    className={`w-full bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.82rem] outline-none transition-all ${
+                      refTouched && refError
+                        ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
+                        : 'border-border-glass focus:border-primary'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!isEmailVerified) {
+                        showToast('Email verification required: Please verify your email before placing an order.', 'error');
+                        return;
+                      }
+                      handleConfirmManualRef();
+                    }}
+                    disabled={!isEmailVerified}
+                    className="w-full bg-primary text-white font-bold px-4 py-2.5 rounded-lg text-xs hover:bg-primary/90 transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    <span>Confirm Order</span>
+                    <span aria-hidden="true">→</span>
+                  </button>
+                </div>
+                {refTouched && refError && (
+                  <InlineError message={refError} variant="field" />
                 )}
               </div>
-              <div className="flex flex-col gap-2 w-full">
-                <input
-                  type="text"
-                  maxLength={19}
-                  placeholder="e.g. 1002 9384 1029"
-                  value={manualRef}
-                  onChange={(e) => {
-                    handleRefChange(e.target.value);
-                    if (refTouched) validateManualRef(e.target.value);
-                  }}
-                  onBlur={handleManualRefBlur}
-                  className={`w-full bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.82rem] outline-none transition-all ${
-                    refTouched && refError
-                      ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                      : 'border-border-glass focus:border-primary'
-                  }`}
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (!isEmailVerified) {
-                      showToast('Email verification required: Please verify your email before placing an order.', 'error');
-                      return;
-                    }
-                    handleConfirmManualRef();
-                  }}
-                  disabled={!isEmailVerified}
-                  className="w-full bg-primary text-white font-bold px-4 py-2.5 rounded-lg text-xs hover:bg-primary/90 transition-all cursor-pointer shadow-sm text-center flex items-center justify-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <span>Confirm Order</span>
-                  <span aria-hidden="true">→</span>
-                </button>
-              </div>
-              {refTouched && refError && (
-                <InlineError message={refError} variant="field" />
-              )}
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
       )}
 
