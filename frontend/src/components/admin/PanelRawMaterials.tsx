@@ -874,9 +874,14 @@ export default function PanelRawMaterials({
   };
 
   const handleCopyLowStockRequisition = () => {
-    const items = lowStockItems.length > 0 ? lowStockItems : inventory;
+    const baseItems = lowStockItems.length > 0 ? lowStockItems : inventory;
+    const items = baseItems.filter((item) => {
+      const id = item.id || item._id;
+      const packs = customSlipQuantities[id] !== undefined ? customSlipQuantities[id] : calculateSuggestedRestockPacks(item);
+      return packs > 0;
+    });
     if (items.length === 0) {
-      showToast('All items are in stock.', 'info');
+      showToast('No items with quantity greater than 0 to copy.', 'info');
       return;
     }
     const phone = businessPhone || '0928 810 3928';
@@ -894,7 +899,7 @@ export default function PanelRawMaterials({
     text += `\nPlease confirm availability, current invoice pricing, and estimated delivery date. Thank you!`;
 
     navigator.clipboard.writeText(text).then(() => {
-      showToast(`Copied ${items.length} items to clipboard`, 'success');
+      showToast(`Copied ${items.length} ${items.length === 1 ? 'item' : 'items'} to clipboard`, 'success');
     }).catch(() => {
       showToast('Failed to copy to clipboard', 'error');
     });
@@ -915,13 +920,18 @@ export default function PanelRawMaterials({
 
   const generateShoppingListImage = (overrides?: Record<string, number>): Promise<{ blob: Blob; dataUrl: string } | null> => {
     return new Promise((resolve) => {
-      const items = lowStockItems.length > 0 ? lowStockItems : inventory;
-      if (!items || items.length === 0) {
+      const baseItems = lowStockItems.length > 0 ? lowStockItems : inventory;
+      if (!baseItems || baseItems.length === 0) {
         showToast('No materials to generate list for', 'error');
         resolve(null);
         return;
       }
       const qtyMap = overrides || customSlipQuantities;
+      const items = baseItems.filter((item) => {
+        const id = item.id || item._id;
+        const packs = qtyMap[id] !== undefined ? qtyMap[id] : calculateSuggestedRestockPacks(item);
+        return packs > 0;
+      });
 
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
@@ -935,7 +945,8 @@ export default function PanelRawMaterials({
       const baseHeaderHeight = 175;
       const itemRowHeight = 44;
       const footerHeight = 135;
-      const height = baseHeaderHeight + (items.length * itemRowHeight) + footerHeight;
+      const rowCount = Math.max(1, items.length);
+      const height = baseHeaderHeight + (rowCount * itemRowHeight) + footerHeight;
 
       canvas.width = width * scale;
       canvas.height = height * scale;
@@ -1001,44 +1012,52 @@ export default function PanelRawMaterials({
 
       // Items list
       let currentY = 176;
-      items.forEach((item, index) => {
-        // Alternating row background
-        if (index % 2 === 1) {
-          ctx.fillStyle = '#F8FAFC';
-          ctx.fillRect(25, currentY - 14, width - 50, itemRowHeight);
-        }
-
-        const id = item.id || item._id;
-        const packSize = item.packSize && item.packSize > 1 ? item.packSize : 1;
-        const packs = qtyMap[id] !== undefined ? qtyMap[id] : calculateSuggestedRestockPacks(item);
-        const unit = item.unit || 'units';
-
-        // Material name
-        ctx.textAlign = 'left';
-        ctx.fillStyle = '#0F172A';
-        ctx.font = '600 13px system-ui, -apple-system, sans-serif';
-        const displayName = packSize > 1 ? `${item.item} (${packSize} pcs/pack)` : item.item;
-        const truncatedName = displayName.length > 38 ? `${displayName.slice(0, 36)}...` : displayName;
-        ctx.fillText(truncatedName, 38, currentY + 5);
-
-        // Order quantity (clean number + unit or packs)
-        ctx.textAlign = 'right';
-        ctx.fillStyle = '#0F172A';
-        ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
-        const qtyLabel = packSize > 1
-          ? `${packs} ${packs === 1 ? 'Pack' : 'Packs'} (${packs * packSize} ${unit})`
-          : `${packs} ${unit}`;
-        ctx.fillText(qtyLabel, width - 38, currentY + 5);
-
-        // Row separator
-        ctx.strokeStyle = '#F1F5F9';
-        ctx.beginPath();
-        ctx.moveTo(25, currentY + 22);
-        ctx.lineTo(width - 25, currentY + 22);
-        ctx.stroke();
-
+      if (items.length === 0) {
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#94A3B8';
+        ctx.font = 'italic 12px system-ui, -apple-system, sans-serif';
+        ctx.fillText('No items selected (set a quantity above 0 to include on slip)', width / 2, currentY + 5);
         currentY += itemRowHeight;
-      });
+      } else {
+        items.forEach((item, index) => {
+          // Alternating row background
+          if (index % 2 === 1) {
+            ctx.fillStyle = '#F8FAFC';
+            ctx.fillRect(25, currentY - 14, width - 50, itemRowHeight);
+          }
+
+          const id = item.id || item._id;
+          const packSize = item.packSize && item.packSize > 1 ? item.packSize : 1;
+          const packs = qtyMap[id] !== undefined ? qtyMap[id] : calculateSuggestedRestockPacks(item);
+          const unit = item.unit || 'units';
+
+          // Material name
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#0F172A';
+          ctx.font = '600 13px system-ui, -apple-system, sans-serif';
+          const displayName = packSize > 1 ? `${item.item} (${packSize} pcs/pack)` : item.item;
+          const truncatedName = displayName.length > 38 ? `${displayName.slice(0, 36)}...` : displayName;
+          ctx.fillText(truncatedName, 38, currentY + 5);
+
+          // Order quantity (clean number + unit or packs)
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#0F172A';
+          ctx.font = 'bold 13px system-ui, -apple-system, sans-serif';
+          const qtyLabel = packSize > 1
+            ? `${packs} ${packs === 1 ? 'Pack' : 'Packs'} (${packs * packSize} ${unit})`
+            : `${packs} ${unit}`;
+          ctx.fillText(qtyLabel, width - 38, currentY + 5);
+
+          // Row separator
+          ctx.strokeStyle = '#F1F5F9';
+          ctx.beginPath();
+          ctx.moveTo(25, currentY + 22);
+          ctx.lineTo(width - 25, currentY + 22);
+          ctx.stroke();
+
+          currentY += itemRowHeight;
+        });
+      }
 
       // Summary & Footer
       currentY += 12;
@@ -2761,10 +2780,10 @@ export default function PanelRawMaterials({
                   return (
                     <div
                       key={id}
-                      className="flex items-center justify-between gap-3 text-xs bg-white/5 border border-white/5 px-3 py-1.5 rounded-lg"
+                      className={`flex items-center justify-between gap-3 text-xs bg-white/5 border border-white/5 px-3 py-1.5 rounded-lg transition-opacity ${currentVal === 0 ? 'opacity-50' : ''}`}
                     >
                       <div className="flex flex-col min-w-0">
-                        <span className="truncate font-semibold text-text-main text-[0.82rem]">{item.item}</span>
+                        <span className={`truncate font-semibold text-text-main text-[0.82rem] ${currentVal === 0 ? 'line-through text-text-dim' : ''}`}>{item.item}</span>
                         <span className="text-[10px] text-text-dim">
                           Current: {item.count} {item.unit || 'PCs'} • Threshold: {item.minThreshold || 10}
                           {packSize > 1 ? ` • ${packSize} pcs/pack` : ''}
@@ -2794,7 +2813,7 @@ export default function PanelRawMaterials({
               </div>
             </div>
 
-            <div className="bg-bg-surface border border-border-glass rounded-xl p-3 flex justify-center items-center max-h-[50vh] overflow-y-auto">
+            <div className="bg-bg-surface border border-border-glass rounded-xl p-3 flex justify-center items-center">
               <img
                 src={shoppingListImageUrl}
                 alt="Supplier Restock Slip"
