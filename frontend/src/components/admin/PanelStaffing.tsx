@@ -888,7 +888,7 @@ export default function PanelStaffing({
           key={shakeKey}
           noValidate
           onSubmit={handleSubmit}
-          className={`modal-stack text-left max-h-[80vh] overflow-y-auto pr-1 ${shakeKey > 0 ? 'animate-shake' : ''}`}
+          className={`modal-stack text-left pr-1 ${shakeKey > 0 ? 'animate-shake' : ''}`}
         >
           <div className="modal-section">
             <label className="modal-label flex items-center justify-between">

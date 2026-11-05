@@ -1087,7 +1087,7 @@ export default function PanelManageDesigns({
           key={shakeKey}
           noValidate
           onSubmit={handleSubmit}
-          className={`text-left max-h-[82vh] overflow-y-auto pr-1 flex flex-col gap-2.5 ${shakeKey > 0 ? 'animate-shake' : ''}`}
+          className={`text-left pr-1 flex flex-col gap-2.5 ${shakeKey > 0 ? 'animate-shake' : ''}`}
         >
           {/* Row 1: Product Name & Category */}
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">

@@ -113,6 +113,7 @@ export default function GlassModal({
           rounded-xl overflow-hidden
           shadow-2xl
           animate-[modalScaleUp_0.3s_cubic-bezier(0.34,1.56,0.64,1)]
+          ${noPadding ? '' : 'pb-4 sm:pb-5'}
           ${className}
         `}
       >
@@ -141,7 +142,7 @@ export default function GlassModal({
           </div>
         )}
 
-        <div className={`flex-1 overflow-y-auto touch-scroll overscroll-contain ${noPadding ? '' : (title ? 'p-4 sm:p-6 pt-3' : 'p-4 sm:p-6')}`}>
+        <div className={`flex-1 min-h-0 overflow-y-auto touch-scroll overscroll-contain ${noPadding ? '' : (title ? 'px-4 sm:px-6 pt-3 pb-1' : 'px-4 sm:px-6 pt-4 sm:pt-6 pb-1')}`}>
           {children}
         </div>
 

@@ -726,8 +726,8 @@ export default function CheckoutModal({
   ];
 
   return (
-    <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[880px]" noPadding>
-      <div className="p-4 sm:p-5 flex flex-col">
+    <GlassModal isOpen={isOpen} onClose={() => handleModalClose(false)} maxWidth="max-w-[880px]" noPadding className="pb-4 sm:pb-5">
+      <div className="px-4 sm:px-5 pt-4 sm:pt-5 pb-1 flex flex-col">
         {/* Sticky/Fixed Modal Header with Back / Return Button */}
         <div className="flex justify-between items-center pb-3 mb-3 border-b border-border-glass/40 pr-10">
           <div className="flex items-center gap-3">

@@ -921,7 +921,7 @@ export default function BasketView({ onGoToShop, onOpenCheckout }: BasketViewPro
             onClose={() => setEditingItem(null)}
             maxWidth="max-w-[560px]"
           >
-            <div className="flex flex-col gap-4 text-left p-1 max-h-[82vh] overflow-y-auto pr-1">
+            <div className="flex flex-col gap-4 text-left p-1 pr-1">
               {/* Header */}
               <div className="flex flex-col gap-1.5 border-b border-border-glass pb-3 pr-10">
                 <div className="flex items-center gap-2 flex-wrap">
