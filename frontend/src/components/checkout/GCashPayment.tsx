@@ -254,14 +254,27 @@ export default function GCashPayment({
           {receiptFile && !aiVerificationResult ? (
             <div className="flex items-center gap-3 p-1">
               {previewUrl && (
-                <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
+                <div className="w-14 h-14 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
                   <img src={previewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
                 </div>
               )}
               <div className="flex flex-col text-left min-w-0 flex-1">
-                <span className="text-[0.72rem] text-text-dim font-medium">
-                  Receipt attached — verifying...
-                </span>
+                {analyzing ? (
+                  <div className="flex flex-col gap-0.5">
+                    <div className="flex items-center gap-2">
+                      <svg className="w-3.5 h-3.5 animate-spin text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
+                        <path d="M12 2a10 10 0 0 1 10 10" />
+                      </svg>
+                      <span className="text-[0.78rem] text-text-main font-bold">Checking your receipt...</span>
+                    </div>
+                    <span className="text-[0.65rem] text-text-dim pl-5.5">Confirming payment details</span>
+                  </div>
+                ) : (
+                  <span className="text-[0.72rem] text-text-dim font-medium">
+                    Receipt attached — ready
+                  </span>
+                )}
               </div>
             </div>
           ) : !receiptFile ? (
@@ -287,20 +300,6 @@ export default function GCashPayment({
           ) : null}
         </div>
       </div>
-
-      {/* Receipt Processing Status */}
-      {analyzing && (
-        <div className="flex items-center gap-2.5 bg-white/[0.04] border border-border-glass p-2.5 rounded-xl">
-          <svg className="w-3.5 h-3.5 animate-spin text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
-            <path d="M12 2a10 10 0 0 1 10 10" />
-          </svg>
-          <div className="flex flex-col">
-            <span className="text-[0.75rem] text-text-main font-bold">Checking your receipt...</span>
-            <span className="text-[0.65rem] text-text-dim">Confirming payment details</span>
-          </div>
-        </div>
-      )}
 
       {/* Verification Notice or Friendly Encouragement Box */}
       {aiVerificationResult && !analyzing && (
