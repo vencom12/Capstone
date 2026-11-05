@@ -49,6 +49,7 @@ router.patch('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'
 router.put('/settings', adminAuth(), auditLogger('Settings', 'UPDATE_SETTINGS'), adminController.updateSettings);
 router.post('/settings/logo', adminAuth(), upload.single('logo'), auditLogger('Settings', 'UPLOAD_LOGO'), adminController.uploadBusinessLogo);
 router.post('/settings/gcash-qr', adminAuth(), upload.single('qr'), auditLogger('Settings', 'UPLOAD_GCASH_QR'), adminController.uploadGCashQr);
+router.get('/settings/ai-models', adminAuth(), adminController.getAvailableAIModels);
 router.post('/settings/test-ai', adminAuth(), adminController.testAISettings);
 
 // Intelligence & Forecasting (Admin Only)

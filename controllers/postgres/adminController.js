@@ -1311,6 +1311,30 @@ exports.updateSettings = async (req, res) => {
     }
 };
 
+exports.getAvailableAIModels = async (req, res) => {
+    try {
+        const apiKey = process.env.GROQ_API_KEY;
+        const settings = await prisma.systemSettings.findFirst();
+        const providerUrl = req.query.providerUrl || settings?.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions';
+        const forceRefresh = req.query.refresh === 'true';
+
+        const { discoverActiveProviderModels, DEFAULT_CHAT_FALLBACKS, DEFAULT_VISION_FALLBACKS } = require('../../utils/groqClient');
+        const discovered = await discoverActiveProviderModels(apiKey, providerUrl, forceRefresh);
+
+        const chatList = discovered.chatModels.length > 0 ? discovered.chatModels : DEFAULT_CHAT_FALLBACKS;
+        const visionList = discovered.visionModels.length > 0 ? discovered.visionModels : DEFAULT_VISION_FALLBACKS;
+
+        res.json({
+            success: true,
+            chatModels: chatList,
+            visionModels: visionList
+        });
+    } catch (err) {
+        console.error('Fetch AI models error:', err);
+        res.status(500).json({ success: false, message: 'Failed to retrieve live AI models' });
+    }
+};
+
 exports.testAISettings = async (req, res) => {
     try {
         const { aiChatModel, aiProviderUrl } = req.body;
@@ -1323,40 +1347,33 @@ exports.testAISettings = async (req, res) => {
             });
         }
 
-        const fetch = global.fetch || require('node-fetch');
-        const response = await fetch(aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                model: aiChatModel || 'llama-3.3-70b-versatile',
-                messages: [{ role: 'user', content: 'Connection test ping. Reply with only one word: OK' }],
-                max_tokens: 5
-            })
+        const { fetchGroqChatWithFallback } = require('../../utils/groqClient');
+        const data = await fetchGroqChatWithFallback({
+            apiKey,
+            url: aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions',
+            primaryModel: aiChatModel || 'llama-3.3-70b-versatile',
+            messages: [{ role: 'user', content: 'Connection test ping. Reply with only one word: OK' }],
+            max_tokens: 5
         });
 
-        const data = await response.json();
+        const reply = data?.choices?.[0]?.message?.content?.trim() || 'OK';
+        const autoHealed = Boolean(data?.autoHealedFrom && data?.usedModel);
 
-        if (response.ok && data.choices && data.choices[0]) {
-            res.json({
-                success: true,
-                message: "Connection verification successful!",
-                reply: data.choices[0].message.content.trim()
-            });
-        } else {
-            const errMsg = data.error?.message || response.statusText || "Provider rejected the request.";
-            res.status(400).json({
-                success: false,
-                message: `Connection failed: ${errMsg}`
-            });
-        }
+        res.json({
+            success: true,
+            autoHealed,
+            activeModel: data?.usedModel || aiChatModel,
+            previousModel: data?.autoHealedFrom || null,
+            message: autoHealed
+                ? `Model "${data.autoHealedFrom}" was deprecated — automatically healed and saved "${data.usedModel}"!`
+                : `Connection verified (${data?.usedModel || aiChatModel})!`,
+            reply
+        });
     } catch (err) {
         console.error('Test AI settings error:', err);
-        res.status(500).json({
+        res.status(400).json({
             success: false,
-            message: `Connection diagnostic error: ${err.message}`
+            message: `Connection failed: ${err.message}`
         });
     }
 };

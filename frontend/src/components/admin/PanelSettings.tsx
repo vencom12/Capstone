@@ -1,180 +1,219 @@
-'use client';
-
-import { useState, useEffect } from 'react';
-import { api, apiFetch } from '@/lib/api';
-import { showToast } from '@/components/ui/Toast';
-interface PanelSettingsProps {
-  theme: 'light' | 'dark';
-  toggleTheme: () => void;
-  giftPrice?: number;
-  setGiftPrice?: (price: number) => void;
-  handleUpdateGiftPrice?: () => Promise<void>;
-  isUpdatingSettings?: boolean;
-}
-
-type SettingsTab = 'store' | 'fulfillment' | 'ai' | 'appearance' | 'security';
-
-export default function PanelSettings({
-  theme,
-  toggleTheme,
-}: PanelSettingsProps) {
-  // Active Navigation Tab
-  const [activeTab, setActiveTab] = useState<SettingsTab>('store');
-
-  // Security / Password State
-  const [currPass, setCurrPass] = useState('');
-  const [newPass, setNewPass] = useState('');
-  const [confirmPass, setConfirmPass] = useState('');
-  const [showSecPass, setShowSecPass] = useState(false);
-  const [isChangingPass, setIsChangingPass] = useState(false);
-  const [passError, setPassError] = useState('');
-  const [passSuccess, setPassSuccess] = useState('');
-
-  // AI Settings State
-  const [aiChatModel, setAiChatModel] = useState('llama-3.3-70b-versatile');
-  const [aiVisionModel, setAiVisionModel] = useState('llama-3.2-11b-vision-preview');
-  const [aiProviderUrl, setAiProviderUrl] = useState('https://api.groq.com/openai/v1/chat/completions');
-  const [minConfidenceScore, setMinConfidenceScore] = useState(75); // displayed as percentage (0-100)
-  const [autoReplyReviews, setAutoReplyReviews] = useState<boolean>(true);
-  
-  // Business Profile Settings State
-  const [businessName, setBusinessName] = useState('STITCH-OPT DESIGNS');
-  const [receiptTagline, setReceiptTagline] = useState('Premium Embroidery Services');
-  const [businessAddress, setBusinessAddress] = useState('123 Digital Thread Lane, Manila');
-  const [businessContact, setBusinessContact] = useState('0928 810 3928');
-  const [businessEmail, setBusinessEmail] = useState('contact@stitch-opt.com');
-  const [businessWebsite, setBusinessWebsite] = useState('www.stitch-opt.com');
-  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
-  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState('');
-
-  // Artisan Workshop & Capacity Calibration (Eds Towels & Caps)
-  const [artisanSecondsPerLetter, setArtisanSecondsPerLetter] = useState<number>(4.0);
-  const [artisanHandlingMinutes, setArtisanHandlingMinutes] = useState<number>(1.0);
-  const [artisanCapOffsetMinutes, setArtisanCapOffsetMinutes] = useState<number>(0.5);
-  const [artisanDailyMinutes, setArtisanDailyMinutes] = useState<number>(500.0);
-  const [expressLanePercent, setExpressLanePercent] = useState<number>(35.0);
-  const [efficiencyFactor, setEfficiencyFactor] = useState<number>(85);
-  const [maxBulkPiecesPerDay, setMaxBulkPiecesPerDay] = useState<number>(50);
-  const [batchThrottlePeriod, setBatchThrottlePeriod] = useState<string>('week');
-  const [largeOrderQuoteThreshold, setLargeOrderQuoteThreshold] = useState<number>(100);
-  const [smallGarmentLetterRate, setSmallGarmentLetterRate] = useState<number>(7);
-  const [bigGarmentLetterRate, setBigGarmentLetterRate] = useState<number>(10);
-  const [preOrderPrepDays, setPreOrderPrepDays] = useState<number>(3);
-  const [isSavingArtisan, setIsSavingArtisan] = useState(false);
-
-  const [isFetchingSettings, setIsFetchingSettings] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isSavingBiz, setIsSavingBiz] = useState(false);
-  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
-  const [isUploadingQr, setIsUploadingQr] = useState(false);
-
-  // Suggested Model Options
-  const chatModelSuggestions = [
-    { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B Versatile (Recommended)' },
-    { value: 'llama-3.1-8b-instant', label: 'Llama 3.1 8B Instant (Ultra-Fast)' },
-    { value: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B (High Context)' }
-  ];
-
-  const visionModelSuggestions = [
-    { value: 'qwen/qwen3.8-27b', label: 'Qwen 3.8 27B Vision (Recommended • Active)' },
-    { value: 'qwen/qwen3.6-27b', label: 'Qwen 3.6 27B Vision' }
-  ];
-
-  const fetchSettings = async () => {
-    setIsFetchingSettings(true);
-    try {
-      const res = await api.get<any>('/api/admin/settings');
-      if (res) {
-        if (res.aiChatModel) setAiChatModel(res.aiChatModel);
-        if (res.aiVisionModel) setAiVisionModel(res.aiVisionModel);
-        if (res.aiProviderUrl) setAiProviderUrl(res.aiProviderUrl);
-        if (res.minConfidenceScore !== undefined) {
-          setMinConfidenceScore(Math.round(res.minConfidenceScore * 100));
-        }
-        if (res.businessName) setBusinessName(res.businessName);
-        if (res.receiptTagline) setReceiptTagline(res.receiptTagline);
-        if (res.businessAddress) setBusinessAddress(res.businessAddress);
-        if (res.businessContact) setBusinessContact(res.businessContact);
-        if (res.businessEmail) setBusinessEmail(res.businessEmail);
-        if (res.businessWebsite) setBusinessWebsite(res.businessWebsite);
-        if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
-        if (res.gcashQrCodeUrl) setGcashQrCodeUrl(res.gcashQrCodeUrl);
-        if (res.autoReplyReviews !== undefined) setAutoReplyReviews(!!res.autoReplyReviews);
-        if (res.artisanSecondsPerLetter !== undefined) setArtisanSecondsPerLetter(res.artisanSecondsPerLetter);
-        if (res.artisanHandlingMinutes !== undefined) setArtisanHandlingMinutes(res.artisanHandlingMinutes);
-        if (res.artisanCapOffsetMinutes !== undefined) setArtisanCapOffsetMinutes(res.artisanCapOffsetMinutes);
-        if (res.artisanDailyMinutes !== undefined) setArtisanDailyMinutes(res.artisanDailyMinutes);
-        if (res.expressLanePercent !== undefined) setExpressLanePercent(res.expressLanePercent);
-        if (res.efficiencyFactor !== undefined) setEfficiencyFactor(Math.round(res.efficiencyFactor * 100));
-        if (res.maxBulkPiecesPerDay !== undefined) setMaxBulkPiecesPerDay(res.maxBulkPiecesPerDay);
-        if (res.batchThrottlePeriod) setBatchThrottlePeriod(res.batchThrottlePeriod);
-        if (res.largeOrderQuoteThreshold !== undefined) setLargeOrderQuoteThreshold(res.largeOrderQuoteThreshold);
-        if (res.smallGarmentLetterRate !== undefined) setSmallGarmentLetterRate(Number(res.smallGarmentLetterRate) || 7);
-        if (res.bigGarmentLetterRate !== undefined) setBigGarmentLetterRate(Number(res.bigGarmentLetterRate) || 10);
-        if (res.preOrderPrepDays !== undefined) setPreOrderPrepDays(Number(res.preOrderPrepDays) || 3);
-      }
-    } catch (e) {
-      console.error('[Settings] Failed to fetch settings:', e);
-      showToast('Failed to load settings', 'error');
-    } finally {
-      setIsFetchingSettings(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchSettings();
-  }, []);
-
-  const handleSaveAISettings = async () => {
-    setIsSaving(true);
-    try {
-      await api.put('/api/admin/settings', {
-        aiChatModel: aiChatModel.trim(),
-        aiVisionModel: aiVisionModel.trim(),
-        aiProviderUrl: aiProviderUrl.trim(),
-        minConfidenceScore: parseFloat((minConfidenceScore / 100).toFixed(2)),
-        autoReplyReviews: !!autoReplyReviews
-      });
-      showToast('AI & Automation settings saved', 'success');
-    } catch (e: any) {
-      console.error(e);
-      showToast(e.message || 'Failed to save settings', 'error');
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleResetAISettings = () => {
-    setAiChatModel('llama-3.3-70b-versatile');
-    setAiVisionModel('llama-3.2-11b-vision-preview');
-    setAiProviderUrl('https://api.groq.com/openai/v1/chat/completions');
-    setMinConfidenceScore(75);
-    setAutoReplyReviews(true);
-    setPingResult(null);
-    showToast('AI settings reset. Click Save.', 'info');
-  };
-
-  const handleSaveBizSettings = async () => {
-    setIsSavingBiz(true);
-    try {
-      await api.put('/api/admin/settings', {
-        businessName: businessName.trim(),
-        receiptTagline: receiptTagline.trim(),
-        businessAddress: businessAddress.trim(),
-        businessContact: businessContact.trim(),
-        businessEmail: businessEmail.trim(),
-        businessWebsite: businessWebsite.trim(),
-        businessLogoUrl: businessLogoUrl || null
-      });
-      showToast('Store profile saved', 'success');
-    } catch (e: any) {
-      console.error(e);
-      showToast(e.message || 'Failed to save profile', 'error');
-    } finally {
-      setIsSavingBiz(false);
-    }
-  };
-
+'use client';
+
+import { useState, useEffect } from 'react';
+import { api, apiFetch } from '@/lib/api';
+import { showToast } from '@/components/ui/Toast';
+interface PanelSettingsProps {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
+  giftPrice?: number;
+  setGiftPrice?: (price: number) => void;
+  handleUpdateGiftPrice?: () => Promise<void>;
+  isUpdatingSettings?: boolean;
+}
+
+type SettingsTab = 'store' | 'fulfillment' | 'ai' | 'appearance' | 'security';
+
+export default function PanelSettings({
+  theme,
+  toggleTheme,
+}: PanelSettingsProps) {
+  // Active Navigation Tab
+  const [activeTab, setActiveTab] = useState<SettingsTab>('store');
+
+  // Security / Password State
+  const [currPass, setCurrPass] = useState('');
+  const [newPass, setNewPass] = useState('');
+  const [confirmPass, setConfirmPass] = useState('');
+  const [showSecPass, setShowSecPass] = useState(false);
+  const [isChangingPass, setIsChangingPass] = useState(false);
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
+
+  // AI Settings State
+  const [aiChatModel, setAiChatModel] = useState('llama-3.3-70b-versatile');
+  const [aiVisionModel, setAiVisionModel] = useState('llama-3.2-11b-vision-preview');
+  const [aiProviderUrl, setAiProviderUrl] = useState('https://api.groq.com/openai/v1/chat/completions');
+  const [minConfidenceScore, setMinConfidenceScore] = useState(75); // displayed as percentage (0-100)
+  const [autoReplyReviews, setAutoReplyReviews] = useState<boolean>(true);
+  
+  // Business Profile Settings State
+  const [businessName, setBusinessName] = useState('STITCH-OPT DESIGNS');
+  const [receiptTagline, setReceiptTagline] = useState('Premium Embroidery Services');
+  const [businessAddress, setBusinessAddress] = useState('123 Digital Thread Lane, Manila');
+  const [businessContact, setBusinessContact] = useState('0928 810 3928');
+  const [businessEmail, setBusinessEmail] = useState('contact@stitch-opt.com');
+  const [businessWebsite, setBusinessWebsite] = useState('www.stitch-opt.com');
+  const [businessLogoUrl, setBusinessLogoUrl] = useState('');
+  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState('');
+
+  // Artisan Workshop & Capacity Calibration (Eds Towels & Caps)
+  const [artisanSecondsPerLetter, setArtisanSecondsPerLetter] = useState<number>(4.0);
+  const [artisanHandlingMinutes, setArtisanHandlingMinutes] = useState<number>(1.0);
+  const [artisanCapOffsetMinutes, setArtisanCapOffsetMinutes] = useState<number>(0.5);
+  const [artisanDailyMinutes, setArtisanDailyMinutes] = useState<number>(500.0);
+  const [expressLanePercent, setExpressLanePercent] = useState<number>(35.0);
+  const [efficiencyFactor, setEfficiencyFactor] = useState<number>(85);
+  const [maxBulkPiecesPerDay, setMaxBulkPiecesPerDay] = useState<number>(50);
+  const [batchThrottlePeriod, setBatchThrottlePeriod] = useState<string>('week');
+  const [largeOrderQuoteThreshold, setLargeOrderQuoteThreshold] = useState<number>(100);
+  const [smallGarmentLetterRate, setSmallGarmentLetterRate] = useState<number>(7);
+  const [bigGarmentLetterRate, setBigGarmentLetterRate] = useState<number>(10);
+  const [preOrderPrepDays, setPreOrderPrepDays] = useState<number>(3);
+  const [isSavingArtisan, setIsSavingArtisan] = useState(false);
+
+  const [isFetchingSettings, setIsFetchingSettings] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSavingBiz, setIsSavingBiz] = useState(false);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingQr, setIsUploadingQr] = useState(false);
+
+  // Suggested Model Options (Dynamically synced from live provider /models endpoint)
+  const [chatModelSuggestions, setChatModelSuggestions] = useState([
+    { value: 'llama-3.3-70b-versatile', label: 'llama-3.3-70b-versatile (Recommended • Active)' },
+    { value: 'llama-3.1-8b-instant', label: 'llama-3.1-8b-instant (Ultra-Fast • Active)' },
+    { value: 'qwen/qwen3-32b', label: 'qwen/qwen3-32b (Active)' },
+    { value: 'gemma2-9b-it', label: 'gemma2-9b-it (Active)' }
+  ]);
+
+  const [visionModelSuggestions, setVisionModelSuggestions] = useState([
+    { value: 'qwen/qwen3.8-27b', label: 'qwen/qwen3.8-27b (Recommended • Active)' },
+    { value: 'qwen/qwen3.6-27b', label: 'qwen/qwen3.6-27b (Active)' },
+    { value: 'meta-llama/llama-4-scout-17b-16e-instruct', label: 'meta-llama/llama-4-scout-17b-16e-instruct (Active)' }
+  ]);
+  const [isSyncingModels, setIsSyncingModels] = useState(false);
+
+  const syncLiveAIModels = async (forceRefresh = false) => {
+    setIsSyncingModels(true);
+    try {
+      const res = await api.get<any>(`/api/admin/settings/ai-models${forceRefresh ? '?refresh=true' : ''}`);
+      if (res && res.success) {
+        if (Array.isArray(res.chatModels) && res.chatModels.length > 0) {
+          setChatModelSuggestions(
+            res.chatModels.map((id: string, idx: number) => ({
+              value: id,
+              label: idx === 0 ? `${id} (Recommended • Active)` : `${id} (Active)`
+            }))
+          );
+        }
+        if (Array.isArray(res.visionModels) && res.visionModels.length > 0) {
+          setVisionModelSuggestions(
+            res.visionModels.map((id: string, idx: number) => ({
+              value: id,
+              label: idx === 0 ? `${id} (Recommended • Active)` : `${id} (Active)`
+            }))
+          );
+        }
+        if (forceRefresh) {
+          showToast('Synced active models from provider', 'success');
+        }
+      }
+    } catch (e) {
+      console.warn('[Settings] Live model discovery fallback:', e);
+      if (forceRefresh) {
+        showToast('Could not reach provider model list; using verified fallbacks', 'info');
+      }
+    } finally {
+      setIsSyncingModels(false);
+    }
+  };
+
+  const fetchSettings = async () => {
+    setIsFetchingSettings(true);
+    try {
+      const res = await api.get<any>('/api/admin/settings');
+      if (res) {
+        if (res.aiChatModel) setAiChatModel(res.aiChatModel);
+        if (res.aiVisionModel) setAiVisionModel(res.aiVisionModel);
+        if (res.aiProviderUrl) setAiProviderUrl(res.aiProviderUrl);
+        if (res.minConfidenceScore !== undefined) {
+          setMinConfidenceScore(Math.round(res.minConfidenceScore * 100));
+        }
+        if (res.businessName) setBusinessName(res.businessName);
+        if (res.receiptTagline) setReceiptTagline(res.receiptTagline);
+        if (res.businessAddress) setBusinessAddress(res.businessAddress);
+        if (res.businessContact) setBusinessContact(res.businessContact);
+        if (res.businessEmail) setBusinessEmail(res.businessEmail);
+        if (res.businessWebsite) setBusinessWebsite(res.businessWebsite);
+        if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
+        if (res.gcashQrCodeUrl) setGcashQrCodeUrl(res.gcashQrCodeUrl);
+        if (res.autoReplyReviews !== undefined) setAutoReplyReviews(!!res.autoReplyReviews);
+        if (res.artisanSecondsPerLetter !== undefined) setArtisanSecondsPerLetter(res.artisanSecondsPerLetter);
+        if (res.artisanHandlingMinutes !== undefined) setArtisanHandlingMinutes(res.artisanHandlingMinutes);
+        if (res.artisanCapOffsetMinutes !== undefined) setArtisanCapOffsetMinutes(res.artisanCapOffsetMinutes);
+        if (res.artisanDailyMinutes !== undefined) setArtisanDailyMinutes(res.artisanDailyMinutes);
+        if (res.expressLanePercent !== undefined) setExpressLanePercent(res.expressLanePercent);
+        if (res.efficiencyFactor !== undefined) setEfficiencyFactor(Math.round(res.efficiencyFactor * 100));
+        if (res.maxBulkPiecesPerDay !== undefined) setMaxBulkPiecesPerDay(res.maxBulkPiecesPerDay);
+        if (res.batchThrottlePeriod) setBatchThrottlePeriod(res.batchThrottlePeriod);
+        if (res.largeOrderQuoteThreshold !== undefined) setLargeOrderQuoteThreshold(res.largeOrderQuoteThreshold);
+        if (res.smallGarmentLetterRate !== undefined) setSmallGarmentLetterRate(Number(res.smallGarmentLetterRate) || 7);
+        if (res.bigGarmentLetterRate !== undefined) setBigGarmentLetterRate(Number(res.bigGarmentLetterRate) || 10);
+        if (res.preOrderPrepDays !== undefined) setPreOrderPrepDays(Number(res.preOrderPrepDays) || 3);
+      }
+    } catch (e) {
+      console.error('[Settings] Failed to fetch settings:', e);
+      showToast('Failed to load settings', 'error');
+    } finally {
+      setIsFetchingSettings(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSettings();
+    syncLiveAIModels(false);
+  }, []);
+
+  const handleSaveAISettings = async () => {
+    setIsSaving(true);
+    try {
+      await api.put('/api/admin/settings', {
+        aiChatModel: aiChatModel.trim(),
+        aiVisionModel: aiVisionModel.trim(),
+        aiProviderUrl: aiProviderUrl.trim(),
+        minConfidenceScore: parseFloat((minConfidenceScore / 100).toFixed(2)),
+        autoReplyReviews: !!autoReplyReviews
+      });
+      showToast('AI & Automation settings saved', 'success');
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || 'Failed to save settings', 'error');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetAISettings = () => {
+    setAiChatModel(chatModelSuggestions[0]?.value || 'llama-3.3-70b-versatile');
+    setAiVisionModel(visionModelSuggestions[0]?.value || 'qwen/qwen3.8-27b');
+    setAiProviderUrl('https://api.groq.com/openai/v1/chat/completions');
+    setMinConfidenceScore(75);
+    setAutoReplyReviews(true);
+    setPingResult(null);
+    showToast('AI settings reset to active defaults. Click Save.', 'info');
+  };
+
+  const handleSaveBizSettings = async () => {
+    setIsSavingBiz(true);
+    try {
+      await api.put('/api/admin/settings', {
+        businessName: businessName.trim(),
+        receiptTagline: receiptTagline.trim(),
+        businessAddress: businessAddress.trim(),
+        businessContact: businessContact.trim(),
+        businessEmail: businessEmail.trim(),
+        businessWebsite: businessWebsite.trim(),
+        businessLogoUrl: businessLogoUrl || null
+      });
+      showToast('Store profile saved', 'success');
+    } catch (e: any) {
+      console.error(e);
+      showToast(e.message || 'Failed to save profile', 'error');
+    } finally {
+      setIsSavingBiz(false);
+    }
+  };
+
   const handleSaveArtisanSettings = async () => {
     setIsSavingArtisan(true);
     try {
@@ -211,467 +250,471 @@ export default function PanelSettings({
     showToast('Fulfillment settings reset to standard business defaults.', 'info');
   };
 
-  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingLogo(true);
-    const formData = new FormData();
-    formData.append('logo', file);
-
-    try {
-      const res = await apiFetch<any>('/api/admin/settings/logo', {
-        method: 'POST',
-        body: formData,
-      });
-      if (res && res.businessLogoUrl) {
-        setBusinessLogoUrl(res.businessLogoUrl);
-        showToast('Logo uploaded', 'success');
-      }
-    } catch (error: any) {
-      console.error(error);
-      showToast(error.message || 'Failed to upload logo', 'error');
-    } finally {
-      setIsUploadingLogo(false);
-      if (e.target) e.target.value = '';
-    }
-  };
-
-  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setIsUploadingQr(true);
-    const formData = new FormData();
-    formData.append('qr', file);
-
-    try {
-      const res = await apiFetch<any>('/api/admin/settings/gcash-qr', {
-        method: 'POST',
-        body: formData,
-      });
-      if (res && res.gcashQrCodeUrl) {
-        setGcashQrCodeUrl(res.gcashQrCodeUrl);
-        showToast('QR code uploaded', 'success');
-      }
-    } catch (error: any) {
-      console.error(error);
-      showToast(error.message || 'Failed to upload QR code', 'error');
-    } finally {
-      setIsUploadingQr(false);
-      if (e.target) e.target.value = '';
-    }
-  };
-
-  const [isTestingPing, setIsTestingPing] = useState(false);
-  const [pingResult, setPingResult] = useState<{
-    success: boolean;
-    message: string;
-    reply?: string;
-    latency?: number;
-  } | null>(null);
-
-  const handleTestConnection = async () => {
-    setIsTestingPing(true);
-    setPingResult(null);
-    const startTime = performance.now();
-    try {
-      const res = await api.post<any>('/api/admin/settings/test-ai', {
-        aiChatModel: aiChatModel.trim(),
-        aiProviderUrl: aiProviderUrl.trim()
-      });
-      const endTime = performance.now();
-      const latency = Math.round(endTime - startTime);
-      
-      if (res && res.success) {
-        setPingResult({
-          success: true,
-          message: res.message || 'AI service connected and responding properly.',
-          reply: res.reply,
-          latency
-        });
-        showToast('AI test passed', 'success');
-      } else {
-        setPingResult({
-          success: false,
-          message: res?.message || 'Connection test failed.',
-          latency
-        });
-        showToast(res?.message || 'AI test failed', 'error');
-      }
-    } catch (e: any) {
-      const endTime = performance.now();
-      const latency = Math.round(endTime - startTime);
-      console.error(e);
-      setPingResult({
-        success: false,
-        message: e.message || 'Network request failed or was rejected by backend.',
-        latency
-      });
-      showToast('Cannot connect to AI', 'error');
-    } finally {
-      setIsTestingPing(false);
-    }
-  };
-
-  const navigationTabs = [
-    {
-      id: 'store' as SettingsTab,
-      label: 'Store & Branding',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-          <polyline points="9 22 9 12 15 12 15 22"/>
-        </svg>
-      )
-    },
-    {
-      id: 'fulfillment' as SettingsTab,
-      label: 'Workshop & Fulfillment',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-        </svg>
-      )
-    },
-    {
-      id: 'ai' as SettingsTab,
-      label: 'AI & Automation',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="4" y="4" width="16" height="16" rx="2" />
-          <rect x="9" y="9" width="6" height="6" />
-          <line x1="9" y1="1" x2="9" y2="4" />
-          <line x1="15" y1="1" x2="15" y2="4" />
-          <line x1="9" y1="20" x2="9" y2="23" />
-          <line x1="15" y1="20" x2="15" y2="23" />
-          <line x1="20" y1="9" x2="23" y2="9" />
-          <line x1="20" y1="14" x2="23" y2="14" />
-          <line x1="1" y1="9" x2="4" y2="9" />
-          <line x1="1" y1="14" x2="4" y2="14" />
-        </svg>
-      )
-    },
-    {
-      id: 'appearance' as SettingsTab,
-      label: 'Theme & Appearance',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="5"/>
-          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-      )
-    },
-    {
-      id: 'security' as SettingsTab,
-      label: 'Security & Password',
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-        </svg>
-      )
-    }
-  ];
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPassError('');
-    setPassSuccess('');
-
-    if (!currPass) {
-      setPassError('Please enter your current password.');
-      return;
-    }
-    if (newPass.length < 6) {
-      setPassError('New password must be at least 6 characters long.');
-      return;
-    }
-    if (newPass !== confirmPass) {
-      setPassError('New password and confirmation do not match.');
-      return;
-    }
-    if (currPass === newPass) {
-      setPassError('New password cannot be the same as your current password.');
-      return;
-    }
-
-    setIsChangingPass(true);
-    try {
-      const res = await api.put<{ success: boolean; message: string }>('/api/auth/password/change', {
-        currentPassword: currPass,
-        newPassword: newPass,
-        confirmPassword: confirmPass
-      });
-      if (res && res.success) {
-        setPassSuccess(res.message || 'Password changed successfully.');
-        showToast('Password updated successfully', 'success');
-        setCurrPass('');
-        setNewPass('');
-        setConfirmPass('');
-      } else {
-        setPassError(res?.message || 'Failed to update password.');
-      }
-    } catch (err: any) {
-      setPassError(err.message || 'Current password is incorrect or could not be verified.');
-    } finally {
-      setIsChangingPass(false);
-    }
-  };
-
-  return (
-    <section className="animate-fade flex flex-col min-h-full text-left font-sans max-w-[1020px] w-full pb-12">
-
-      {/* Sub-Tab Navigation Bar */}
-      <div className="flex items-center justify-between gap-2 p-1.5 bg-white/5 border border-border-glass rounded-xl mb-6 overflow-x-auto scrollbar-none">
-        <div className="flex items-center gap-2">
-          {navigationTabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer border ${
-                  isActive
-                    ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20'
-                    : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
-                }`}
-              >
-                <span className={`flex items-center justify-center ${isActive ? 'text-white' : 'text-text-dim'}`}>
-                  {tab.icon}
-                </span>
-                <span>{tab.label}</span>
-              </button>
-            );
-          })}
-        </div>
-        {isFetchingSettings && (
-          <div className="hidden sm:flex items-center gap-2 pr-3 text-xs text-text-dim">
-            
-            <span className="text-[11px] font-medium">Syncing...</span>
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-col gap-6">
-
-        {/* ========================================================================= */}
-        {/* TAB 1: STORE & BRANDING                                                  */}
-        {/* ========================================================================= */}
-        {activeTab === 'store' && (
-          <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
-              <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-                    <polyline points="9 22 9 12 15 12 15 22"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold m-0 text-text-main">Store Profile &amp; Receipts</h3>
-                  <p className="text-xs text-text-dim m-0 mt-0.5">
-                    Details printed on invoices, receipts, and shown during customer checkout.
-                  </p>
-                </div>
-              </div>
-
-              {/* Form Input Rows */}
-              <div className="flex flex-col gap-4 mt-4">
-                {/* Row 1: Name & Tagline */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
-                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                      <span>Business Name</span>
-                      <span className="text-[11px] text-text-dim font-normal">Header on receipts</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={80}
-                      value={businessName}
-                      onChange={(e) => setBusinessName(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
-                      placeholder="e.g. STITCH-OPT DESIGNS"
-                    />
-                  </div>
-
-                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
-                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                      <span>Store Tagline</span>
-                      <span className="text-[11px] text-text-dim font-normal">Subtitle on receipts</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={120}
-                      value={receiptTagline}
-                      onChange={(e) => setReceiptTagline(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
-                      placeholder="e.g. Premium Embroidery Services"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 2: Address & Phone */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
-                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                      <span>Store Address</span>
-                      <span className="text-[11px] text-text-dim font-normal">Physical pickup location</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={200}
-                      value={businessAddress}
-                      onChange={(e) => setBusinessAddress(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
-                      placeholder="e.g. 123 Digital Thread Lane, Manila"
-                    />
-                  </div>
-
-                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
-                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                      <span>Contact Number</span>
-                      <span className="text-[11px] text-text-dim font-normal">Customer support line</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={25}
-                      value={businessContact}
-                      onChange={(e) => setBusinessContact(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
-                      placeholder="e.g. 0928 810 3928"
-                    />
-                  </div>
-                </div>
-
-                {/* Row 3: Email & Website */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
-                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                      <span>Support Email</span>
-                      <span className="text-[11px] text-text-dim font-normal">Printed in receipt footer</span>
-                    </label>
-                    <input
-                      type="email"
-                      maxLength={100}
-                      value={businessEmail}
-                      onChange={(e) => setBusinessEmail(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
-                      placeholder="e.g. contact@stitch-opt.com"
-                    />
-                  </div>
-
-                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
-                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
-                      <span>Website Address</span>
-                      <span className="text-[11px] text-text-dim font-normal">Official store link</span>
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={120}
-                      value={businessWebsite}
-                      onChange={(e) => setBusinessWebsite(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
-                      placeholder="e.g. www.stitch-opt.com"
-                    />
-                  </div>
-                </div>
-
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingLogo(true);
+    const formData = new FormData();
+    formData.append('logo', file);
+
+    try {
+      const res = await apiFetch<any>('/api/admin/settings/logo', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res && res.businessLogoUrl) {
+        setBusinessLogoUrl(res.businessLogoUrl);
+        showToast('Logo uploaded', 'success');
+      }
+    } catch (error: any) {
+      console.error(error);
+      showToast(error.message || 'Failed to upload logo', 'error');
+    } finally {
+      setIsUploadingLogo(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const handleQrUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploadingQr(true);
+    const formData = new FormData();
+    formData.append('qr', file);
+
+    try {
+      const res = await apiFetch<any>('/api/admin/settings/gcash-qr', {
+        method: 'POST',
+        body: formData,
+      });
+      if (res && res.gcashQrCodeUrl) {
+        setGcashQrCodeUrl(res.gcashQrCodeUrl);
+        showToast('QR code uploaded', 'success');
+      }
+    } catch (error: any) {
+      console.error(error);
+      showToast(error.message || 'Failed to upload QR code', 'error');
+    } finally {
+      setIsUploadingQr(false);
+      if (e.target) e.target.value = '';
+    }
+  };
+
+  const [isTestingPing, setIsTestingPing] = useState(false);
+  const [pingResult, setPingResult] = useState<{
+    success: boolean;
+    message: string;
+    reply?: string;
+    latency?: number;
+  } | null>(null);
+
+  const handleTestConnection = async () => {
+    setIsTestingPing(true);
+    setPingResult(null);
+    const startTime = performance.now();
+    try {
+      const res = await api.post<any>('/api/admin/settings/test-ai', {
+        aiChatModel: aiChatModel.trim(),
+        aiProviderUrl: aiProviderUrl.trim()
+      });
+      const endTime = performance.now();
+      const latency = Math.round(endTime - startTime);
+      
+      if (res && res.success) {
+        if (res.autoHealed && res.activeModel) {
+          setAiChatModel(res.activeModel);
+          syncLiveAIModels(true);
+        }
+        setPingResult({
+          success: true,
+          message: res.message || 'AI service connected and responding properly.',
+          reply: res.reply,
+          latency
+        });
+        showToast(res.autoHealed ? `Auto-healed to ${res.activeModel}` : 'AI test passed', 'success');
+      } else {
+        setPingResult({
+          success: false,
+          message: res?.message || 'Connection test failed.',
+          latency
+        });
+        showToast(res?.message || 'AI test failed', 'error');
+      }
+    } catch (e: any) {
+      const endTime = performance.now();
+      const latency = Math.round(endTime - startTime);
+      console.error(e);
+      setPingResult({
+        success: false,
+        message: e.message || 'Network request failed or was rejected by backend.',
+        latency
+      });
+      showToast('Cannot connect to AI', 'error');
+    } finally {
+      setIsTestingPing(false);
+    }
+  };
+
+  const navigationTabs = [
+    {
+      id: 'store' as SettingsTab,
+      label: 'Store & Branding',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+          <polyline points="9 22 9 12 15 12 15 22"/>
+        </svg>
+      )
+    },
+    {
+      id: 'fulfillment' as SettingsTab,
+      label: 'Workshop & Fulfillment',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+      )
+    },
+    {
+      id: 'ai' as SettingsTab,
+      label: 'AI & Automation',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <rect x="4" y="4" width="16" height="16" rx="2" />
+          <rect x="9" y="9" width="6" height="6" />
+          <line x1="9" y1="1" x2="9" y2="4" />
+          <line x1="15" y1="1" x2="15" y2="4" />
+          <line x1="9" y1="20" x2="9" y2="23" />
+          <line x1="15" y1="20" x2="15" y2="23" />
+          <line x1="20" y1="9" x2="23" y2="9" />
+          <line x1="20" y1="14" x2="23" y2="14" />
+          <line x1="1" y1="9" x2="4" y2="9" />
+          <line x1="1" y1="14" x2="4" y2="14" />
+        </svg>
+      )
+    },
+    {
+      id: 'appearance' as SettingsTab,
+      label: 'Theme & Appearance',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <circle cx="12" cy="12" r="5"/>
+          <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+      )
+    },
+    {
+      id: 'security' as SettingsTab,
+      label: 'Security & Password',
+      icon: (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+          <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+          <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+        </svg>
+      )
+    }
+  ];
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError('');
+    setPassSuccess('');
+
+    if (!currPass) {
+      setPassError('Please enter your current password.');
+      return;
+    }
+    if (newPass.length < 6) {
+      setPassError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPass !== confirmPass) {
+      setPassError('New password and confirmation do not match.');
+      return;
+    }
+    if (currPass === newPass) {
+      setPassError('New password cannot be the same as your current password.');
+      return;
+    }
+
+    setIsChangingPass(true);
+    try {
+      const res = await api.put<{ success: boolean; message: string }>('/api/auth/password/change', {
+        currentPassword: currPass,
+        newPassword: newPass,
+        confirmPassword: confirmPass
+      });
+      if (res && res.success) {
+        setPassSuccess(res.message || 'Password changed successfully.');
+        showToast('Password updated successfully', 'success');
+        setCurrPass('');
+        setNewPass('');
+        setConfirmPass('');
+      } else {
+        setPassError(res?.message || 'Failed to update password.');
+      }
+    } catch (err: any) {
+      setPassError(err.message || 'Current password is incorrect or could not be verified.');
+    } finally {
+      setIsChangingPass(false);
+    }
+  };
+
+  return (
+    <section className="animate-fade flex flex-col min-h-full text-left font-sans max-w-[1020px] w-full pb-12">
+
+      {/* Sub-Tab Navigation Bar */}
+      <div className="flex items-center justify-between gap-2 p-1.5 bg-white/5 border border-border-glass rounded-xl mb-6 overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-2">
+          {navigationTabs.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-semibold text-xs sm:text-sm transition-all whitespace-nowrap cursor-pointer border ${
+                  isActive
+                    ? 'bg-primary text-white border-primary shadow-sm shadow-primary/20'
+                    : 'bg-transparent text-text-dim border-transparent hover:text-text-main hover:bg-white/5'
+                }`}
+              >
+                <span className={`flex items-center justify-center ${isActive ? 'text-white' : 'text-text-dim'}`}>
+                  {tab.icon}
+                </span>
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+        {isFetchingSettings && (
+          <div className="hidden sm:flex items-center gap-2 pr-3 text-xs text-text-dim">
+            
+            <span className="text-[11px] font-medium">Syncing...</span>
+          </div>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-6">
+
+        {/* ========================================================================= */}
+        {/* TAB 1: STORE & BRANDING                                                  */}
+        {/* ========================================================================= */}
+        {activeTab === 'store' && (
+          <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
+              <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                    <polyline points="9 22 9 12 15 12 15 22"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold m-0 text-text-main">Store Profile &amp; Receipts</h3>
+                  <p className="text-xs text-text-dim m-0 mt-0.5">
+                    Details printed on invoices, receipts, and shown during customer checkout.
+                  </p>
+                </div>
+              </div>
+
+              {/* Form Input Rows */}
+              <div className="flex flex-col gap-4 mt-4">
+                {/* Row 1: Name & Tagline */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                      <span>Business Name</span>
+                      <span className="text-[11px] text-text-dim font-normal">Header on receipts</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={80}
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                      placeholder="e.g. STITCH-OPT DESIGNS"
+                    />
+                  </div>
+
+                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                      <span>Store Tagline</span>
+                      <span className="text-[11px] text-text-dim font-normal">Subtitle on receipts</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={120}
+                      value={receiptTagline}
+                      onChange={(e) => setReceiptTagline(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                      placeholder="e.g. Premium Embroidery Services"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 2: Address & Phone */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                      <span>Store Address</span>
+                      <span className="text-[11px] text-text-dim font-normal">Physical pickup location</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={businessAddress}
+                      onChange={(e) => setBusinessAddress(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                      placeholder="e.g. 123 Digital Thread Lane, Manila"
+                    />
+                  </div>
+
+                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                      <span>Contact Number</span>
+                      <span className="text-[11px] text-text-dim font-normal">Customer support line</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={25}
+                      value={businessContact}
+                      onChange={(e) => setBusinessContact(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                      placeholder="e.g. 0928 810 3928"
+                    />
+                  </div>
+                </div>
+
+                {/* Row 3: Email & Website */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                      <span>Support Email</span>
+                      <span className="text-[11px] text-text-dim font-normal">Printed in receipt footer</span>
+                    </label>
+                    <input
+                      type="email"
+                      maxLength={100}
+                      value={businessEmail}
+                      onChange={(e) => setBusinessEmail(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                      placeholder="e.g. contact@stitch-opt.com"
+                    />
+                  </div>
+
+                  <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-2">
+                    <label className="font-bold text-xs text-text-main flex items-center justify-between">
+                      <span>Website Address</span>
+                      <span className="text-[11px] text-text-dim font-normal">Official store link</span>
+                    </label>
+                    <input
+                      type="text"
+                      maxLength={120}
+                      value={businessWebsite}
+                      onChange={(e) => setBusinessWebsite(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                      placeholder="e.g. www.stitch-opt.com"
+                    />
+                  </div>
+                </div>
+
                 {/* Row 4: GCash QR Upload Card */}
                 <div className="grid grid-cols-1 gap-4 mt-2">
-                  {/* GCash QR Code Card */}
-                  <div className="bg-white/5 border border-border-glass p-4 rounded-xl flex flex-col justify-between gap-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <span className="font-bold text-xs text-text-main block">GCash Payment QR Code</span>
-                        <span className="text-[11px] text-text-dim block mt-0.5">
-                          Displayed to customers during GCash checkout.
-                        </span>
-                      </div>
-                      {gcashQrCodeUrl ? (
-                        <div className="relative group w-14 h-14 rounded-lg bg-white/10 p-1 border border-border-glass flex items-center justify-center shrink-0">
-                          <img src={gcashQrCodeUrl} alt="GCash QR Code" className="w-full h-full object-contain rounded" />
-                          <button 
-                            type="button"
-                            onClick={() => setGcashQrCodeUrl('')}
-                            className="absolute -top-1.5 -right-1.5 bg-danger hover:bg-danger/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer shadow-md transition-transform active:scale-90"
-                            title="Remove QR Code"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-14 h-14 rounded-lg bg-white/5 border border-dashed border-border-glass flex items-center justify-center text-text-dim shrink-0">
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <rect x="3" y="3" width="7" height="7"/>
-                            <rect x="14" y="3" width="7" height="7"/>
-                            <rect x="14" y="14" width="7" height="7"/>
-                            <rect x="3" y="14" width="7" height="7"/>
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <label className="flex-1">
-                        <span className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-semibold rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 cursor-pointer transition-all active:scale-95 text-center">
-                          {isUploadingQr ? 'Uploading QR...' : 'Upload New QR Code'}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleQrUpload}
-                          disabled={isUploadingQr}
-                          className="hidden"
-                        />
-                      </label>
-                      {isUploadingQr && (
-                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0"></div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-border-glass">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setBusinessName('STITCH-OPT DESIGNS');
-                    setReceiptTagline('Premium Embroidery Services');
-                    setBusinessAddress('123 Digital Thread Lane, Manila');
-                    setBusinessContact('0928 810 3928');
-                    setBusinessEmail('contact@stitch-opt.com');
-                    setBusinessWebsite('www.stitch-opt.com');
-                    setBusinessLogoUrl('');
-                    showToast('Profile reset. Click Save.', 'info');
-                  }}
-                  disabled={isSavingBiz}
-                  className="bg-transparent hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer transition-all active:scale-95"
-                >
-                  Reset to Defaults
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveBizSettings}
-                  disabled={isSavingBiz}
-                  className="bg-primary text-white text-xs font-bold px-6 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 border-none shadow-md shadow-primary/20"
-                >
-                  {isSavingBiz ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                      Saving Changes...
-                    </>
-                  ) : (
-                    'Save Store Profile'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
+                  {/* GCash QR Code Card */}
+                  <div className="bg-white/5 border border-border-glass p-4 rounded-xl flex flex-col justify-between gap-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <span className="font-bold text-xs text-text-main block">GCash Payment QR Code</span>
+                        <span className="text-[11px] text-text-dim block mt-0.5">
+                          Displayed to customers during GCash checkout.
+                        </span>
+                      </div>
+                      {gcashQrCodeUrl ? (
+                        <div className="relative group w-14 h-14 rounded-lg bg-white/10 p-1 border border-border-glass flex items-center justify-center shrink-0">
+                          <img src={gcashQrCodeUrl} alt="GCash QR Code" className="w-full h-full object-contain rounded" />
+                          <button 
+                            type="button"
+                            onClick={() => setGcashQrCodeUrl('')}
+                            className="absolute -top-1.5 -right-1.5 bg-danger hover:bg-danger/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer shadow-md transition-transform active:scale-90"
+                            title="Remove QR Code"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="w-14 h-14 rounded-lg bg-white/5 border border-dashed border-border-glass flex items-center justify-center text-text-dim shrink-0">
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                            <rect x="3" y="3" width="7" height="7"/>
+                            <rect x="14" y="3" width="7" height="7"/>
+                            <rect x="14" y="14" width="7" height="7"/>
+                            <rect x="3" y="14" width="7" height="7"/>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <label className="flex-1">
+                        <span className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-semibold rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 cursor-pointer transition-all active:scale-95 text-center">
+                          {isUploadingQr ? 'Uploading QR...' : 'Upload New QR Code'}
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleQrUpload}
+                          disabled={isUploadingQr}
+                          className="hidden"
+                        />
+                      </label>
+                      {isUploadingQr && (
+                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0"></div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-border-glass">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBusinessName('STITCH-OPT DESIGNS');
+                    setReceiptTagline('Premium Embroidery Services');
+                    setBusinessAddress('123 Digital Thread Lane, Manila');
+                    setBusinessContact('0928 810 3928');
+                    setBusinessEmail('contact@stitch-opt.com');
+                    setBusinessWebsite('www.stitch-opt.com');
+                    setBusinessLogoUrl('');
+                    showToast('Profile reset. Click Save.', 'info');
+                  }}
+                  disabled={isSavingBiz}
+                  className="bg-transparent hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer transition-all active:scale-95"
+                >
+                  Reset to Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveBizSettings}
+                  disabled={isSavingBiz}
+                  className="bg-primary text-white text-xs font-bold px-6 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 border-none shadow-md shadow-primary/20"
+                >
+                  {isSavingBiz ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      Saving Changes...
+                    </>
+                  ) : (
+                    'Save Store Profile'
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
           {/* TAB 2: WORKSHOP & FULFILLMENT                                             */}
           {/* ========================================================================= */}
           {activeTab === 'fulfillment' && (
@@ -946,500 +989,516 @@ export default function PanelSettings({
           )}
 
           {/* ========================================================================= */}
-          {/* TAB 3: AI & AUTOMATION                                                   */}
-          {/* ========================================================================= */}
-          {activeTab === 'ai' && (
-            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
-              <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <rect x="4" y="4" width="16" height="16" rx="2" />
-                    <rect x="9" y="9" width="6" height="6" />
-                    <line x1="9" y1="1" x2="9" y2="4" />
-                    <line x1="15" y1="1" x2="15" y2="4" />
-                    <line x1="9" y1="20" x2="9" y2="23" />
-                    <line x1="15" y1="20" x2="15" y2="23" />
-                    <line x1="20" y1="9" x2="23" y2="9" />
-                    <line x1="20" y1="14" x2="23" y2="14" />
-                    <line x1="1" y1="9" x2="4" y2="9" />
-                    <line x1="1" y1="14" x2="4" y2="14" />
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold m-0 text-text-main">AI Engine &amp; Receipt Verification</h3>
-                  <p className="text-xs text-text-dim m-0 mt-0.5">
-                    Configure LLM models for customer chat assistance and OCR models for receipt verification.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4 mt-4">
-                {/* Chat Assistant Model */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
-                  <div className="flex flex-col max-w-[380px]">
-                    <span className="font-bold text-xs text-text-main">Customer Chat Assistant Model</span>
-                    <span className="text-[11px] text-text-dim mt-0.5">
-                      Powers conversational customer support, product FAQs, and store inquiries.
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2 min-w-[280px]">
-                    <select
-                      value={aiChatModel}
-                      onChange={(e) => setAiChatModel(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs outline-none focus:border-primary transition-all cursor-pointer font-sans"
-                    >
-                      {chatModelSuggestions.map((m) => (
-                        <option key={m.value} value={m.value}>{m.label}</option>
-                      ))}
-                      {!chatModelSuggestions.some(m => m.value === aiChatModel) && (
-                        <option value={aiChatModel}>{aiChatModel} (Custom)</option>
-                      )}
-                    </select>
-                    <input
-                      type="text"
-                      maxLength={80}
-                      placeholder="Or enter custom model ID..."
-                      value={aiChatModel}
-                      onChange={(e) => setAiChatModel(e.target.value)}
-                      className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-text-main text-xs outline-none focus:border-primary transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Receipt OCR Model */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
-                  <div className="flex flex-col max-w-[380px]">
-                    <span className="font-bold text-xs text-text-main">Receipt OCR Vision Model</span>
-                    <span className="text-[11px] text-text-dim mt-0.5">
-                      Multimodal model that extracts reference numbers, dates, and amounts from customer receipts.
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-2 min-w-[280px]">
-                    <select
-                      value={aiVisionModel}
-                      onChange={(e) => setAiVisionModel(e.target.value)}
-                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs outline-none focus:border-primary transition-all cursor-pointer font-sans"
-                    >
-                      {visionModelSuggestions.map((m) => (
-                        <option key={m.value} value={m.value}>{m.label}</option>
-                      ))}
-                      {!visionModelSuggestions.some(m => m.value === aiVisionModel) && (
-                        <option value={aiVisionModel}>{aiVisionModel} (Custom)</option>
-                      )}
-                    </select>
-                    <input
-                      type="text"
-                      maxLength={80}
-                      placeholder="Or enter custom vision model ID..."
-                      value={aiVisionModel}
-                      onChange={(e) => setAiVisionModel(e.target.value)}
-                      className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-text-main text-xs outline-none focus:border-primary transition-all font-mono"
-                    />
-                  </div>
-                </div>
-
-                {/* Provider Endpoint */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
-                  <div className="flex flex-col max-w-[380px]">
-                    <span className="font-bold text-xs text-text-main">API Provider Endpoint</span>
-                    <span className="text-[11px] text-text-dim mt-0.5">
-                      The OpenAI-compatible chat completions URL used for AI requests.
-                    </span>
-                  </div>
-                  <input
-                    type="text"
-                    maxLength={200}
-                    value={aiProviderUrl}
-                    onChange={(e) => setAiProviderUrl(e.target.value)}
-                    className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs min-w-[280px] md:max-w-[380px] flex-1 outline-none focus:border-primary transition-all font-mono"
-                    placeholder="https://api.groq.com/openai/v1/chat/completions"
-                  />
-                </div>
-
-                {/* Confidence Threshold Gate */}
-                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
-                  <div className="flex flex-col max-w-[380px]">
-                    <span className="font-bold text-xs text-text-main">Receipt Verification Confidence Gate</span>
-                    <span className="text-[11px] text-text-dim mt-0.5">
-                      Receipts scoring below this threshold are flagged for manual admin approval.
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-4 min-w-[280px]">
-                    <input
-                      type="range"
-                      min="50"
-                      max="100"
-                      step="5"
-                      value={minConfidenceScore}
-                      onChange={(e) => setMinConfidenceScore(parseInt(e.target.value))}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
-                    />
-                    <span className="font-mono text-xs font-bold text-text-main w-12 text-right bg-primary/10 text-primary px-2 py-1 rounded">
-                      {minConfidenceScore}%
-                    </span>
-                  </div>
-                </div>
-
-                {/* Customer Reviews Auto-Reply & Smart Response Engine */}
-                <div className="flex flex-col bg-white/5 border border-border-glass p-5 rounded-xl gap-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-glass">
-                    <div className="flex flex-col max-w-[480px]">
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold text-xs text-text-main">
-                          Review Auto-Reply
-                        </span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          autoReplyReviews 
-                            ? 'bg-white/15 text-text-main border border-white/30' 
-                            : 'bg-white/5 text-text-dim border border-white/10'
-                        }`}>
-                          {autoReplyReviews ? 'Enabled' : 'Disabled'}
-                        </span>
-                      </div>
-                      <span className="text-[11px] text-text-dim mt-1 leading-relaxed">
-                        Automatically replies to 3★ to 5★ reviews after 5 minutes. 1★ and 2★ reviews require manual review.
-                      </span>
-                    </div>
-
-                    <button
-                      type="button"
-                      onClick={() => setAutoReplyReviews(!autoReplyReviews)}
-                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                        autoReplyReviews ? 'bg-primary' : 'bg-white/20'
-                      }`}
-                      title={autoReplyReviews ? 'Turn off auto-reply' : 'Turn on auto-reply'}
-                    >
-                      <span
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
-                          autoReplyReviews ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Smart Templates Preview */}
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-text-dim flex items-center gap-1.5">
-                      Response Templates:
-                    </span>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
-                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
-                        <span className="font-bold text-primary flex items-center gap-1">
-                          4★ &amp; 5★ Positive
-                        </span>
-                        <p className="text-text-dim m-0 leading-relaxed italic">
-                          "Thank you so much for the 5-star review! We are thrilled to hear that you love the embroidery craftsmanship on your custom piece..."
-                        </p>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
-                        <span className="font-bold text-text-main flex items-center gap-1">
-                          3★ Neutral
-                        </span>
-                        <p className="text-text-dim m-0 leading-relaxed italic">
-                          "Thank you for sharing your honest feedback. We take all customer impressions seriously and will review your comments with our quality team..."
-                        </p>
-                      </div>
-                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1 md:col-span-2">
-                        <span className="font-bold text-danger flex items-center gap-1">
-                          1★ &amp; 2★ Negative
-                        </span>
-                        <p className="text-text-dim m-0 leading-relaxed italic">
-                          "We are deeply sorry for your disappointing experience. Quality and craftsmanship are our highest priorities. A management alert has been triggered so our team can review this order..."
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Live Diagnostic Ping Card */}
-                <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-3 mt-1">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <span className="font-bold text-xs text-text-main block">Connection Diagnostics</span>
-                      <span className="text-[11px] text-text-dim block mt-0.5">
-                        Test whether the configured AI model and endpoint respond correctly.
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleTestConnection}
-                      disabled={isTestingPing || isSaving}
-                      className="bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-xs font-bold px-4 py-2 rounded-lg cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 shrink-0"
-                    >
-                      {isTestingPing ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
-                          Testing Connection...
-                        </>
-                      ) : (
-                        'Test AI Connection'
-                      )}
-                    </button>
-                  </div>
-
-                  {pingResult && (
-                    <div className={`p-3 rounded-lg border text-xs font-mono flex flex-col gap-1.5 animate-[fadeIn_0.2s_ease-out] ${
-                      pingResult.success 
-                        ? 'bg-primary/10 border-primary/20 text-primary' 
-                        : 'bg-danger/10 border-danger/20 text-danger'
-                    }`}>
-                      <div className="flex items-center gap-2">
-                        
-                        <span className="font-bold uppercase tracking-wider text-[11px]">
-                          {pingResult.success ? 'Operational' : 'Connection Error'}
-                        </span>
-                        {pingResult.latency !== undefined && (
-                          <span className="ml-auto bg-white/5 px-2 py-0.5 rounded border border-white/5 text-[10px] text-text-dim">
-                            Latency: <strong className="text-text-main">{pingResult.latency}ms</strong>
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col gap-1 mt-0.5">
-                        <p className="m-0 leading-relaxed"><strong className="text-text-main">Message:</strong> {pingResult.message}</p>
-                        {pingResult.reply && (
-                          <p className="m-0 leading-relaxed text-text-dim"><strong className="text-text-main">Response:</strong> &ldquo;{pingResult.reply}&rdquo;</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-border-glass">
-                <button
-                  type="button"
-                  onClick={handleResetAISettings}
-                  disabled={isSaving}
-                  className="bg-transparent hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer transition-all active:scale-95"
-                >
-                  Reset to Defaults
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSaveAISettings}
-                  disabled={isSaving}
-                  className="bg-primary text-white text-xs font-bold px-6 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 border-none shadow-md shadow-primary/20"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
-                      Saving Config...
-                    </>
-                  ) : (
-                    'Save AI Settings'
-                  )}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* ========================================================================= */}
-          {/* TAB 4: THEME & APPEARANCE                                                */}
-          {/* ========================================================================= */}
-          {activeTab === 'appearance' && (
-            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
-              <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="5"/>
-                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold m-0 text-text-main">Theme &amp; Appearance</h3>
-                  <p className="text-xs text-text-dim m-0 mt-0.5">
-                    Customize the visual display mode of the admin control panel.
-                  </p>
-                </div>
-              </div>
-
-              {/* Theme Selection Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
-                {/* Dark Mode Card */}
-                <div 
-                  onClick={() => {
-                    if (theme !== 'dark') toggleTheme();
-                  }}
-                  className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between gap-4 ${
-                    theme === 'dark'
-                      ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-lg shadow-primary/10'
-                      : 'bg-white/5 border-border-glass hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-[#0f1117] border border-white/10 flex items-center justify-center text-text-main">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
-                      </svg>
-                    </div>
-                    {theme === 'dark' && (
-                      <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/20 px-2.5 py-1 rounded-full border border-primary/30">
-                        
-                        Active Theme
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-sm text-text-main m-0">Dark Theme</h4>
-                    <p className="text-xs text-text-dim m-0 mt-1 leading-relaxed">
-                      Sleek glassmorphism with high contrast for night and low-light environments.
-                    </p>
-                  </div>
-                </div>
-
-                {/* Light Mode Card */}
-                <div 
-                  onClick={() => {
-                    if (theme !== 'light') toggleTheme();
-                  }}
-                  className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between gap-4 ${
-                    theme === 'light'
-                      ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-lg shadow-primary/10'
-                      : 'bg-white/5 border-border-glass hover:border-white/20'
-                  }`}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center text-text-main">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                        <circle cx="12" cy="12" r="5"/>
-                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-                      </svg>
-                    </div>
-                    {theme === 'light' && (
-                      <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/20 px-2.5 py-1 rounded-full border border-primary/30">
-                        
-                        Active Theme
-                      </span>
-                    )}
-                  </div>
-
-                  <div>
-                    <h4 className="font-bold text-sm text-text-main m-0">Light Theme</h4>
-                    <p className="text-xs text-text-dim m-0 mt-1 leading-relaxed">
-                      Clean, high-brightness layout ideal for bright daylight and office environments.
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 5. Account Security & Password Tab */}
-          {activeTab === 'security' && (
-            <div className="flex flex-col gap-6 animate-[fadeIn_0.2s_ease-out]">
-              <div className="flex flex-col gap-1">
-                <h3 className="text-lg font-bold text-text-main m-0">Account Security & Password</h3>
-                <p className="text-xs text-text-dim m-0">
-                  Manage your administrative credentials and rotate passwords. Changing your password revokes all other active sessions for this account.
-                </p>
-              </div>
-
-              <div className="bg-bg-surface/80 border border-border-glass rounded-xl p-6 flex flex-col gap-5 max-w-xl">
-                <div className="flex items-center gap-3 border-b border-border-glass/40 pb-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main shrink-0">
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
-                      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
-                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
-                    </svg>
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-text-main m-0">Update Password</h4>
-                    <p className="text-xs text-text-dim m-0">Requires verification of your current administrative password</p>
-                  </div>
-                </div>
-
-                <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-xs font-semibold text-text-dim">Current Password</label>
-                    <input
-                      type={showSecPass ? 'text' : 'password'}
-                      maxLength={100}
-                      required
-                      placeholder="Enter current password"
-                      value={currPass}
-                      onChange={(e) => setCurrPass(e.target.value)}
-                      className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
-                      autoComplete="current-password"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-text-dim">New Password</label>
-                      <input
-                        type={showSecPass ? 'text' : 'password'}
-                        maxLength={100}
-                        required
-                        minLength={6}
-                        placeholder="At least 6 characters"
-                        value={newPass}
-                        onChange={(e) => setNewPass(e.target.value)}
-                        className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
-                        autoComplete="new-password"
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-xs font-semibold text-text-dim">Confirm New Password</label>
-                      <input
-                        type={showSecPass ? 'text' : 'password'}
-                        maxLength={100}
-                        required
-                        minLength={6}
-                        placeholder="Re-enter new password"
-                        value={confirmPass}
-                        onChange={(e) => setConfirmPass(e.target.value)}
-                        className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
-                        autoComplete="new-password"
-                      />
-                    </div>
-                  </div>
-
-                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-text-dim">
-                    <input
-                      type="checkbox"
-                      checked={showSecPass}
-                      onChange={(e) => setShowSecPass(e.target.checked)}
-                      className="accent-primary w-3.5 h-3.5 rounded"
-                    />
-                    <span>Show passwords</span>
-                  </label>
-
-                  {passError && (
-                    <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
-                      {passError}
-                    </div>
-                  )}
-
-                  {passSuccess && (
-                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
-                      {passSuccess}
-                    </div>
-                  )}
-
-                  <div className="flex items-center justify-end pt-2">
-                    <button
-                      type="submit"
-                      disabled={isChangingPass}
-                      className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white bg-primary hover:bg-primary/90 border border-primary/40 shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
-                    >
-                      {isChangingPass ? (
-                        <>
-                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          <span>Updating...</span>
-                        </>
-                      ) : (
-                        <span>Update Password</span>
-                      )}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-        </div>
-    </section>
-  );
-}
+          {/* TAB 3: AI & AUTOMATION                                                   */}
+          {/* ========================================================================= */}
+          {activeTab === 'ai' && (
+            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-2 pb-4 border-b border-border-glass">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="4" y="4" width="16" height="16" rx="2" />
+                      <rect x="9" y="9" width="6" height="6" />
+                      <line x1="9" y1="1" x2="9" y2="4" />
+                      <line x1="15" y1="1" x2="15" y2="4" />
+                      <line x1="9" y1="20" x2="9" y2="23" />
+                      <line x1="15" y1="20" x2="15" y2="23" />
+                      <line x1="20" y1="9" x2="23" y2="9" />
+                      <line x1="20" y1="14" x2="23" y2="14" />
+                      <line x1="1" y1="9" x2="4" y2="9" />
+                      <line x1="1" y1="14" x2="4" y2="14" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold m-0 text-text-main">AI Engine &amp; Receipt Verification</h3>
+                    <p className="text-xs text-text-dim m-0 mt-0.5">
+                      Auto-heals deprecated models automatically and syncs active models directly from the provider.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => syncLiveAIModels(true)}
+                  disabled={isSyncingModels}
+                  className="bg-white/5 hover:bg-white/10 text-text-main border border-border-glass px-3 py-1.5 rounded-lg font-bold text-[11px] transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5 self-start sm:self-auto shrink-0"
+                >
+                  <svg className={`w-3.5 h-3.5 ${isSyncingModels ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
+                    <path d="M3 3v5h5" />
+                    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
+                    <path d="M16 16h5v5" />
+                  </svg>
+                  {isSyncingModels ? 'Syncing Models...' : 'Sync Live Models'}
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-4 mt-4">
+                {/* Chat Assistant Model */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                  <div className="flex flex-col max-w-[380px]">
+                    <span className="font-bold text-xs text-text-main">Customer Chat Assistant Model</span>
+                    <span className="text-[11px] text-text-dim mt-0.5">
+                      Powers conversational customer support, product FAQs, and store inquiries.
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2 min-w-[280px]">
+                    <select
+                      value={aiChatModel}
+                      onChange={(e) => setAiChatModel(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs outline-none focus:border-primary transition-all cursor-pointer font-sans"
+                    >
+                      {chatModelSuggestions.map((m) => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                      {!chatModelSuggestions.some(m => m.value === aiChatModel) && (
+                        <option value={aiChatModel}>{aiChatModel} (Custom)</option>
+                      )}
+                    </select>
+                    <input
+                      type="text"
+                      maxLength={80}
+                      placeholder="Or enter custom model ID..."
+                      value={aiChatModel}
+                      onChange={(e) => setAiChatModel(e.target.value)}
+                      className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-text-main text-xs outline-none focus:border-primary transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Receipt OCR Model */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                  <div className="flex flex-col max-w-[380px]">
+                    <span className="font-bold text-xs text-text-main">Receipt OCR Vision Model</span>
+                    <span className="text-[11px] text-text-dim mt-0.5">
+                      Multimodal model that extracts reference numbers, dates, and amounts from customer receipts.
+                    </span>
+                  </div>
+                  <div className="flex flex-col gap-2 min-w-[280px]">
+                    <select
+                      value={aiVisionModel}
+                      onChange={(e) => setAiVisionModel(e.target.value)}
+                      className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs outline-none focus:border-primary transition-all cursor-pointer font-sans"
+                    >
+                      {visionModelSuggestions.map((m) => (
+                        <option key={m.value} value={m.value}>{m.label}</option>
+                      ))}
+                      {!visionModelSuggestions.some(m => m.value === aiVisionModel) && (
+                        <option value={aiVisionModel}>{aiVisionModel} (Custom)</option>
+                      )}
+                    </select>
+                    <input
+                      type="text"
+                      maxLength={80}
+                      placeholder="Or enter custom vision model ID..."
+                      value={aiVisionModel}
+                      onChange={(e) => setAiVisionModel(e.target.value)}
+                      className="bg-bg-surface/50 border border-border-glass rounded-lg py-1.5 px-3 text-text-main text-xs outline-none focus:border-primary transition-all font-mono"
+                    />
+                  </div>
+                </div>
+
+                {/* Provider Endpoint */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                  <div className="flex flex-col max-w-[380px]">
+                    <span className="font-bold text-xs text-text-main">API Provider Endpoint</span>
+                    <span className="text-[11px] text-text-dim mt-0.5">
+                      The OpenAI-compatible chat completions URL used for AI requests.
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    maxLength={200}
+                    value={aiProviderUrl}
+                    onChange={(e) => setAiProviderUrl(e.target.value)}
+                    className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-xs min-w-[280px] md:max-w-[380px] flex-1 outline-none focus:border-primary transition-all font-mono"
+                    placeholder="https://api.groq.com/openai/v1/chat/completions"
+                  />
+                </div>
+
+                {/* Confidence Threshold Gate */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between bg-white/5 border border-border-glass p-4 rounded-xl gap-4">
+                  <div className="flex flex-col max-w-[380px]">
+                    <span className="font-bold text-xs text-text-main">Receipt Verification Confidence Gate</span>
+                    <span className="text-[11px] text-text-dim mt-0.5">
+                      Receipts scoring below this threshold are flagged for manual admin approval.
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-4 min-w-[280px]">
+                    <input
+                      type="range"
+                      min="50"
+                      max="100"
+                      step="5"
+                      value={minConfidenceScore}
+                      onChange={(e) => setMinConfidenceScore(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-primary focus:outline-none"
+                    />
+                    <span className="font-mono text-xs font-bold text-text-main w-12 text-right bg-primary/10 text-primary px-2 py-1 rounded">
+                      {minConfidenceScore}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* Customer Reviews Auto-Reply & Smart Response Engine */}
+                <div className="flex flex-col bg-white/5 border border-border-glass p-5 rounded-xl gap-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border-glass">
+                    <div className="flex flex-col max-w-[480px]">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-xs text-text-main">
+                          Review Auto-Reply
+                        </span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          autoReplyReviews 
+                            ? 'bg-white/15 text-text-main border border-white/30' 
+                            : 'bg-white/5 text-text-dim border border-white/10'
+                        }`}>
+                          {autoReplyReviews ? 'Enabled' : 'Disabled'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-text-dim mt-1 leading-relaxed">
+                        Automatically replies to 3★ to 5★ reviews after 5 minutes. 1★ and 2★ reviews require manual review.
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setAutoReplyReviews(!autoReplyReviews)}
+                      className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                        autoReplyReviews ? 'bg-primary' : 'bg-white/20'
+                      }`}
+                      title={autoReplyReviews ? 'Turn off auto-reply' : 'Turn on auto-reply'}
+                    >
+                      <span
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out ${
+                          autoReplyReviews ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Smart Templates Preview */}
+                  <div className="flex flex-col gap-2">
+                    <span className="text-[10.5px] font-bold uppercase tracking-wider text-text-dim flex items-center gap-1.5">
+                      Response Templates:
+                    </span>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px]">
+                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
+                        <span className="font-bold text-primary flex items-center gap-1">
+                          4★ &amp; 5★ Positive
+                        </span>
+                        <p className="text-text-dim m-0 leading-relaxed italic">
+                          "Thank you so much for the 5-star review! We are thrilled to hear that you love the embroidery craftsmanship on your custom piece..."
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1">
+                        <span className="font-bold text-text-main flex items-center gap-1">
+                          3★ Neutral
+                        </span>
+                        <p className="text-text-dim m-0 leading-relaxed italic">
+                          "Thank you for sharing your honest feedback. We take all customer impressions seriously and will review your comments with our quality team..."
+                        </p>
+                      </div>
+                      <div className="p-2.5 rounded-lg bg-bg-surface border border-border-glass flex flex-col gap-1 md:col-span-2">
+                        <span className="font-bold text-danger flex items-center gap-1">
+                          1★ &amp; 2★ Negative
+                        </span>
+                        <p className="text-text-dim m-0 leading-relaxed italic">
+                          "We are deeply sorry for your disappointing experience. Quality and craftsmanship are our highest priorities. A management alert has been triggered so our team can review this order..."
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Live Diagnostic Ping Card */}
+                <div className="flex flex-col bg-white/5 border border-border-glass p-4 rounded-xl gap-3 mt-1">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <span className="font-bold text-xs text-text-main block">Connection Diagnostics</span>
+                      <span className="text-[11px] text-text-dim block mt-0.5">
+                        Test whether the configured AI model and endpoint respond correctly.
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleTestConnection}
+                      disabled={isTestingPing || isSaving}
+                      className="bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 text-xs font-bold px-4 py-2 rounded-lg cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 shrink-0"
+                    >
+                      {isTestingPing ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+                          Testing Connection...
+                        </>
+                      ) : (
+                        'Test AI Connection'
+                      )}
+                    </button>
+                  </div>
+
+                  {pingResult && (
+                    <div className={`p-3 rounded-lg border text-xs font-mono flex flex-col gap-1.5 animate-[fadeIn_0.2s_ease-out] ${
+                      pingResult.success 
+                        ? 'bg-primary/10 border-primary/20 text-primary' 
+                        : 'bg-danger/10 border-danger/20 text-danger'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        
+                        <span className="font-bold uppercase tracking-wider text-[11px]">
+                          {pingResult.success ? 'Operational' : 'Connection Error'}
+                        </span>
+                        {pingResult.latency !== undefined && (
+                          <span className="ml-auto bg-white/5 px-2 py-0.5 rounded border border-white/5 text-[10px] text-text-dim">
+                            Latency: <strong className="text-text-main">{pingResult.latency}ms</strong>
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-col gap-1 mt-0.5">
+                        <p className="m-0 leading-relaxed"><strong className="text-text-main">Message:</strong> {pingResult.message}</p>
+                        {pingResult.reply && (
+                          <p className="m-0 leading-relaxed text-text-dim"><strong className="text-text-main">Response:</strong> &ldquo;{pingResult.reply}&rdquo;</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-end gap-3 mt-6 pt-5 border-t border-border-glass">
+                <button
+                  type="button"
+                  onClick={handleResetAISettings}
+                  disabled={isSaving}
+                  className="bg-transparent hover:bg-white/5 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold px-4 py-2.5 rounded-lg cursor-pointer transition-all active:scale-95"
+                >
+                  Reset to Defaults
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAISettings}
+                  disabled={isSaving}
+                  className="bg-primary text-white text-xs font-bold px-6 py-2.5 rounded-lg hover:bg-primary/90 cursor-pointer transition-all active:scale-95 disabled:opacity-50 flex items-center gap-2 border-none shadow-md shadow-primary/20"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin"></div>
+                      Saving Config...
+                    </>
+                  ) : (
+                    'Save AI Settings'
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ========================================================================= */}
+          {/* TAB 4: THEME & APPEARANCE                                                */}
+          {/* ========================================================================= */}
+          {activeTab === 'appearance' && (
+            <div className="glass-card p-6 md:p-8 border border-border-glass rounded-xl flex flex-col">
+              <div className="flex items-center gap-3 mb-2 pb-4 border-b border-border-glass">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"/>
+                    <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                  </svg>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold m-0 text-text-main">Theme &amp; Appearance</h3>
+                  <p className="text-xs text-text-dim m-0 mt-0.5">
+                    Customize the visual display mode of the admin control panel.
+                  </p>
+                </div>
+              </div>
+
+              {/* Theme Selection Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
+                {/* Dark Mode Card */}
+                <div 
+                  onClick={() => {
+                    if (theme !== 'dark') toggleTheme();
+                  }}
+                  className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between gap-4 ${
+                    theme === 'dark'
+                      ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-lg shadow-primary/10'
+                      : 'bg-white/5 border-border-glass hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-[#0f1117] border border-white/10 flex items-center justify-center text-text-main">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+                      </svg>
+                    </div>
+                    {theme === 'dark' && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/20 px-2.5 py-1 rounded-full border border-primary/30">
+                        
+                        Active Theme
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-text-main m-0">Dark Theme</h4>
+                    <p className="text-xs text-text-dim m-0 mt-1 leading-relaxed">
+                      Sleek glassmorphism with high contrast for night and low-light environments.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Light Mode Card */}
+                <div 
+                  onClick={() => {
+                    if (theme !== 'light') toggleTheme();
+                  }}
+                  className={`p-5 rounded-xl border cursor-pointer transition-all duration-200 flex flex-col justify-between gap-4 ${
+                    theme === 'light'
+                      ? 'bg-primary/10 border-primary ring-2 ring-primary/30 shadow-lg shadow-primary/10'
+                      : 'bg-white/5 border-border-glass hover:border-white/20'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 border border-slate-300 flex items-center justify-center text-text-main">
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <circle cx="12" cy="12" r="5"/>
+                        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                      </svg>
+                    </div>
+                    {theme === 'light' && (
+                      <span className="flex items-center gap-1.5 text-[11px] font-bold text-primary bg-primary/20 px-2.5 py-1 rounded-full border border-primary/30">
+                        
+                        Active Theme
+                      </span>
+                    )}
+                  </div>
+
+                  <div>
+                    <h4 className="font-bold text-sm text-text-main m-0">Light Theme</h4>
+                    <p className="text-xs text-text-dim m-0 mt-1 leading-relaxed">
+                      Clean, high-brightness layout ideal for bright daylight and office environments.
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 5. Account Security & Password Tab */}
+          {activeTab === 'security' && (
+            <div className="flex flex-col gap-6 animate-[fadeIn_0.2s_ease-out]">
+              <div className="flex flex-col gap-1">
+                <h3 className="text-lg font-bold text-text-main m-0">Account Security & Password</h3>
+                <p className="text-xs text-text-dim m-0">
+                  Manage your administrative credentials and rotate passwords. Changing your password revokes all other active sessions for this account.
+                </p>
+              </div>
+
+              <div className="bg-bg-surface/80 border border-border-glass rounded-xl p-6 flex flex-col gap-5 max-w-xl">
+                <div className="flex items-center gap-3 border-b border-border-glass/40 pb-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-border-glass flex items-center justify-center text-text-main shrink-0">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round">
+                      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-text-main m-0">Update Password</h4>
+                    <p className="text-xs text-text-dim m-0">Requires verification of your current administrative password</p>
+                  </div>
+                </div>
+
+                <form onSubmit={handleChangePassword} className="flex flex-col gap-4">
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-xs font-semibold text-text-dim">Current Password</label>
+                    <input
+                      type={showSecPass ? 'text' : 'password'}
+                      maxLength={100}
+                      required
+                      placeholder="Enter current password"
+                      value={currPass}
+                      onChange={(e) => setCurrPass(e.target.value)}
+                      className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
+                      autoComplete="current-password"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-text-dim">New Password</label>
+                      <input
+                        type={showSecPass ? 'text' : 'password'}
+                        maxLength={100}
+                        required
+                        minLength={6}
+                        placeholder="At least 6 characters"
+                        value={newPass}
+                        onChange={(e) => setNewPass(e.target.value)}
+                        className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
+                        autoComplete="new-password"
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-xs font-semibold text-text-dim">Confirm New Password</label>
+                      <input
+                        type={showSecPass ? 'text' : 'password'}
+                        maxLength={100}
+                        required
+                        minLength={6}
+                        placeholder="Re-enter new password"
+                        value={confirmPass}
+                        onChange={(e) => setConfirmPass(e.target.value)}
+                        className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
+                        autoComplete="new-password"
+                      />
+                    </div>
+                  </div>
+
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-xs text-text-dim">
+                    <input
+                      type="checkbox"
+                      checked={showSecPass}
+                      onChange={(e) => setShowSecPass(e.target.checked)}
+                      className="accent-primary w-3.5 h-3.5 rounded"
+                    />
+                    <span>Show passwords</span>
+                  </label>
+
+                  {passError && (
+                    <div className="p-3 rounded-lg bg-danger/10 border border-danger/20 text-xs text-danger">
+                      {passError}
+                    </div>
+                  )}
+
+                  {passSuccess && (
+                    <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary">
+                      {passSuccess}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-end pt-2">
+                    <button
+                      type="submit"
+                      disabled={isChangingPass}
+                      className="px-5 py-2.5 rounded-lg text-xs font-semibold text-white bg-primary hover:bg-primary/90 border border-primary/40 shadow-sm transition-all cursor-pointer disabled:opacity-50 flex items-center gap-2"
+                    >
+                      {isChangingPass ? (
+                        <>
+                          <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span>Updating...</span>
+                        </>
+                      ) : (
+                        <span>Update Password</span>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+        </div>
+    </section>
+  );
+}
