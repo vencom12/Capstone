@@ -503,22 +503,19 @@ export default function CheckoutModal({
         }
         const promptMsg = verifyRes.message || 'Receipt uploaded! Please confirm your 13-digit GCash Reference Number below to finalize your order.';
         setAiVerificationResult(promptMsg);
-        showToast(promptMsg, 'info');
       } else {
         // Hard rejection (non-receipt image, outdated receipt, duplicate receipt, wrong recipient, or insufficient amount)
         setAllowManualRef(false);
         setManualRef('');
-        const reasonText = verifyRes.message || verifyRes.flaggedReason || "The uploaded image does not appear to be an authentic payment receipt. Please upload a clear screenshot of your GCash transaction confirmation.";
+        const reasonText = verifyRes.message || verifyRes.flaggedReason || "Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.";
         setAiVerificationResult(reasonText);
-        showToast(reasonText, 'error');
       }
     } catch (err: any) {
       console.warn('[Receipt Verification Notice]:', err?.message || err);
       setAllowManualRef(false);
       setManualRef('');
-      const errMsg = err?.message || "We couldn't verify this image as an authentic GCash receipt. Please upload a clear screenshot of your GCash transaction confirmation.";
+      const errMsg = err?.message || "Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.";
       setAiVerificationResult(errMsg);
-      showToast(errMsg, 'error');
     } finally {
       setAiAnalyzing(false);
     }

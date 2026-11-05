@@ -326,9 +326,6 @@ export default function GCashPayment({
           
           {!verified && !allowManualRef ? (
             <div className="flex flex-col gap-2.5 border-t border-white/10 pt-2.5 mt-1">
-              <span className="text-[0.75rem] text-text-dim leading-relaxed">
-                Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.
-              </span>
               <button
                 type="button"
                 onClick={() => document.getElementById('gcash-upload')?.click()}
