@@ -947,13 +947,7 @@ export default function DashboardPage() {
       {/* Mobile Top Bar */}
       <div className="hidden max-md:flex items-center justify-between w-full max-w-full overflow-hidden h-[58px] px-3 sm:px-4 border-b border-border-glass bg-bg-header/95 backdrop-blur-xl fixed top-0 left-0 z-[1000] shadow-sm">
         <Link href="/" className="flex items-center gap-2 min-w-0 flex-1 truncate no-underline cursor-pointer group mr-2">
-          {businessLogoUrl ? (
-            <img src={businessLogoUrl} alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white/10 shrink-0" />
-          ) : (
-            <div className="bg-primary w-7 h-7 rounded-lg flex items-center justify-center text-white shrink-0 shadow-sm">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-            </div>
-          )}
+          <img src="/icon-192.png" alt="Logo" className="w-7 h-7 rounded-lg object-contain bg-white/5 p-0.5 shrink-0 shadow-sm" />
           <span className="font-black text-[1.02rem] text-text-main tracking-tight truncate">Customer Hub</span>
         </Link>
 

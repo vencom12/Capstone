@@ -98,13 +98,7 @@ export default function Sidebar() {
         {/* Mobile / Tablet Header Inside Sidebar */}
         <div className="hidden max-[1024px]:flex items-center justify-between pb-4 border-b border-border-glass mb-4 shrink-0">
           <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2.5 no-underline cursor-pointer">
-            {businessLogoUrl ? (
-              <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
-            ) : (
-              <div className="bg-primary w-8 h-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold shadow-sm">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
-              </div>
-            )}
+            <img src="/icon-192.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/5 p-0.5 shrink-0 shadow-sm" />
             <span className="font-black text-[1.1rem] text-text-main tracking-tight">
               {businessName}
             </span>

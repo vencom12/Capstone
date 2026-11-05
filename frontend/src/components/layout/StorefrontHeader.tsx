@@ -358,11 +358,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
         <div className="flex items-center justify-between w-full lg:w-auto lg:min-w-[220px] min-w-0">
           {/* Brand Logo & Title Area */}
           <Link href="/" onClick={handleLogoClick} className="flex items-center gap-2.5 min-w-0 no-underline cursor-pointer group">
-            {businessLogoUrl ? (
-              <img src={businessLogoUrl} alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/10 shrink-0" />
-            ) : (
-              <img src="/icon-192.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/5 p-0.5 shrink-0 shadow-sm group-hover:scale-105 transition-transform" />
-            )}
+            <img src="/icon-192.png" alt="Logo" className="w-8 h-8 rounded-lg object-contain bg-white/5 p-0.5 shrink-0 shadow-sm group-hover:scale-105 transition-transform" />
             <h1 className="font-black text-lg sm:text-xl text-text-main tracking-tight m-0 truncate">
               {businessName}
             </h1>

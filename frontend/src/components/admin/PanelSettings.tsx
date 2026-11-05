@@ -577,59 +577,8 @@ export default function PanelSettings({
                   </div>
                 </div>
 
-                {/* Row 4: Logo & GCash QR Upload Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                  {/* Store Logo Card */}
-                  <div className="bg-white/5 border border-border-glass p-4 rounded-xl flex flex-col justify-between gap-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <span className="font-bold text-xs text-text-main block">Store Logo</span>
-                        <span className="text-[11px] text-text-dim block mt-0.5">
-                          Shown on receipts and website header.
-                        </span>
-                      </div>
-                      {businessLogoUrl ? (
-                        <div className="relative group w-14 h-14 rounded-lg bg-white/10 p-1 border border-border-glass flex items-center justify-center shrink-0">
-                          <img src={businessLogoUrl} alt="Store Logo" className="w-full h-full object-contain rounded" />
-                          <button 
-                            type="button"
-                            onClick={() => setBusinessLogoUrl('')}
-                            className="absolute -top-1.5 -right-1.5 bg-danger hover:bg-danger/90 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs cursor-pointer shadow-md transition-transform active:scale-90"
-                            title="Remove Logo"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="w-14 h-14 rounded-lg bg-white/5 border border-dashed border-border-glass flex items-center justify-center text-text-dim shrink-0">
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                            <circle cx="8.5" cy="8.5" r="1.5"/>
-                            <polyline points="21 15 16 10 5 21"/>
-                          </svg>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <label className="flex-1">
-                        <span className="inline-flex items-center justify-center w-full px-3 py-2 text-xs font-semibold rounded-lg bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 cursor-pointer transition-all active:scale-95 text-center">
-                          {isUploadingLogo ? 'Uploading Logo...' : 'Upload New Logo'}
-                        </span>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={handleLogoUpload}
-                          disabled={isUploadingLogo}
-                          className="hidden"
-                        />
-                      </label>
-                      {isUploadingLogo && (
-                        <div className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin shrink-0"></div>
-                      )}
-                    </div>
-                  </div>
-
+                {/* Row 4: GCash QR Upload Card */}
+                <div className="grid grid-cols-1 gap-4 mt-2">
                   {/* GCash QR Code Card */}
                   <div className="bg-white/5 border border-border-glass p-4 rounded-xl flex flex-col justify-between gap-4">
                     <div className="flex items-start justify-between gap-3">
