@@ -791,28 +791,18 @@ export default function PanelOverview({
                               );
                             }
                             if (!ref && !isUnpaid) return null;
-                            const prefix = ref.length > 4 ? ref.slice(0, -4) : '';
                             const last4 = ref ? ref.slice(-4) : '';
                             return (
                               <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                                {ref && (
-                                  <div
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
-                                    title={`Full GCash Ref: ${ref}`}
-                                  >
-                                    <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
-                                    <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
-                                    <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
-                                      {last4}
-                                    </span>
-                                  </div>
-                                )}
                                 {smsVerified && !isUnpaid ? (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim">
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim"
+                                    title={ref ? `Full GCash Ref: ${ref}` : undefined}
+                                  >
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    Payment Verified
+                                    {last4 ? `Verified ${last4}` : 'Verified'}
                                   </span>
                                 ) : (
                                   <button
@@ -820,7 +810,7 @@ export default function PanelOverview({
                                     onClick={(e) => handleVerifySmsMatch(o, e)}
                                     disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
                                     className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
-                                    title="Tap to verify and approve payment against GCash transaction receipt"
+                                    title={ref ? `Full GCash Ref: ${ref} — Tap to verify payment` : 'Tap to verify payment'}
                                   >
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12" />
@@ -1024,13 +1014,10 @@ export default function PanelOverview({
                           const last4 = ref ? ref.slice(-4) : '';
                           return (
                             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              {ref && (
-                                <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-bold">
-                                  Ref: ...{last4}
-                                </span>
-                              )}
                               {smsVerified && !isUnpaid ? (
-                                <span className="text-[10px] font-sans font-medium text-text-dim">Verified</span>
+                                <span className="text-[10px] font-sans font-medium text-text-dim">
+                                  {last4 ? `Verified ${last4}` : 'Verified'}
+                                </span>
                               ) : (
                                 <button
                                   type="button"
