@@ -7,12 +7,15 @@ exports.getDashboardState = async (req, res) => {
     try {
         const [orders, inventory, products, machines] = await Promise.all([
             prisma.order.findMany({ 
+                where: {
+                    status: { notIn: ['Completed', 'Order Delivered', 'Order Canceled'] }
+                },
                 include: { transaction: true, receipt: true },
                 orderBy: [
                     { priorityScore: 'desc' },
-                    { createdAt: 'asc' }
+                    { createdAt: 'desc' }
                 ], 
-                take: 100 
+                take: 500 
             }),
             prisma.inventory.findMany({ orderBy: { item: 'asc' } }),
             prisma.product.findMany({ orderBy: { createdAt: 'desc' }, take: 100 }),

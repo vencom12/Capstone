@@ -780,7 +780,8 @@ export default function PanelOverview({
                           <div>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</div>
                           {(() => {
                             const ref = getOrderGcashRef(o);
-                            const smsVerified = isOrderSmsVerified(o);
+                            const smsVerified = isOrderSmsVerified(o) || (o.paymentStatus === 'paid' && o.status !== 'Awaiting Payment');
+                            const isUnpaid = o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid';
                             const isCashOrCounter = String(o.orderId || '').startsWith('WI-') || o.paymentMethod === 'cash';
                             if (isCashOrCounter && !ref) {
                               return (
@@ -789,22 +790,24 @@ export default function PanelOverview({
                                 </span>
                               );
                             }
-                            if (!ref) return null;
+                            if (!ref && !isUnpaid) return null;
                             const prefix = ref.length > 4 ? ref.slice(0, -4) : '';
-                            const last4 = ref.slice(-4);
+                            const last4 = ref ? ref.slice(-4) : '';
                             return (
                               <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                                <div
-                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
-                                  title={`Full GCash Ref: ${ref}`}
-                                >
-                                  <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
-                                  <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
-                                  <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
-                                    {last4}
-                                  </span>
-                                </div>
-                                {smsVerified ? (
+                                {ref && (
+                                  <div
+                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
+                                    title={`Full GCash Ref: ${ref}`}
+                                  >
+                                    <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
+                                    <span className="text-[10px] font-mono text-text-dim">{prefix ? `...` : ''}</span>
+                                    <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
+                                      {last4}
+                                    </span>
+                                  </div>
+                                )}
+                                {smsVerified && !isUnpaid ? (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim">
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12" />
@@ -822,7 +825,7 @@ export default function PanelOverview({
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Verify Payment (...${last4})`}</span>
+                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : (last4 ? `Verify Payment (...${last4})` : 'Verify Payment')}</span>
                                   </button>
                                 )}
                               </div>

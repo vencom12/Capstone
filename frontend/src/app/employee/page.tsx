@@ -1028,26 +1028,29 @@ export default function EmployeePage() {
                               {(() => {
                                 const ref = getOrderGcashRef(o);
                                 const smsVerified = isOrderSmsVerified(o);
-                                if (!ref) return null;
-                                const last4 = ref.slice(-4);
+                                const isUnpaid = o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid';
+                                if (!ref && !isUnpaid) return null;
+                                const last4 = ref ? ref.slice(-4) : '';
                                 return (
                                   <div className="mt-1 flex flex-col gap-1" onClick={(e) => e.stopPropagation()}>
-                                    <div
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
-                                      title={`Full GCash Ref: ${ref} — Match last 4 digits (${last4}) on store phone SMS`}
-                                    >
-                                      <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
-                                      <span className="text-[10px] font-mono text-text-dim">{ref.length > 4 ? '...' : ''}</span>
-                                      <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
-                                        {last4}
-                                      </span>
-                                    </div>
-                                    {smsVerified ? (
+                                    {ref && (
+                                      <div
+                                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface border border-border-glass w-fit"
+                                        title={`Full GCash Ref: ${ref} — Match last 4 digits (${last4}) on store phone SMS`}
+                                      >
+                                        <span className="text-[9px] font-sans font-bold uppercase text-text-dim">Ref:</span>
+                                        <span className="text-[10px] font-mono text-text-dim">{ref.length > 4 ? '...' : ''}</span>
+                                        <span className="text-xs font-mono font-bold text-text-main px-1 rounded bg-white/5 border border-border-glass">
+                                          {last4}
+                                        </span>
+                                      </div>
+                                    )}
+                                    {smsVerified && !isUnpaid ? (
                                       <span className="inline-flex items-center gap-1 text-[10px] font-sans font-medium text-text-dim">
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                           <polyline points="20 6 9 17 4 12" />
                                         </svg>
-                                        SMS Verified
+                                        Payment Verified
                                       </span>
                                     ) : (
                                       <button
@@ -1059,7 +1062,7 @@ export default function EmployeePage() {
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                           <polyline points="20 6 9 17 4 12" />
                                         </svg>
-                                        <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : `Confirm SMS (...${last4})`}</span>
+                                        <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (last4 ? `Verify Payment (...${last4})` : 'Verify Payment')}</span>
                                       </button>
                                     )}
                                   </div>
@@ -1172,7 +1175,8 @@ export default function EmployeePage() {
                 paginatedQueueOrders.map((o) => {
                   const rawClient = o.personalization?.claimantName || o.client || o.clientName || 'Valued Customer';
                   const cleanClient = String(rawClient).replace(/\s*\([^)]*\)/g, '').trim() || 'Valued Customer';
-                  const hasPrimaryAction = (o.status === 'In Queue') || (o.status === 'Preparing Order') || (o.status === 'Ready For Pick Up') || Boolean(o.status?.includes('Hold'));
+                  const isUnpaidOrder = o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid';
+                  const hasPrimaryAction = isUnpaidOrder || (o.status === 'In Queue') || (o.status === 'Preparing Order') || (o.status === 'Ready For Pick Up') || Boolean(o.status?.includes('Hold'));
 
                   return (
                     <div
@@ -1338,6 +1342,17 @@ export default function EmployeePage() {
                           </svg>
                           <span>Bag Slip</span>
                         </button>
+
+                        {isUnpaidOrder && (
+                          <button
+                            type="button"
+                            onClick={(e) => handleVerifySmsMatch(o, e)}
+                            disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                            className="flex-1 min-h-[40px] bg-white/10 hover:bg-white/15 border border-border-glass text-text-main py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
+                          >
+                            {verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : 'Verify Payment'}
+                          </button>
+                        )}
 
                         {o.status?.includes('Hold') && (
                           <button
