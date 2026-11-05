@@ -1062,7 +1062,7 @@ export default function EmployeePage() {
                                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                           <polyline points="20 6 9 17 4 12" />
                                         </svg>
-                                        <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (last4 ? `Verify Payment (...${last4})` : 'Verify Payment')}</span>
+                                        <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (last4 ? `Verify ${last4}` : 'Verify')}</span>
                                       </button>
                                     )}
                                   </div>
@@ -1350,7 +1350,10 @@ export default function EmployeePage() {
                             disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
                             className="flex-1 min-h-[40px] bg-white/10 hover:bg-white/15 border border-border-glass text-text-main py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
                           >
-                            {verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : 'Verify Payment'}
+                            {verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (() => {
+                              const ref = getOrderGcashRef(o);
+                              return ref ? `Verify ${ref.slice(-4)}` : 'Verify';
+                            })()}
                           </button>
                         )}
 

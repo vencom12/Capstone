@@ -825,7 +825,7 @@ export default function PanelOverview({
                                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                       <polyline points="20 6 9 17 4 12" />
                                     </svg>
-                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Confirming...' : (last4 ? `Verify Payment (...${last4})` : 'Verify Payment')}</span>
+                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (last4 ? `Verify ${last4}` : 'Verify')}</span>
                                   </button>
                                 )}
                               </div>
@@ -1019,14 +1019,17 @@ export default function PanelOverview({
                         {(() => {
                           const ref = getOrderGcashRef(o);
                           const smsVerified = isOrderSmsVerified(o);
-                          if (!ref) return null;
-                          const last4 = ref.slice(-4);
+                          const isUnpaid = o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid';
+                          if (!ref && !isUnpaid) return null;
+                          const last4 = ref ? ref.slice(-4) : '';
                           return (
                             <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
-                              <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-bold">
-                                Ref: ...{last4}
-                              </span>
-                              {smsVerified ? (
+                              {ref && (
+                                <span className="text-[10px] font-mono bg-bg-surface border border-border-glass text-text-main px-1.5 py-0.5 rounded font-bold">
+                                  Ref: ...{last4}
+                                </span>
+                              )}
+                              {smsVerified && !isUnpaid ? (
                                 <span className="text-[10px] font-sans font-medium text-text-dim">Verified</span>
                               ) : (
                                 <button
@@ -1034,7 +1037,7 @@ export default function PanelOverview({
                                   onClick={(e) => handleVerifySmsMatch(o, e)}
                                   className="text-[10px] font-sans font-bold bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main min-h-[30px] px-2 py-0.5 rounded-md cursor-pointer active:scale-95"
                                 >
-                                  Verify
+                                  {last4 ? `Verify ${last4}` : 'Verify'}
                                 </button>
                               )}
                             </div>
