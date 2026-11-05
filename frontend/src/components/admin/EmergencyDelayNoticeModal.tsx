@@ -516,19 +516,14 @@ export default function EmergencyDelayNoticeModal({
                   : 'bg-bg-surface border-border-glass hover:bg-white/5 text-text-dim hover:text-text-main'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text-main flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-text-main" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
-                  Option A: Accept with Delay
-                </span>
-                {orderingPolicy === 'ALLOW_WITH_DELAY' && (
-                  <span className="text-[11px] font-bold text-text-main">✓ Selected</span>
-                )}
-              </div>
+              <span className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+                Option A: Accept with Delay
+              </span>
               <span className="text-[11px] text-text-dim leading-snug">
-                Customers can pre-book their queue slot. Ready dates auto-shift to after your return.
+                Allow new orders; claim times shift to reopening.
               </span>
             </button>
 
@@ -541,20 +536,15 @@ export default function EmergencyDelayNoticeModal({
                   : 'bg-bg-surface border-border-glass hover:bg-white/5 text-text-dim hover:text-text-main'
               }`}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-text-main flex items-center gap-1.5">
-                  <svg className="w-3.5 h-3.5 text-text-main" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="6" y="4" width="4" height="16" />
-                    <rect x="14" y="4" width="4" height="16" />
-                  </svg>
-                  Option B: Pause New Orders
-                </span>
-                {orderingPolicy === 'PAUSE_ORDERS' && (
-                  <span className="text-[11px] font-bold text-text-main">✓ Selected</span>
-                )}
-              </div>
+              <span className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="6" y="4" width="4" height="16" />
+                  <rect x="14" y="4" width="4" height="16" />
+                </svg>
+                Option B: Pause New Orders
+              </span>
               <span className="text-[11px] text-text-dim leading-snug">
-                Checkout is paused during the closure with reopening date displayed. Zero new backlog.
+                Pause checkout until the workshop reopens.
               </span>
             </button>
           </div>
@@ -575,8 +565,8 @@ export default function EmergencyDelayNoticeModal({
           />
         </div>
 
-        {/* Brevo Email Checkbox */}
-        <label className="flex items-start gap-2.5 text-xs text-text-dim cursor-pointer p-2 rounded-lg bg-bg-surface/50 border border-border-glass">
+        {/* Email Checkbox */}
+        <label className="flex items-start gap-2.5 text-xs text-text-dim cursor-pointer p-2.5 rounded-lg bg-bg-surface/50 border border-border-glass">
           <input
             type="checkbox"
             checked={notifyCustomers}
@@ -585,10 +575,10 @@ export default function EmergencyDelayNoticeModal({
           />
           <div className="flex flex-col">
             <span className="font-semibold text-text-main">
-              Email Affected In-Queue Customers (Brevo)
+              Email Affected In-Queue Customers
             </span>
             <span className="text-[11px]">
-              Sends polite schedule update with revised pickup date and refund options to customers whose orders overlap the break.
+              Sends an email with the updated claim time and order tracking link.
             </span>
           </div>
         </label>
