@@ -55,6 +55,7 @@ export default function CheckoutModal({
   const [receiptUrl, setReceiptUrl] = useState('');
   const [aiVerificationResult, setAiVerificationResult] = useState<string | null>(null);
   const [manualRef, setManualRef] = useState('');
+  const [allowManualRef, setAllowManualRef] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [latestCreatedOrder, setLatestCreatedOrder] = useState<any | null>(null);
   const [isBypassing, setIsBypassing] = useState(false);
@@ -395,6 +396,7 @@ export default function CheckoutModal({
     setReceiptFile(file);
     setAiAnalyzing(true);
     setPaymentVerified(false);
+    setAllowManualRef(false);
     setAiVerificationResult(null);
 
     try {
@@ -424,95 +426,103 @@ export default function CheckoutModal({
 
       setReceiptUrl(uploadData.url);
 
-      const firstPersonalizedItem = itemsWithPreOrder.find((i) => i.personalization?.text);
-      let orderRes: any;
-      try {
-        orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
-          items: itemsWithPreOrder,
-          totalAmount: finalTotal,
-          address: currentAddress,
-          deliveryTime: chosenDeliveryTimeLabel,
-          dueDate: chosenDueDate,
-          isPreOrder: hasPreOrderItems,
-          notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
-          paymentMethod: 'gcash',
-          receiptUrl: uploadData.url,
-          personalization: {
-            fulfillmentType: 'pickup',
-            courier: 'Store Pick-up',
-            claimSchedule: chosenDeliveryTimeLabel,
-            isPreOrder: hasPreOrderItems,
-            claimantName: user?.username || 'Customer',
-            claimantPhone: user?.phoneNumber || undefined,
-            pickupNote: pickupNote.trim() || undefined,
-            text: firstPersonalizedItem?.personalization?.text,
-            namesList: firstPersonalizedItem?.personalization?.namesList,
-            isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
-            color: firstPersonalizedItem?.personalization?.threadColor,
-            font: firstPersonalizedItem?.personalization?.font,
-          }
-        });
-      } catch (submitErr: any) {
-        setAiAnalyzing(false);
-        const errMsg = submitErr?.message || 'We could not submit your order. Please check item availability.';
-        showToast(errMsg, 'error');
-        setAiVerificationResult(errMsg);
-        return;
-      }
-
-      if (orderRes?.order?.orderId) {
-        setPendingOrderId(orderRes.order.orderId);
-        setLatestCreatedOrder(orderRes.order);
-      }
-
-      // Step 3: Call AI verification with the uploaded receipt
+      // Step 2: Run 6-layer receipt verification FIRST before creating any order in the database
       const verifyRes = await api.post<{
         success: boolean;
         message: string;
         verificationStatus?: string;
+        needsManualRef?: boolean;
+        imageHash?: string | null;
         flaggedReason?: string;
-        aiResult?: { extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
+        aiResult?: { isValidReceipt?: boolean; extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
       }>('/api/ai/verify-receipt', {
         receiptUrl: uploadData.url,
-        orderTotal: orderRes.order?.totalAmount ?? finalTotal,
-        orderId: orderRes.order.orderId
+        orderTotal: finalTotal
       });
 
       if (verifyRes.success) {
-        if (verifyRes.verificationStatus === 'pending_manual_verification') {
-          if (verifyRes.aiResult?.referenceId) {
-            setManualRef(verifyRes.aiResult.referenceId);
-          }
-          setAiVerificationResult('Receipt uploaded! Please confirm your GCash Reference Number below to finalize your order.');
-          showToast('Receipt received! Please confirm your GCash Reference Number below.', 'info');
-        } else {
-          setPaymentVerified(true);
-          setAiVerificationResult('Being processed by management — awaiting payment confirmation.');
-          showToast('Order placed! It is now being processed by management.', 'success');
-          try {
-            await refreshUser();
-            await fetchDashboardState();
-            handleClearProcessedItems();
-          } catch (cleanErr) {
-            console.error('[Checkout Cleanup Notice]:', cleanErr);
-          }
-          handleModalClose(true, orderRes.order);
+        // Step 3: Receipt passed all authenticity & temporal checks — now submit the order
+        const firstPersonalizedItem = itemsWithPreOrder.find((i) => i.personalization?.text);
+        const extractedRef = verifyRes.aiResult?.referenceId || undefined;
+        let orderRes: any;
+        try {
+          orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
+            items: itemsWithPreOrder,
+            totalAmount: finalTotal,
+            address: currentAddress,
+            deliveryTime: chosenDeliveryTimeLabel,
+            dueDate: chosenDueDate,
+            isPreOrder: hasPreOrderItems,
+            notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
+            paymentMethod: 'gcash',
+            receiptUrl: uploadData.url,
+            referenceNumber: extractedRef,
+            imageHash: verifyRes.imageHash || undefined,
+            existingOrderId: pendingOrderId || undefined,
+            personalization: {
+              fulfillmentType: 'pickup',
+              courier: 'Store Pick-up',
+              claimSchedule: chosenDeliveryTimeLabel,
+              isPreOrder: hasPreOrderItems,
+              referenceNumber: extractedRef,
+              claimantName: user?.username || 'Customer',
+              claimantPhone: user?.phoneNumber || undefined,
+              pickupNote: pickupNote.trim() || undefined,
+              text: firstPersonalizedItem?.personalization?.text,
+              namesList: firstPersonalizedItem?.personalization?.namesList,
+              isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
+              color: firstPersonalizedItem?.personalization?.threadColor,
+              font: firstPersonalizedItem?.personalization?.font,
+            }
+          });
+        } catch (submitErr: any) {
+          setAiAnalyzing(false);
+          const errMsg = submitErr?.message || 'We could not submit your order. Please check item availability.';
+          showToast(errMsg, 'error');
+          setAiVerificationResult(errMsg);
+          return;
         }
-      } else {
-        // Auto-fill extracted reference ID so customer doesn't have to manually retype 13 digits!
+
+        if (orderRes?.order?.orderId) {
+          setPendingOrderId(orderRes.order.orderId);
+          setLatestCreatedOrder(orderRes.order);
+        }
+
+        setPaymentVerified(true);
+        setAiVerificationResult('Being processed by management — awaiting payment confirmation.');
+        showToast('Order placed! It is now being processed by management.', 'success');
+        try {
+          await refreshUser();
+          await fetchDashboardState();
+          handleClearProcessedItems();
+        } catch (cleanErr) {
+          console.error('[Checkout Cleanup Notice]:', cleanErr);
+        }
+        handleModalClose(true, orderRes.order);
+      } else if (verifyRes.needsManualRef && verifyRes.verificationStatus === 'pending_manual_verification') {
+        // Authentic payment receipt detected by OCR, but 13-digit reference number needs manual confirmation
+        setAllowManualRef(true);
         if (verifyRes.aiResult?.referenceId) {
           setManualRef(verifyRes.aiResult.referenceId);
         }
-        const reasonText = verifyRes.message || verifyRes.flaggedReason || "Please confirm your GCash Reference Number below to complete your order.";
-        setAiVerificationResult(`${reasonText}`);
-        showToast(reasonText, 'info');
-        await fetchDashboardState();
+        const promptMsg = verifyRes.message || 'Receipt uploaded! Please confirm your 13-digit GCash Reference Number below to finalize your order.';
+        setAiVerificationResult(promptMsg);
+        showToast(promptMsg, 'info');
+      } else {
+        // Hard rejection (non-receipt image, outdated receipt, duplicate receipt, wrong recipient, or insufficient amount)
+        setAllowManualRef(false);
+        setManualRef('');
+        const reasonText = verifyRes.message || verifyRes.flaggedReason || "The uploaded image does not appear to be an authentic payment receipt. Please upload a clear screenshot of your GCash transaction confirmation.";
+        setAiVerificationResult(reasonText);
+        showToast(reasonText, 'error');
       }
     } catch (err: any) {
       console.warn('[Receipt Verification Notice]:', err?.message || err);
-      const friendlyMsg = "Receipt image uploaded! Please confirm your GCash Reference Number below so our team can confirm your payment.";
-      setAiVerificationResult(`${friendlyMsg}`);
-      showToast('Receipt uploaded! Please confirm your GCash Reference Number below.', 'info');
+      setAllowManualRef(false);
+      setManualRef('');
+      const errMsg = err?.message || "We couldn't verify this image as an authentic GCash receipt. Please upload a clear screenshot of your GCash transaction confirmation.";
+      setAiVerificationResult(errMsg);
+      showToast(errMsg, 'error');
     } finally {
       setAiAnalyzing(false);
     }
@@ -558,6 +568,7 @@ export default function CheckoutModal({
         isPreOrder: hasPreOrderItems,
         notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
         paymentMethod: 'gcash',
+        receiptUrl: receiptUrl || undefined,
         existingOrderId: pendingOrderId || undefined,
         referenceNumber: cleanRef,
         idempotencyKey: cleanRef ? `ref-${cleanRef}` : `checkout-${user?.id || 'anon'}-${Date.now()}`,
@@ -597,8 +608,10 @@ export default function CheckoutModal({
   const handleModalClose = (wasSuccessful = false, createdOrder: any = null) => {
     setPendingOrderId(null);
     setReceiptFile(null);
+    setReceiptUrl('');
     setAiVerificationResult(null);
     setManualRef('');
+    setAllowManualRef(false);
     setPaymentVerified(false);
     setLatestCreatedOrder(null);
     onClose();
@@ -1175,6 +1188,7 @@ export default function CheckoutModal({
               onBypassPayment={handleBypassGCash}
               isBypassing={isBypassing}
               isEmailVerified={isEmailVerified}
+              allowManualRef={allowManualRef}
             />
           </div>
         </div>

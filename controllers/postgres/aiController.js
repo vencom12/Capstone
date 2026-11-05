@@ -1601,6 +1601,7 @@ exports.verifyReceipt = async (req, res) => {
     let orderLockKey = null;
     let currentHashLock = null;
     let currentRefLock = null;
+    let localOcrResult = null;
 
     try {
         const { receiptUrl, orderTotal, orderId } = req.body;
@@ -1611,40 +1612,34 @@ exports.verifyReceipt = async (req, res) => {
         if (!receiptUrl || typeof receiptUrl !== 'string') {
             return res.status(400).json({ success: false, message: "No receipt URL provided." });
         }
-        if (!orderId || typeof orderId !== 'string') {
-            return res.status(400).json({ success: false, message: "No order ID provided." });
-        }
         if (orderTotal === undefined || isNaN(parseFloat(orderTotal)) || parseFloat(orderTotal) <= 0) {
             return res.status(400).json({ success: false, message: "Invalid order total." });
         }
 
         numOrderTotal = parseFloat(orderTotal);
 
-        // === Concurrency Mutex Defense 1: Order-Level Lock ===
-        orderLockKey = `order:${orderId}`;
+        // === Concurrency Mutex Defense 1: Order / User-Level Lock ===
+        orderLockKey = orderId ? `order:${orderId}` : `precheckout:${req.user.id}`;
         if (inFlightVerificationLocks.has(orderLockKey)) {
             return res.status(429).json({
                 success: false,
-                message: "A payment verification is currently in progress for this order. Please wait a moment."
+                message: "A payment verification is currently in progress. Please wait a moment."
             });
         }
         inFlightVerificationLocks.add(orderLockKey);
 
-        // === Ownership Validation ===
-        receipt = await prisma.receipt.findFirst({ where: { orderID: orderId } });
-        if (!receipt) {
-            return res.status(404).json({ success: false, message: "Receipt not found for this order." });
-        }
-        if (receipt.userId !== req.user.id) {
-            return res.status(403).json({ success: false, message: "You are not authorized to verify this receipt." });
-        }
-
-        // Prioritize actual order/receipt amount if stored, otherwise request body orderTotal
-        numOrderTotal = (receipt && receipt.amount > 0) ? receipt.amount : parseFloat(orderTotal);
-
-        // === Check if already verified ===
-        if (receipt.aiVerificationStatus === 'verified') {
-            return res.json({ success: true, message: "This receipt has already been verified.", aiResult: receipt.ocrData, updatedReceipt: receipt });
+        // === Ownership Validation (when orderId is already created) ===
+        if (orderId && typeof orderId === 'string') {
+            receipt = await prisma.receipt.findFirst({ where: { orderID: orderId } });
+            if (receipt && receipt.userId !== req.user.id) {
+                return res.status(403).json({ success: false, message: "You are not authorized to verify this receipt." });
+            }
+            if (receipt && receipt.amount > 0) {
+                numOrderTotal = receipt.amount;
+            }
+            if (receipt && receipt.aiVerificationStatus === 'verified') {
+                return res.json({ success: true, message: "This receipt has already been verified.", aiResult: receipt.ocrData, updatedReceipt: receipt });
+            }
         }
 
         const aiSettings = await getAISettings();
@@ -1652,12 +1647,8 @@ exports.verifyReceipt = async (req, res) => {
         const VISION_MODEL = aiSettings.aiVisionModel;
         const MIN_CONFIDENCE = aiSettings.minConfidenceScore;
 
-        if (!apiKey) {
-            return res.status(400).json({ success: false, message: "AI Verification requires an API Key." });
-        }
-
         // === DEFENSE 1: SHA-256 Image Hash Deduplication & Concurrency Lock ===
-        console.log(`[AI Vision] Defense 1: Computing image hash for Order ${orderId}...`);
+        console.log(`[AI Vision] Defense 1: Computing image hash for ${orderId || 'pre-checkout'}...`);
         let imageHash = null;
         try {
             const imageResponse = await fetch(receiptUrl);
@@ -1676,29 +1667,32 @@ exports.verifyReceipt = async (req, res) => {
                 }
                 inFlightVerificationLocks.add(currentHashLock);
 
-                // Check if this exact image was already used for an approved/verified order (ignoring testing/bypass orders)
+                // Check if this exact image was already used for an earlier order (ignoring testing/bypass orders)
+                const hashNotList = [{ referenceId: { startsWith: 'TEST-' } }];
+                if (receipt?.id) hashNotList.push({ id: receipt.id });
                 const existingByHash = await prisma.receipt.findFirst({
                     where: {
                         imageHash,
-                        NOT: [
-                            { id: receipt.id },
-                            { referenceId: { startsWith: 'TEST-' } }
-                        ],
-                        aiVerificationStatus: 'verified'
+                        NOT: hashNotList,
+                        status: { not: 'Rejected' }
                     }
                 });
                 if (existingByHash) {
                     console.log(`[AI Vision] BLOCKED: Duplicate image hash detected (${imageHash.substring(0, 12)}...) - Already used for Order ${existingByHash.orderID}`);
-                    await prisma.receipt.update({
-                        where: { id: receipt.id },
-                        data: {
-                            aiVerificationStatus: 'flagged',
-                            flaggedReason: `Duplicate receipt: Image was already used for an earlier order.`,
-                            status: 'Rejected'
-                        }
-                    });
+                    if (receipt?.id) {
+                        await prisma.receipt.update({
+                            where: { id: receipt.id },
+                            data: {
+                                aiVerificationStatus: 'rejected',
+                                flaggedReason: `Duplicate receipt: Image was already used for an earlier order.`,
+                                status: 'Rejected'
+                            }
+                        });
+                    }
                     return res.json({
                         success: false,
+                        verificationStatus: 'rejected',
+                        needsManualRef: false,
                         message: "This receipt was already used for an earlier order. Please upload the official GCash receipt screenshot you used to pay for this purchase.",
                         flaggedReason: 'duplicate_image'
                     });
@@ -1710,11 +1704,10 @@ exports.verifyReceipt = async (req, res) => {
 
         // === STEP 1 & 2: HYBRID DUAL-ENGINE VERIFICATION ===
         // TIER 1: In-House Local OCR Pipeline (Instant, deterministic, zero-cost, no model deprecation)
-        console.log(`[Payment Verification] Tier 1: Running in-house local OCR for Order ${orderId}...`);
+        console.log(`[Payment Verification] Tier 1: Running in-house local OCR for ${orderId || 'pre-checkout'}...`);
         const { parseReceiptWithLocalOCR } = require('../../services/payments/localOcrService');
         
         let aiResult = null;
-        let localOcrResult = null;
         let extractionEngine = 'In-House Local OCR (Tesseract.js)';
         
         try {
@@ -1741,6 +1734,9 @@ exports.verifyReceipt = async (req, res) => {
 
         // TIER 2: Multimodal AI Vision Fallback (With Hardened Anti-Jailbreak System Prompt)
         if (!aiResult) {
+            if (!apiKey) {
+                throw new Error("AI Vision fallback requires GROQ_API_KEY.");
+            }
             console.log(`[Payment Verification] Tier 2: Escalating to AI Vision model (${VISION_MODEL})...`);
             extractionEngine = `Multimodal AI (${VISION_MODEL})`;
             const data = await fetchGroqVisionWithFallback(apiKey, GROQ_API_URL, VISION_MODEL, {
@@ -1869,12 +1865,13 @@ Output ONLY a JSON object:
             }
 
             const isTestRef = cleanRefId.startsWith('TEST-');
+            const refWhere = {
+                referenceId: cleanRefId,
+                status: { not: 'Rejected' }
+            };
+            if (receipt?.id) refWhere.NOT = { id: receipt.id };
             const existingByRef = isTestRef ? null : await prisma.receipt.findFirst({
-                where: {
-                    referenceId: cleanRefId,
-                    NOT: { id: receipt.id },
-                    aiVerificationStatus: 'verified'
-                }
+                where: refWhere
             });
             if (existingByRef) {
                 console.log(`[AI Vision] BLOCKED: Duplicate reference ID detected (${cleanRefId}) - Already used for Order ${existingByRef.orderID}`);
@@ -1884,12 +1881,13 @@ Output ONLY a JSON object:
 
             // Audit Check 4: Fuzzy Reference Distance (Anti-Digit Tampering / Alteration Detection)
             try {
+                const fuzzyWhere = {
+                    status: { not: 'Rejected' },
+                    referenceId: { not: null }
+                };
+                if (receipt?.id) fuzzyWhere.NOT = { id: receipt.id };
                 const recentVerifiedReceipts = await prisma.receipt.findMany({
-                    where: {
-                        aiVerificationStatus: 'verified',
-                        referenceId: { not: null },
-                        NOT: { id: receipt.id }
-                    },
+                    where: fuzzyWhere,
                     select: { referenceId: true, orderID: true },
                     take: 40,
                     orderBy: { timestamp: 'desc' }
@@ -1930,12 +1928,14 @@ Output ONLY a JSON object:
                     }
 
                     // Cross-check against Order creation timestamp: cannot be paid prior to placing order
-                    const orderRecord = await prisma.order.findFirst({ where: { orderId: orderId } });
-                    if (orderRecord && orderRecord.createdAt) {
-                        const orderCreatedAt = new Date(orderRecord.createdAt);
-                        const hoursBeforeOrder = (orderCreatedAt.getTime() - txDate.getTime()) / (1000 * 60 * 60);
-                        if (hoursBeforeOrder > 2) {
-                            auditFailures.push(`This payment was made before this order was placed. Please upload the receipt for this order.`);
+                    if (orderId) {
+                        const orderRecord = await prisma.order.findFirst({ where: { orderId: orderId } });
+                        if (orderRecord && orderRecord.createdAt) {
+                            const orderCreatedAt = new Date(orderRecord.createdAt);
+                            const hoursBeforeOrder = (orderCreatedAt.getTime() - txDate.getTime()) / (1000 * 60 * 60);
+                            if (hoursBeforeOrder > 2) {
+                                auditFailures.push(`This payment was made before this order was placed. Please upload the receipt for this order.`);
+                            }
                         }
                     }
                 }
@@ -1966,76 +1966,50 @@ Output ONLY a JSON object:
             flaggedReason = `Receipt received! Since this is a custom order of ₱${numOrderTotal.toFixed(2)}, our team does a quick confirmation before placing your items in the embroidery queue.`;
         }
 
-        const verificationStatus = willAutoApproveToQueue ? 'verified' : 'flagged';
-        const receiptStatus = willAutoApproveToQueue ? 'Verified' : 'Manual Review';
+        const isRejected = auditFailures.length > 0 || !aiResult.isValidReceipt;
+        const needsManualRef = !allChecksPassed && !isRejected && Boolean(aiResult.isValidReceipt);
+        const verificationStatus = isRejected
+            ? 'rejected'
+            : needsManualRef
+            ? 'pending_manual_verification'
+            : (willAutoApproveToQueue ? 'verified' : 'flagged');
+        const receiptStatus = isRejected
+            ? 'Rejected'
+            : (willAutoApproveToQueue ? 'Verified' : 'Manual Review');
 
-        console.log(`[AI Vision] Step 4: Final verdict for Order ${orderId}: ${verificationStatus} (High-value: ${isHighValue})${flaggedReason ? ' — ' + flaggedReason : ''}`);
+        console.log(`[AI Vision] Step 4: Final verdict for ${orderId || 'pre-checkout'}: ${verificationStatus} (High-value: ${isHighValue})${flaggedReason ? ' — ' + flaggedReason : ''}`);
 
         // Check if imageHash is unique before saving to avoid Prisma unique constraint crash
         let safeImageHash = null;
-        if (willAutoApproveToQueue && imageHash) {
+        if (!isRejected && imageHash) {
+            const conflictWhere = { imageHash };
+            if (receipt?.id) conflictWhere.NOT = { id: receipt.id };
             const hashConflict = await prisma.receipt.findFirst({
-                where: { imageHash, NOT: { id: receipt.id } }
+                where: conflictWhere
             });
             if (!hashConflict) {
                 safeImageHash = imageHash;
             }
         }
 
-        // Update Receipt in Database
-        const updatedReceipt = await prisma.receipt.update({
-            where: { id: receipt.id },
-            data: {
-                ocrData: aiResult,
-                confidenceScore: confidence,
-                aiVerificationStatus: verificationStatus,
-                status: receiptStatus,
-                imageHash: safeImageHash,
-                referenceId: aiResult.referenceId || null,
-                flaggedReason
-            }
-        });
-
-        // Update Order status based on verdict
-        if (willAutoApproveToQueue) {
-            const targetOrder = await prisma.order.findFirst({ where: { orderId: orderId } });
-            const itemsList = Array.isArray(targetOrder?.items) ? targetOrder.items : [];
-            const needsStitching = itemsList.some(item => Boolean(item.personalization?.text && String(item.personalization.text).trim().length > 0));
-            const verifiedStatus = needsStitching ? 'In Queue' : 'Ready For Pick Up';
-            const verifiedProgress = needsStitching ? 5 : 90;
-
-            await prisma.order.updateMany({
-                where: { orderId: orderId },
+        // Update Receipt in Database if orderId/receipt already exists
+        let updatedReceipt = null;
+        if (receipt?.id) {
+            updatedReceipt = await prisma.receipt.update({
+                where: { id: receipt.id },
                 data: {
-                    paymentStatus: 'paid',
-                    status: verifiedStatus,
-                    progress: verifiedProgress
+                    ocrData: aiResult,
+                    confidenceScore: confidence,
+                    aiVerificationStatus: verificationStatus,
+                    status: receiptStatus,
+                    imageHash: safeImageHash,
+                    referenceId: aiResult.referenceId || null,
+                    flaggedReason
                 }
             });
+        }
 
-            // Notify via socket
-            const io = req.app.get('io');
-            if (io) {
-                const socketUtil = require('../../utils/socketUtil');
-                const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
-                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, { orderId, status: verifiedStatus });
-            }
-
-            // Dispatch verified order confirmation email with estimated ready date & attendant
-            prisma.order.findFirst({
-                where: { orderId: orderId },
-                include: { user: { select: { email: true, username: true } } }
-            }).then(verifiedOrder => {
-                if (verifiedOrder && verifiedOrder.user?.email) {
-                    const { sendOrderConfirmationEmail } = require('../../utils/emailService');
-                    sendOrderConfirmationEmail(verifiedOrder.user.email, verifiedOrder.user.username, verifiedOrder).catch(mailErr => {
-                        console.error('[AI Vision] Order confirmation email dispatch failed:', mailErr?.message || mailErr);
-                    });
-                }
-            }).catch(fetchErr => {
-                console.error('[AI Vision] Order fetch for email notification failed:', fetchErr?.message || fetchErr);
-            });
-        } else if (isHighValue && allChecksPassed) {
+        if (isHighValue && allChecksPassed && orderId) {
             // For high value orders that passed OCR/AI checks: notify staff on socket for 1-click ledger approval
             const io = req.app.get('io');
             if (io) {
@@ -2065,6 +2039,8 @@ Output ONLY a JSON object:
                 engine: extractionEngine
             },
             verificationStatus,
+            needsManualRef,
+            imageHash: safeImageHash,
             flaggedReason,
             isHighValue,
             updatedReceipt

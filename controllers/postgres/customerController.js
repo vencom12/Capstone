@@ -681,9 +681,10 @@ exports.submitOrder = async (req, res) => {
                     orderID: secureOrderId,
                     paymentMethod,
                     amount: numTotal,
-                    status: isInstantApproved ? 'Paid' : 'Pending',
-                    aiVerificationStatus: isInstantApproved ? 'verified' : 'pending',
-                    referenceId: referenceNumber || (isBypassActive ? `TEST-GCASH-${Date.now().toString().slice(-8)}` : null),
+                    status: isInstantApproved ? 'Paid' : 'Manual Review',
+                    aiVerificationStatus: isInstantApproved ? 'verified' : 'flagged',
+                    referenceId: referenceNumber || personalization?.referenceNumber || (isBypassActive ? `TEST-GCASH-${Date.now().toString().slice(-8)}` : null),
+                    imageHash: req.body.imageHash || null,
                     imageUrl: receiptUrl || (isBypassActive ? 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg' : null),
                     userId: user.id
                 }

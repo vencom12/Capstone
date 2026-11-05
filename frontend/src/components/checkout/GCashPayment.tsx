@@ -22,6 +22,7 @@ interface GCashPaymentProps {
   onBypassPayment?: () => void;
   isBypassing?: boolean;
   isEmailVerified?: boolean;
+  allowManualRef?: boolean;
 }
 
 export default function GCashPayment({
@@ -42,6 +43,7 @@ export default function GCashPayment({
   onBypassPayment,
   isBypassing = false,
   isEmailVerified = true,
+  allowManualRef = false,
 }: GCashPaymentProps) {
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
@@ -313,25 +315,21 @@ export default function GCashPayment({
             <span className="leading-relaxed">{aiVerificationResult}</span>
           </div>
           
-          {Boolean(
-            aiVerificationResult.toLowerCase().includes('already') || 
-            aiVerificationResult.toLowerCase().includes('duplicate') ||
-            aiVerificationResult.toLowerCase().includes('earlier')
-          ) ? (
+          {!verified && !allowManualRef ? (
             <div className="flex flex-col gap-2.5 border-t border-white/10 pt-2.5 mt-1">
               <span className="text-[0.75rem] text-text-dim leading-relaxed">
-                To help us start embroidering your items without delay, please upload the official GCash receipt screenshot from this payment. Make sure the amount and reference number are clear!
+                Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.
               </span>
               <button
                 type="button"
                 onClick={() => document.getElementById('gcash-upload')?.click()}
-                className="bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-[0.78rem] transition-all cursor-pointer shadow-md self-start flex items-center gap-2"
+                className="w-full bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2.5 rounded-xl text-[0.78rem] transition-all cursor-pointer shadow-md flex items-center justify-center gap-2"
               >
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
-                Upload My Payment Receipt
+                Upload Official GCash Receipt
               </button>
             </div>
-          ) : !verified ? (
+          ) : !verified && allowManualRef ? (
             <div className={`flex flex-col gap-2 border-t border-white/10 pt-2.5 mt-1 ${shakeManualRef ? 'animate-shake' : ''}`}>
               <div className="flex items-center justify-between">
                 <span className="text-[0.75rem] text-text-main font-bold">
