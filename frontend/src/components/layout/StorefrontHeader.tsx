@@ -52,12 +52,18 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
   const [emergencyNotice, setEmergencyNotice] = useState<any>(null);
   const categories = getCategories();
 
-  const isClosedOrPaused = Boolean(
+  const isInLeaveWindow = Boolean(
     emergencyNotice?.active && (
-      emergencyNotice.isCurrentlyClosed ||
-      (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
-      (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
+      !emergencyNotice.isScheduled || emergencyNotice.isCurrentlyClosed
     )
+  );
+
+  const isClosedOrPaused = Boolean(
+    isInLeaveWindow && emergencyNotice?.policy === 'PAUSE_ORDERS'
+  );
+
+  const isDelayedOpen = Boolean(
+    isInLeaveWindow && emergencyNotice?.policy !== 'PAUSE_ORDERS'
   );
 
   // Spotlight Inline AI State
@@ -642,7 +648,7 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
             </div>
           </div>
 
-          {/* Warning ONLY on the search bar when the store is closed */}
+          {/* Warning ONLY on the search bar when the store is closed or on delay */}
           {isClosedOrPaused && (
             <div className="mt-1 px-2.5 py-1 rounded-lg bg-danger/10 border border-danger/25 text-[11px] text-danger flex items-center justify-between gap-1.5 animate-in fade-in">
               <div className="flex items-center gap-1.5 truncate">
@@ -653,6 +659,18 @@ export default function StorefrontHeader({ onMenuToggle }: StorefrontHeaderProps
                 </span>
               </div>
               <span className="text-[10px] text-text-dim shrink-0 font-medium">Browsing Only</span>
+            </div>
+          )}
+          {isDelayedOpen && (
+            <div className="mt-1 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/25 text-[11px] text-amber-400 flex items-center justify-between gap-1.5 animate-in fade-in">
+              <div className="flex items-center gap-1.5 truncate">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0 animate-pulse" />
+                <span className="font-semibold truncate">
+                  Delay Notice: {emergencyNotice.reason || 'Workshop Leave'}
+                  {emergencyNotice.resumeDate ? ` · Ready dates shift to ${new Date(emergencyNotice.resumeDate).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}` : ` (+${emergencyNotice.delayHours || 24}h)`}
+                </span>
+              </div>
+              <span className="text-[10px] text-amber-300/90 shrink-0 font-semibold">Pre-Orders Open</span>
             </div>
           )}
 

@@ -94,11 +94,9 @@ export default function CheckoutModal({
   const [hasAcknowledgedDelay, setHasAcknowledgedDelay] = useState(false);
 
   const isOrderingPaused = Boolean(
-    emergencyNotice?.active && (
-      emergencyNotice.isCurrentlyClosed ||
-      (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
-      (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
-    )
+    emergencyNotice?.active &&
+    emergencyNotice.policy === 'PAUSE_ORDERS' &&
+    (!emergencyNotice.isScheduled || emergencyNotice.isCurrentlyClosed)
   );
 
   useEffect(() => {

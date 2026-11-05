@@ -524,7 +524,7 @@ export default function EmergencyDelayNoticeModal({
                   Option A: Accept with Delay
                 </span>
                 {orderingPolicy === 'ALLOW_WITH_DELAY' && (
-                  <span className="text-[11px] font-bold text-text-main">&check; Selected</span>
+                  <span className="text-[11px] font-bold text-text-main">✓ Selected</span>
                 )}
               </div>
               <span className="text-[11px] text-text-dim leading-snug">
@@ -550,7 +550,7 @@ export default function EmergencyDelayNoticeModal({
                   Option B: Pause New Orders
                 </span>
                 {orderingPolicy === 'PAUSE_ORDERS' && (
-                  <span className="text-[11px] font-bold text-text-main">&check; Selected</span>
+                  <span className="text-[11px] font-bold text-text-main">✓ Selected</span>
                 )}
               </div>
               <span className="text-[11px] text-text-dim leading-snug">

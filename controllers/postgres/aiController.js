@@ -2144,29 +2144,28 @@ exports.storefrontChat = async (req, res) => {
             const now = new Date();
             const start = metaStartDate ? new Date(metaStartDate) : (systemSettings.emergencyNoticeCreatedAt ? new Date(systemSettings.emergencyNoticeCreatedAt) : now);
             const resume = systemSettings.emergencyNoticeResumeDate ? new Date(systemSettings.emergencyNoticeResumeDate) : null;
-            if (isScheduled) {
-                isClosedOrPaused = Boolean(start && resume && now >= start && now < resume);
-            } else {
-                isClosedOrPaused = true;
-            }
+            const isInWindow = isScheduled
+                ? Boolean(start && resume && now >= start && now < resume)
+                : true;
+            isClosedOrPaused = Boolean(isInWindow && systemSettings.emergencyOrderingPolicy === 'PAUSE_ORDERS');
 
             resumeStr = resume ? resume.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', hour12: true }) : 'soon';
             startStr = start ? start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'now';
 
             if (isClosedOrPaused) {
-                emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: CLOSED / ORDERS TEMPORARILY PAUSED.
+                emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: CLOSED / ORDERS TEMPORARILY PAUSED (Option B: Pause New Orders).
 Reason: ${systemSettings.emergencyNoticeReason || 'Scheduled Workshop Leave'}.
 Message from Owner: "${systemSettings.emergencyNoticeMessage || 'Workshop is temporarily on leave.'}".
 Expected Reopening: ${resumeStr}.
 Policy: Online ordering is temporarily paused. Customers can browse products and preview customizations, but new orders will resume when the shop reopens on ${resumeStr}.`;
+            } else if (isInWindow) {
+                emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: PRE-ORDERING OPEN WITH DELAY SHIFT (Option A: Accept with Delay, +${systemSettings.emergencyNoticeDelayHours || 24} hours).
+Reason: ${systemSettings.emergencyNoticeReason}.
+Customers CAN still place orders right now to reserve their queue slot! Their estimated pickup dates automatically shift to after the workshop reopens on ${resumeStr}.`;
             } else if (isScheduled) {
                 emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: OPEN NOW, but an upcoming break is scheduled.
 Upcoming Break: ${startStr} to ${resumeStr} for "${systemSettings.emergencyNoticeReason}".
 Orders placed today that finish before ${startStr} proceed normally; any order intersecting the break will be completed in queue order when reopening on ${resumeStr}.`;
-            } else if (systemSettings.emergencyOrderingPolicy === 'ALLOW_WITH_DELAY') {
-                emergencyNoticeInfo = `CURRENT WORKSHOP STATUS: OPERATIONAL WITH EXTENDED DELAY (+${systemSettings.emergencyNoticeDelayHours || 24} hours).
-Reason: ${systemSettings.emergencyNoticeReason}.
-Customers can still place orders, but delivery/pickup dates have an extra +${systemSettings.emergencyNoticeDelayHours || 24}h turnaround buffer. Reopening normal pace: ${resumeStr}.`;
             }
         }
 

@@ -89,11 +89,9 @@ export default function ProductModal({
   } | null>(null);
 
   const isOrderingPaused = Boolean(
-    emergencyNotice?.active && (
-      emergencyNotice.isCurrentlyClosed ||
-      (!emergencyNotice.isScheduled && emergencyNotice.policy === 'PAUSE_ORDERS') ||
-      (emergencyNotice.isScheduled && emergencyNotice.isCurrentlyClosed && emergencyNotice.policy === 'PAUSE_ORDERS')
-    )
+    emergencyNotice?.active &&
+    emergencyNotice.policy === 'PAUSE_ORDERS' &&
+    (!emergencyNotice.isScheduled || emergencyNotice.isCurrentlyClosed)
   );
 
   // Real-time live stock tracking and concurrent purchase alerts
@@ -617,12 +615,39 @@ export default function ProductModal({
     }
 
     const now = new Date();
-    const currentMins = now.getHours() * 60 + now.getMinutes();
+    const isLeaveShiftActive = Boolean(
+      emergencyNotice?.active &&
+      (!emergencyNotice.isScheduled || emergencyNotice.isCurrentlyClosed) &&
+      emergencyNotice.resumeDate &&
+      new Date(emergencyNotice.resumeDate).getTime() > now.getTime()
+    );
+    const baseStart = isLeaveShiftActive && emergencyNotice?.resumeDate
+      ? new Date(emergencyNotice.resumeDate)
+      : now;
+
+    const currentMins = baseStart.getHours() * 60 + baseStart.getMinutes();
     const openMins = 10 * 60; // 10:00 AM
     const closeMins = 20 * 60; // 8:00 PM
 
     // Plain retail item without embroidery: 2-5 mins packaging
     if (!isPersonalized) {
+      if (isLeaveShiftActive) {
+        const reopenDate = new Date(baseStart);
+        const rMins = reopenDate.getHours() * 60 + reopenDate.getMinutes();
+        if (rMins < openMins) reopenDate.setHours(10, 5, 0, 0);
+        else if (rMins >= closeMins - 10) {
+          reopenDate.setDate(reopenDate.getDate() + 1);
+          reopenDate.setHours(10, 5, 0, 0);
+        } else {
+          reopenDate.setMinutes(reopenDate.getMinutes() + 5);
+        }
+        return {
+          label: `${reopenDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${reopenDate.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })} (After Reopening)`,
+          detail: `Shifted for ${emergencyNotice?.reason || 'workshop break'}`,
+          stitchMins: 0,
+          totalMinutesNeeded: 5,
+        };
+      }
       if (currentMins >= openMins && currentMins < closeMins - 10) {
         return {
           label: 'Today in 2 to 5 mins (Packaging)',
@@ -651,7 +676,7 @@ export default function ProductModal({
     const queueWait = capacityData?.queueWaitMinutes ?? (capacityData?.activeOrders ? capacityData.activeOrders * 4 : 0);
     const totalMinutesNeeded = queueWait + stitchMins;
 
-    let cur = new Date(now);
+    let cur = new Date(baseStart);
     let curH = cur.getHours();
     let curM = cur.getMinutes();
     let curDayMins = curH * 60 + curM;
@@ -718,7 +743,7 @@ export default function ProductModal({
       stitchMins,
       totalMinutesNeeded,
     };
-  }, [requiresPreOrder, isPersonalized, isMultiLine, bulkSummary, customText, quantity, capacityData, letteringRates]);
+  }, [requiresPreOrder, isPersonalized, isMultiLine, bulkSummary, customText, quantity, capacityData, letteringRates, emergencyNotice]);
 
   const validateAndBuildBasketItem = (): BasketItem | null => {
     if (!product) return null;
