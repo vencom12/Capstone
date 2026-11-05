@@ -21,6 +21,7 @@ interface GCashPaymentProps {
   onSubmitManualRef: () => void;
   onBypassPayment?: () => void;
   isBypassing?: boolean;
+  isEmailVerified?: boolean;
 }
 
 export default function GCashPayment({
@@ -40,6 +41,7 @@ export default function GCashPayment({
   onSubmitManualRef,
   onBypassPayment,
   isBypassing = false,
+  isEmailVerified = true,
 }: GCashPaymentProps) {
   const [copiedNumber, setCopiedNumber] = useState(false);
   const [copiedAmount, setCopiedAmount] = useState(false);
@@ -214,12 +216,22 @@ export default function GCashPayment({
           </span>
         </div>
         <div 
-          onClick={() => document.getElementById('gcash-upload')?.click()}
-          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onClick={() => {
+            if (!isEmailVerified) {
+              showToast('Email verification required: Please verify your email before uploading payment.', 'error');
+              return;
+            }
+            document.getElementById('gcash-upload')?.click();
+          }}
+          onDragOver={(e) => { e.preventDefault(); if (isEmailVerified) setIsDragging(true); }}
           onDragLeave={() => setIsDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
             setIsDragging(false);
+            if (!isEmailVerified) {
+              showToast('Email verification required: Please verify your email before uploading payment.', 'error');
+              return;
+            }
             const file = e.dataTransfer.files?.[0];
             if (file && file.type.startsWith('image/')) {
               showToast('Receipt file dropped!', 'success');
@@ -229,10 +241,12 @@ export default function GCashPayment({
               onFileSelect(syntheticEvent);
             }
           }}
-          className={`border border-dashed rounded-xl p-3 text-center cursor-pointer transition-all ${
-            isDragging
-              ? 'border-primary bg-primary/10 ring-2 ring-primary/40'
-              : 'border-border-glass hover:border-white/40 bg-white/[0.01] hover:bg-white/[0.03]'
+          className={`border border-dashed rounded-xl p-3 text-center transition-all ${
+            !isEmailVerified
+              ? 'border-amber-500/30 bg-amber-500/[0.02] cursor-not-allowed opacity-70'
+              : isDragging
+              ? 'border-primary bg-primary/10 ring-2 ring-primary/40 cursor-pointer'
+              : 'border-border-glass hover:border-white/40 bg-white/[0.01] hover:bg-white/[0.03] cursor-pointer'
           }`}
         >
           <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
@@ -346,8 +360,15 @@ export default function GCashPayment({
                 />
                 <button
                   type="button"
-                  onClick={handleConfirmManualRef}
-                  className="bg-primary text-white font-bold px-4 py-2 rounded-lg text-[0.78rem] hover:bg-primary/90 transition-all cursor-pointer shadow-sm shrink-0"
+                  onClick={() => {
+                    if (!isEmailVerified) {
+                      showToast('Email verification required: Please verify your email before placing an order.', 'error');
+                      return;
+                    }
+                    handleConfirmManualRef();
+                  }}
+                  disabled={!isEmailVerified}
+                  className="bg-primary text-white font-bold px-4 py-2 rounded-lg text-[0.78rem] hover:bg-primary/90 transition-all cursor-pointer shadow-sm shrink-0 disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Confirm Order →
                 </button>

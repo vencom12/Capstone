@@ -99,6 +99,22 @@ export default function CheckoutModal({
     (!emergencyNotice.isScheduled || emergencyNotice.isCurrentlyClosed)
   );
 
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
+  const isEmailVerified = Boolean(user && user.isEmailVerified);
+  const isUnverifiedUser = Boolean(user && !user.isEmailVerified);
+
+  const handleResendVerification = async () => {
+    setIsResendingEmail(true);
+    try {
+      const res = await api.post<{ success: boolean; message: string }>('/api/auth/email/resend');
+      showToast(res?.message || 'Verification email resent! Please check your inbox.', 'success');
+    } catch (e: any) {
+      showToast(e.message || 'Failed to resend verification email.', 'error');
+    } finally {
+      setIsResendingEmail(false);
+    }
+  };
+
   useEffect(() => {
     if (isOpen) {
       api.get<{ gcashQrCodeUrl: string; emergencyNotice?: any; preOrderPrepDays?: number; maxBulkPiecesPerDay?: number; batchThrottlePeriod?: string }>('/api/customer/settings')
@@ -370,8 +386,8 @@ export default function CheckoutModal({
 
     const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
 
-    if (user && !user.isEmailVerified) {
-      showToast('Please check your email to verify your account before placing an order.', 'error');
+    if (!user || !user.isEmailVerified) {
+      showToast('Email verification required: Please click the verification link sent to your email or log in via Google before placing an order.', 'error');
       return;
     }
 
@@ -504,6 +520,11 @@ export default function CheckoutModal({
   };
 
   const handleSubmitManualRef = async () => {
+    if (!user || !user.isEmailVerified) {
+      showToast('Email verification required: Please click the verification link sent to your email or log in via Google before placing an order.', 'error');
+      return;
+    }
+
     const cleanRef = manualRef.trim();
     if (!cleanRef) {
       showToast('Please enter your GCash reference number.', 'error');
@@ -588,6 +609,11 @@ export default function CheckoutModal({
   };
 
   const handleBypassGCash = async () => {
+    if (!user || !user.isEmailVerified) {
+      showToast('Email verification required: Please click the verification link sent to your email or log in via Google before placing an order.', 'error');
+      return;
+    }
+
     if (items.length === 0) {
       showToast('Your basket is empty. Please add items before checking out.', 'error');
       return;
@@ -792,6 +818,31 @@ export default function CheckoutModal({
             })}
           </div>
         </div>
+
+        {/* Email Verification Required Alert Banner */}
+        {isUnverifiedUser && (
+          <div className="p-3 rounded-xl bg-amber-500/15 border border-amber-500/35 text-xs text-left mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 animate-in fade-in">
+            <div className="flex items-start gap-2.5">
+              <span className="text-base leading-none shrink-0 mt-0.5">⚠️</span>
+              <div className="flex flex-col leading-snug">
+                <strong className="font-bold text-amber-300">
+                  Email Verification Required
+                </strong>
+                <span className="text-text-dim text-[11px] mt-0.5">
+                  Please click the verification link sent to your email (<strong className="text-text-main">{user?.email}</strong>) or log in via Google before placing an order.
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleResendVerification}
+              disabled={isResendingEmail}
+              className="bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 border border-amber-500/40 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer disabled:opacity-50 shrink-0 self-start sm:self-auto"
+            >
+              {isResendingEmail ? 'Sending...' : 'Resend Verification Email'}
+            </button>
+          </div>
+        )}
 
         {/* Real-time Concurrent Stock Notice Banner */}
         {stockAudit.hasShortage && (
@@ -1125,6 +1176,7 @@ export default function CheckoutModal({
               onSubmitManualRef={handleSubmitManualRef}
               onBypassPayment={handleBypassGCash}
               isBypassing={isBypassing}
+              isEmailVerified={isEmailVerified}
             />
           </div>
         </div>
