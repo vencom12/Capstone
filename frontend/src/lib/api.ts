@@ -248,7 +248,7 @@ export function apiFetch<T = unknown>(
 export const api = {
   get: <T = unknown>(url: string, options?: RequestInit) => apiFetch<T>(url, options),
 
-  post: <T = unknown>(url: string, body: unknown) =>
+  post: <T = unknown>(url: string, body: unknown = {}) =>
     apiFetch<T>(url, {
       method: 'POST',
       body: JSON.stringify(body),

@@ -107,7 +107,7 @@ export default function CheckoutModal({
   const handleResendVerification = async () => {
     setIsResendingEmail(true);
     try {
-      const res = await api.post<{ success: boolean; message: string }>('/api/auth/email/resend');
+      const res = await api.post<{ success: boolean; message: string }>('/api/auth/email/resend', {});
       showToast(res?.message || 'Verification email resent! Please check your inbox.', 'success');
     } catch (e: any) {
       showToast(e.message || 'Failed to resend verification email.', 'error');
