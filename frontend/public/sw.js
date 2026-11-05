@@ -1,7 +1,7 @@
 // Build Version: 2026-11-04T11:53:09.261Z
-const BUILD_VERSION = '2026-11-04T15:27:58.770Z';
+const BUILD_VERSION = '2026-11-05T12:53:50.360Z';
 // Stitch-Opt Lightweight Service Worker
-const CACHE_NAME = 'stitch-opt-v3';
+const CACHE_NAME = `stitch-opt-${BUILD_VERSION}`;
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',
@@ -19,7 +19,6 @@ self.addEventListener('install', (event) => {
       });
     })
   );
-  self.skipWaiting();
 });
 
 // Activate: Clean old caches
@@ -33,9 +32,8 @@ self.addEventListener('activate', (event) => {
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
 });
 
 // Message: Support programmatic skipWaiting on user update click
@@ -49,9 +47,11 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass non-GET requests, socket.io, and backend APIs
+  // Bypass non-GET requests, service worker, manifest, socket.io, and backend APIs
   if (
     event.request.method !== 'GET' ||
+    url.pathname === '/sw.js' ||
+    url.pathname === '/manifest.json' ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/socket.io/')
   ) {

@@ -71,14 +71,26 @@ export const usePWAStore = create<PWAStore>((set, get) => ({
     // Fallback: If no browser prompt event is available (iOS Safari, Firefox, or already prompted), show the guided visual modal
     set({ isInstallModalOpen: true });
   },
-  updateApp: () => {
+  updateApp: async () => {
     const { waitingWorker } = get();
-    if (waitingWorker) {
-      waitingWorker.postMessage({ type: 'SKIP_WAITING' });
-    }
+    try {
+      if (waitingWorker) {
+        waitingWorker.postMessage({ type: 'SKIP_WAITING' });
+      }
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (reg?.waiting) {
+          reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+        }
+      }
+      if ('caches' in window) {
+        const keys = await window.caches.keys();
+        await Promise.all(keys.map((k) => window.caches.delete(k)));
+      }
+    } catch {}
     // Reload to mount new service worker bundle
     setTimeout(() => {
       window.location.reload();
-    }, 250);
+    }, 200);
   },
 }));

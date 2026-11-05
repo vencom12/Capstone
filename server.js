@@ -177,6 +177,29 @@ app.use(require('./middleware/firebaseAuthProxy'));
 
 // Running strictly in PostgreSQL mode
 
+// Lightweight App Build Version Endpoint (bypasses rate limiter for live PWA update polling)
+const getBuildVersion = () => {
+    try {
+        const fs = require('fs');
+        const outSwPath = path.join(__dirname, 'frontend', 'out', 'sw.js');
+        const pubSwPath = path.join(__dirname, 'frontend', 'public', 'sw.js');
+        const targetPath = fs.existsSync(outSwPath) ? outSwPath : pubSwPath;
+        if (fs.existsSync(targetPath)) {
+            const content = fs.readFileSync(targetPath, 'utf-8');
+            const match = content.match(/const BUILD_VERSION = ['"]([^'"]+)['"]/);
+            if (match && match[1]) return match[1];
+        }
+    } catch (e) { /* fallback below */ }
+    return process.env.RENDER_GIT_COMMIT || 'latest';
+};
+
+app.get('/api/version', (req, res) => {
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    res.json({ version: getBuildVersion() });
+});
+
 // --- Token Bucket Rate Limiting Architecture ---
 // Global API Token Bucket: Capacity 60 tokens (burst), refills continuously at 1 token/sec (60 tokens / min)
 const globalLimiter = createTokenBucketLimiter({
@@ -283,9 +306,10 @@ const verifyCSRF = (req, res, next) => {
 app.set('verifyCSRF', verifyCSRF);
 
 // Cache-Control: Allow browsers to cache static assets (favicon, images, CSS, JS)
-// but force no-cache for API and HTML responses to ensure PWA updates
+// but force no-cache for API, HTML, and Service Worker responses to ensure PWA updates
 app.use((req, res, next) => {
-    const isStaticAsset = /\.(ico|png|svg|jpg|jpeg|gif|webp|css|js|woff2?|ttf|webmanifest)$/i.test(req.path);
+    const isSwOrManifest = req.path === '/sw.js' || req.path === '/manifest.json';
+    const isStaticAsset = !isSwOrManifest && /\.(ico|png|svg|jpg|jpeg|gif|webp|css|js|woff2?|ttf|webmanifest)$/i.test(req.path);
     if (isStaticAsset) {
         res.set('Cache-Control', 'public, max-age=86400'); // 24 hours
     } else {

@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePWAStore, type PWAPlatform } from '@/stores/usePWAStore';
+import { CLIENT_BUILD_VERSION } from '@/lib/buildVersion';
+import { API_BASE } from '@/lib/api';
 
 /**
  * ServiceWorkerRegister:
  * Registers /sw.js, listens for PWA installability events,
- * tracks standalone display mode, and detects when a new release update is ready.
+ * tracks standalone display mode, and detects when a new release update is ready
+ * via both Service Worker lifecycle events and live /api/version polling.
  */
 export default function ServiceWorkerRegister() {
   const {
@@ -16,6 +19,7 @@ export default function ServiceWorkerRegister() {
     setIsUpdateAvailable,
     setWaitingWorker,
   } = usePWAStore();
+  const initialServerVersionRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -50,52 +54,103 @@ export default function ServiceWorkerRegister() {
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
-    // Register Service Worker with release update detection
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker
-          .register('/sw.js')
-          .then((reg) => {
-            // Check if there is already a worker waiting to activate
-            if (reg.waiting) {
-              setWaitingWorker(reg.waiting);
-              setIsUpdateAvailable(true);
+    let swReg: ServiceWorkerRegistration | null = null;
+
+    const checkServerVersion = async () => {
+      try {
+        if (swReg) {
+          swReg.update().catch(() => {});
+        }
+        const res = await fetch(`${API_BASE}/api/version?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: { 'Pragma': 'no-cache', 'Cache-Control': 'no-cache' },
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        const serverVersion = data?.version;
+        if (!serverVersion || serverVersion === 'latest') return;
+
+        if (!initialServerVersionRef.current) {
+          initialServerVersionRef.current = serverVersion;
+        }
+
+        const isLocalDev =
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1';
+
+        const versionChangedSinceMount =
+          initialServerVersionRef.current &&
+          initialServerVersionRef.current !== serverVersion;
+
+        const bundleOutdatedInProd =
+          !isLocalDev &&
+          CLIENT_BUILD_VERSION &&
+          CLIENT_BUILD_VERSION !== serverVersion;
+
+        if (versionChangedSinceMount || bundleOutdatedInProd) {
+          const alreadyUpdatedTo = sessionStorage.getItem('stitch_updated_to_version');
+          if (alreadyUpdatedTo !== serverVersion) {
+            sessionStorage.setItem('stitch_updated_to_version', serverVersion);
+            setIsUpdateAvailable(true);
+          }
+        }
+      } catch {
+        // Ignore transient offline errors
+      }
+    };
+
+    const registerSW = () => {
+      if (!('serviceWorker' in navigator)) return;
+      navigator.serviceWorker
+        .register('/sw.js', { updateViaCache: 'none' })
+        .then((reg) => {
+          swReg = reg;
+
+          if (reg.waiting) {
+            setWaitingWorker(reg.waiting);
+            setIsUpdateAvailable(true);
+          }
+
+          reg.addEventListener('updatefound', () => {
+            const newWorker = reg.installing;
+            if (newWorker) {
+              newWorker.addEventListener('statechange', () => {
+                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                  setWaitingWorker(newWorker);
+                  setIsUpdateAvailable(true);
+                }
+              });
             }
-
-            // Listen for newly installed updates
-            reg.addEventListener('updatefound', () => {
-              const newWorker = reg.installing;
-              if (newWorker) {
-                newWorker.addEventListener('statechange', () => {
-                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                    setWaitingWorker(newWorker);
-                    setIsUpdateAvailable(true);
-                  }
-                });
-              }
-            });
-
-            // Check for updates on window focus or visibility change
-            const checkForUpdate = () => {
-              try {
-                reg.update().catch(() => {});
-              } catch {}
-            };
-
-            window.addEventListener('focus', checkForUpdate);
-            document.addEventListener('visibilitychange', () => {
-              if (document.visibilityState === 'visible') {
-                checkForUpdate();
-              }
-            });
-          })
-          .catch((err) => {
-            console.warn('[PWA] Service Worker registration failed:', err);
           });
-      });
+
+          checkServerVersion();
+        })
+        .catch((err) => {
+          console.warn('[PWA] Service Worker registration failed:', err);
+        });
+    };
+
+    if (document.readyState === 'complete') {
+      registerSW();
+    } else {
+      window.addEventListener('load', registerSW, { once: true });
     }
 
+    // Check for updates every 30 seconds and on window focus / visibility change
+    const pollInterval = window.setInterval(checkServerVersion, 30000);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        checkServerVersion();
+      }
+    };
+
+    window.addEventListener('focus', checkServerVersion);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
     return () => {
+      window.clearInterval(pollInterval);
+      window.removeEventListener('focus', checkServerVersion);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
