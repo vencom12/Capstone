@@ -83,7 +83,10 @@ export default function EmployeePage() {
   const [isQueueSearching, setIsQueueSearching] = useState(false);
 
   useEffect(() => {
-    if (!ordersSearchQuery) return;
+    if (!ordersSearchQuery) {
+      setIsQueueSearching(false);
+      return;
+    }
     setIsQueueSearching(true);
     const timer = setTimeout(() => setIsQueueSearching(false), 240);
     return () => clearTimeout(timer);

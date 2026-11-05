@@ -30,7 +30,10 @@ export default function PanelStaffing({
   const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
-    if (!searchQuery) return;
+    if (!searchQuery) {
+      setIsSearching(false);
+      return;
+    }
     setIsSearching(true);
     const timer = setTimeout(() => setIsSearching(false), 240);
     return () => clearTimeout(timer);

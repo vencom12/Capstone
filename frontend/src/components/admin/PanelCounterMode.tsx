@@ -212,7 +212,10 @@ export default function PanelCounterMode({ orders, refreshData, setOrders }: Pan
   const [isTurnOverSearching, setIsTurnOverSearching] = useState(false);
 
   useEffect(() => {
-    if (!turnOverSearch) return;
+    if (!turnOverSearch) {
+      setIsTurnOverSearching(false);
+      return;
+    }
     setIsTurnOverSearching(true);
     const timer = setTimeout(() => setIsTurnOverSearching(false), 240);
     return () => clearTimeout(timer);
