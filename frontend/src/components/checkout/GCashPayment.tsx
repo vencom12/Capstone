@@ -236,19 +236,18 @@ export default function GCashPayment({
             }
             const file = e.dataTransfer.files?.[0];
             if (file && file.type.startsWith('image/')) {
-              showToast('Receipt file dropped!', 'success');
               const syntheticEvent = {
                 target: { files: [file] }
               } as unknown as React.ChangeEvent<HTMLInputElement>;
               onFileSelect(syntheticEvent);
             }
           }}
-          className={`border border-dashed rounded-xl p-3 text-center transition-all ${
+          className={`group border-2 border-dashed rounded-xl p-3.5 text-center transition-all ${
             !isEmailVerified
               ? 'border-border-glass bg-white/[0.01] cursor-not-allowed opacity-50'
               : isDragging
-              ? 'border-primary bg-primary/10 ring-2 ring-primary/40 cursor-pointer'
-              : 'border-border-glass hover:border-white/40 bg-white/[0.01] hover:bg-white/[0.03] cursor-pointer'
+              ? 'border-primary bg-primary/10 ring-2 ring-primary/40 cursor-pointer scale-[1.01]'
+              : 'border-border-glass hover:border-primary/50 bg-white/[0.015] hover:bg-primary/[0.04] cursor-pointer'
           }`}
         >
           <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
@@ -278,14 +277,24 @@ export default function GCashPayment({
               </button>
             </div>
           ) : (
-            <div className="flex flex-col items-center gap-1">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="text-text-dim">
-                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
-                <circle cx="8.5" cy="8.5" r="1.5" />
-                <polyline points="21 15 16 10 5 21" />
-              </svg>
-              <span className="text-[0.78rem] text-text-main font-semibold">Tap to choose receipt from your phone or computer</span>
-              <span className="text-[0.65rem] text-text-dim">Upload your GCash payment screenshot showing the amount</span>
+            <div className="flex flex-col items-center gap-1.5 py-1">
+              <div className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${
+                isDragging
+                  ? 'bg-primary text-white border-primary scale-110 shadow-md'
+                  : 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/15 group-hover:scale-105'
+              }`}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+              </div>
+              <span className="text-[0.78rem] text-text-main font-bold">
+                {isDragging ? 'Drop your GCash receipt screenshot here!' : 'Drag & drop receipt here, or tap to browse'}
+              </span>
+              <span className="text-[0.65rem] text-text-dim">
+                Drop screenshot file, tap to choose photo, or press <strong className="text-text-main font-mono">Ctrl + V</strong> to paste
+              </span>
             </div>
           )}
         </div>

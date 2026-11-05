@@ -74,6 +74,22 @@ export default function CheckoutModal({
   // PSA/Retail Style Appointment Window Selection (Option 1: Modern Retail Model)
   // Claim Date Selection (Customer chooses target day; pick up anytime during store hours)
   const [selectedDateStr, setSelectedDateStr] = useState<string>('');
+  const [pickupDateError, setPickupDateError] = useState(false);
+  const [shakePickupDate, setShakePickupDate] = useState(false);
+  const pickupDateSectionRef = useRef<HTMLDivElement>(null);
+
+  const triggerPickupDateAttention = () => {
+    setPickupDateError(true);
+    setShakePickupDate(true);
+    setTimeout(() => setShakePickupDate(false), 650);
+    if (pickupDateSectionRef.current) {
+      pickupDateSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    setTimeout(() => {
+      const selectEl = document.getElementById('pickup-date-select');
+      selectEl?.focus();
+    }, 350);
+  };
 
   // Pick-up Fulfillment & Special Instructions
   const [fulfillmentType] = useState<'pickup'>('pickup');
@@ -368,11 +384,13 @@ export default function CheckoutModal({
     }
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
+  const processReceiptFile = async (file: File, dateOverride?: string) => {
+    const activeDateStr = dateOverride ?? selectedDateStr;
+    setReceiptFile(file);
 
-    if (!selectedDateStr) {
-      showToast('Please select your preferred pick-up date first.', 'error');
+    if (!activeDateStr) {
+      triggerPickupDateAttention();
+      showToast('Receipt attached! Now please select your Pick-up Date highlighted above.', 'info');
       return;
     }
 
@@ -392,8 +410,15 @@ export default function CheckoutModal({
       return;
     }
 
-    const file = e.target.files[0];
-    setReceiptFile(file);
+    const dateObj = availableDates.find(d => d.dateStr === activeDateStr);
+    let resolvedDueDate = chosenDueDate;
+    let resolvedDeliveryLabel = chosenDeliveryTimeLabel;
+    if (dateObj) {
+      const [year, month, day] = activeDateStr.split('-').map(Number);
+      resolvedDueDate = new Date(year, month - 1, day, 10, 0, 0).toISOString();
+      resolvedDeliveryLabel = `Pick-up: ${dateObj.friendlyLabel} (10 AM–8 PM)`;
+    }
+
     setAiAnalyzing(true);
     setPaymentVerified(false);
     setAllowManualRef(false);
@@ -450,8 +475,8 @@ export default function CheckoutModal({
             items: itemsWithPreOrder,
             totalAmount: finalTotal,
             address: currentAddress,
-            deliveryTime: chosenDeliveryTimeLabel,
-            dueDate: chosenDueDate,
+            deliveryTime: resolvedDeliveryLabel,
+            dueDate: resolvedDueDate,
             isPreOrder: hasPreOrderItems,
             notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
             paymentMethod: 'gcash',
@@ -462,7 +487,7 @@ export default function CheckoutModal({
             personalization: {
               fulfillmentType: 'pickup',
               courier: 'Store Pick-up',
-              claimSchedule: chosenDeliveryTimeLabel,
+              claimSchedule: resolvedDeliveryLabel,
               isPreOrder: hasPreOrderItems,
               referenceNumber: extractedRef,
               claimantName: user?.username || 'Customer',
@@ -528,6 +553,12 @@ export default function CheckoutModal({
     }
   };
 
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    await processReceiptFile(file);
+  };
+
   const handleSubmitManualRef = async () => {
     if (!user || !user.isEmailVerified) {
       showToast('Email verification required: Please click the verification link sent to your email or log in via Google before placing an order.', 'error');
@@ -541,7 +572,8 @@ export default function CheckoutModal({
     }
 
     if (!selectedDateStr) {
-      showToast('Please choose your preferred pick-up date first.', 'error');
+      triggerPickupDateAttention();
+      showToast('Please choose your preferred pick-up date highlighted above first.', 'error');
       return;
     }
 
@@ -614,6 +646,8 @@ export default function CheckoutModal({
     setAllowManualRef(false);
     setPaymentVerified(false);
     setLatestCreatedOrder(null);
+    setPickupDateError(false);
+    setShakePickupDate(false);
     onClose();
     if (wasSuccessful && onSuccess) {
       onSuccess(createdOrder);
@@ -632,7 +666,8 @@ export default function CheckoutModal({
     }
 
     if (!selectedDateStr) {
-      showToast('Please choose your preferred pick-up date first.', 'error');
+      triggerPickupDateAttention();
+      showToast('Please choose your preferred pick-up date highlighted above first.', 'error');
       return;
     }
 
@@ -1015,10 +1050,26 @@ export default function CheckoutModal({
               </div>
 
               {/* Single Pick-up Date Dropdown Picker */}
-              <div className="flex flex-col gap-1.5">
+              <div
+                ref={pickupDateSectionRef}
+                className={`flex flex-col gap-1.5 rounded-xl transition-all ${
+                  shakePickupDate ? 'animate-shake' : ''
+                } ${
+                  pickupDateError && !selectedDateStr
+                    ? 'p-2.5 -mx-1 bg-danger/10 border-2 border-danger/60 ring-4 ring-danger/15'
+                    : ''
+                }`}
+              >
                 <div className="flex items-center justify-between">
-                  <label htmlFor="pickup-date-select" className="text-[0.68rem] font-bold text-text-main uppercase tracking-wider">
-                    Pick-up Date <span className="text-primary">*</span>
+                  <label htmlFor="pickup-date-select" className={`text-[0.68rem] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                    pickupDateError && !selectedDateStr ? 'text-danger' : 'text-text-main'
+                  }`}>
+                    <span>Pick-up Date <span className="text-primary">*</span></span>
+                    {pickupDateError && !selectedDateStr && (
+                      <span className="px-1.5 py-0.5 rounded bg-danger text-white text-[0.58rem] font-bold tracking-normal normal-case animate-pulse">
+                        Required First
+                      </span>
+                    )}
                   </label>
                   <span className="text-[0.6rem] text-text-dim font-mono">Held 30 Days Free • 100% Upfront</span>
                 </div>
@@ -1043,10 +1094,19 @@ export default function CheckoutModal({
                   <select
                     id="pickup-date-select"
                     value={selectedDateStr}
-                    onChange={(e) => setSelectedDateStr(e.target.value)}
+                    onChange={(e) => {
+                      const nextDate = e.target.value;
+                      setSelectedDateStr(nextDate);
+                      setPickupDateError(false);
+                      if (nextDate && receiptFile && !receiptUrl && !aiAnalyzing && !paymentVerified) {
+                        processReceiptFile(receiptFile, nextDate);
+                      }
+                    }}
                     style={{ WebkitAppearance: 'none', MozAppearance: 'none', appearance: 'none', backgroundImage: 'none' }}
                     className={`w-full bg-bg-surface border text-text-main text-xs rounded-xl px-3 py-2.5 outline-none cursor-pointer font-medium transition-all ${
-                      !selectedDateStr
+                      pickupDateError && !selectedDateStr
+                        ? 'border-danger ring-2 ring-danger/30 bg-danger/[0.04]'
+                        : !selectedDateStr
                         ? 'border-primary/50 bg-primary/[0.03]'
                         : 'border-border-glass focus:border-white/40'
                     }`}
@@ -1069,8 +1129,27 @@ export default function CheckoutModal({
 
                 {/* Prompt user or confirm chosen date */}
                 {!selectedDateStr ? (
-                  <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass text-[0.68rem] text-text-dim font-medium flex items-center gap-1.5">
-                    <span>Please choose your pick-up date from the dropdown above.</span>
+                  <div className={`px-2.5 py-1.5 rounded-lg text-[0.68rem] font-semibold flex items-center gap-1.5 ${
+                    pickupDateError
+                      ? 'bg-danger/15 border border-danger/40 text-danger'
+                      : 'bg-white/[0.03] border border-border-glass text-text-dim font-medium'
+                  }`}>
+                    {pickupDateError ? (
+                      <>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="shrink-0">
+                          <circle cx="12" cy="12" r="10" />
+                          <line x1="12" y1="8" x2="12" y2="12" />
+                          <line x1="12" y1="16" x2="12.01" y2="16" />
+                        </svg>
+                        <span>
+                          {receiptFile
+                            ? 'Receipt ready! Select your pick-up date above to automatically scan & submit.'
+                            : 'Step 1 Required: Please choose your pick-up date from the dropdown above first.'}
+                        </span>
+                      </>
+                    ) : (
+                      <span>Please choose your pick-up date from the dropdown above.</span>
+                    )}
                   </div>
                 ) : (
                   <div className="px-2.5 py-1.5 rounded-lg bg-white/[0.03] border border-border-glass text-[0.68rem] text-text-main font-medium flex items-center justify-between">
