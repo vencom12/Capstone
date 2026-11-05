@@ -143,13 +143,11 @@ export default function PanelManageDesigns({
     );
     setThreadColors(nextColors);
     broadcastThreadColors(nextColors);
-    const toggled = nextColors[index];
 
     try {
       await api.put('/api/admin/settings', {
         availableThreadColors: nextColors,
       });
-      showToast(`${toggled.name}: ${toggled.isAvailable ? 'Available' : 'Unavailable'}`, 'info');
     } catch (e: any) {
       console.error(e);
       showToast('Failed to update thread availability', 'error');

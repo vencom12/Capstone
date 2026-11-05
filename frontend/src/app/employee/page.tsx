@@ -72,9 +72,6 @@ export default function EmployeePage() {
     setChimeEnabled(next);
     if (next) {
       playOrderChime();
-      showToast('New order chime enabled (sample sound played)', 'info');
-    } else {
-      showToast('New order chime muted', 'info');
     }
   };
 

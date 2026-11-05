@@ -33,7 +33,6 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
     const next = prev + 1;
     setOptimisticCount(next);
     setInputValue(next.toString());
-    showToast(`+1 ${material.item}`, 'success');
 
     try {
       const materialId = material.id || material._id;
@@ -62,7 +61,6 @@ function InlineStockAdjuster({ material, refreshData, fetchAuditLogs }: InlineSt
     const next = prev - 1;
     setOptimisticCount(next);
     setInputValue(next.toString());
-    showToast(`-1 ${material.item}`, 'success');
 
     try {
       const materialId = material.id || material._id;

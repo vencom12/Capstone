@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { api } from '@/lib/api';
-import { showToast } from '@/components/ui/Toast';
 import { matchesProductSearch } from '@/lib/searchUtils';
 import type { Product, Order, Transaction, Receipt, DashboardState } from '@/lib/types';
 
@@ -106,7 +105,6 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
         favorites.find((f) => (f.id || f._id) === productId);
       if (product) {
         set({ favorites: [...favorites, product] });
-        showToast(`Saved "${product.name}" to favorites`, 'success');
       }
     }
 

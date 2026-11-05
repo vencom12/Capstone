@@ -244,7 +244,6 @@ export default function PanelCustomerReviews({ role }: PanelCustomerReviewsProps
         {}
       );
       if (res && res.success) {
-        showToast(res.message, 'success');
         fetchFeedbacks(true);
       }
     } catch (err) {
