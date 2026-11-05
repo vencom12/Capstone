@@ -1825,7 +1825,7 @@ Output ONLY a JSON object:
             });
             return res.json({
                 success: false,
-                message: "The uploaded image does not appear to be an authentic payment receipt. Please upload a clear screenshot of your GCash transaction confirmation.",
+                message: "Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.",
                 flaggedReason: 'invalid_document',
                 aiResult
             });
@@ -2053,7 +2053,7 @@ Output ONLY a JSON object:
         // reject the image immediately rather than letting a non-receipt image pass on AI fallback.
         const failedLocalOcr = !localOcrResult || !localOcrResult.isValidReceipt;
         const rejectMessage = failedLocalOcr
-            ? "The uploaded image does not appear to be an authentic payment receipt. Please upload a clear screenshot of your GCash transaction confirmation."
+            ? "Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number."
             : "We couldn't automatically verify this screenshot. Please confirm your 13-digit GCash Reference Number below for staff review.";
 
         try {

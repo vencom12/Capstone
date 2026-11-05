@@ -208,6 +208,8 @@ export default function GCashPayment({
 
       {/* Upload Zone */}
       <div className="flex flex-col gap-1.5">
+        <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
+
         <div className="flex items-center justify-between">
           <h4 className="text-[0.72rem] font-bold m-0 flex items-center gap-1.5 text-text-main uppercase tracking-wider">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
@@ -217,88 +219,91 @@ export default function GCashPayment({
             Screenshot or photo accepted
           </span>
         </div>
-        <div 
-          onClick={() => {
-            if (!isEmailVerified) {
-              showToast('Email verification required: Please verify your email before uploading payment.', 'error');
-              return;
-            }
-            document.getElementById('gcash-upload')?.click();
-          }}
-          onDragOver={(e) => { e.preventDefault(); if (isEmailVerified) setIsDragging(true); }}
-          onDragLeave={() => setIsDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setIsDragging(false);
-            if (!isEmailVerified) {
-              showToast('Email verification required: Please verify your email before uploading payment.', 'error');
-              return;
-            }
-            const file = e.dataTransfer.files?.[0];
-            if (file && file.type.startsWith('image/')) {
-              const syntheticEvent = {
-                target: { files: [file] }
-              } as unknown as React.ChangeEvent<HTMLInputElement>;
-              onFileSelect(syntheticEvent);
-            }
-          }}
-          className={`group border-2 border-dashed rounded-xl p-3.5 text-center transition-all ${
-            !isEmailVerified
-              ? 'border-border-glass bg-white/[0.01] cursor-not-allowed opacity-50'
-              : isDragging
-              ? 'border-primary bg-primary/10 ring-2 ring-primary/40 cursor-pointer scale-[1.01]'
-              : 'border-border-glass hover:border-primary/50 bg-white/[0.015] hover:bg-primary/[0.04] cursor-pointer'
-          }`}
-        >
-          <input id="gcash-upload" type="file" className="hidden" accept="image/*" onChange={onFileSelect} />
-          {receiptFile && !aiVerificationResult ? (
-            <div className="flex items-center gap-3 p-1">
-              {previewUrl && (
-                <div className="w-14 h-14 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
-                  <img src={previewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
-                </div>
-              )}
-              <div className="flex flex-col text-left min-w-0 flex-1">
-                {analyzing ? (
-                  <div className="flex flex-col gap-0.5">
-                    <div className="flex items-center gap-2">
-                      <svg className="w-3.5 h-3.5 animate-spin text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
-                        <path d="M12 2a10 10 0 0 1 10 10" />
-                      </svg>
-                      <span className="text-[0.78rem] text-text-main font-bold">Checking your receipt...</span>
-                    </div>
-                    <span className="text-[0.65rem] text-text-dim pl-5.5">Confirming payment details</span>
+
+        {/* Show drop box only when NOT displaying verification notice/rejection box */}
+        {(!aiVerificationResult || analyzing) && (
+          <div 
+            onClick={() => {
+              if (!isEmailVerified) {
+                showToast('Email verification required: Please verify your email before uploading payment.', 'error');
+                return;
+              }
+              document.getElementById('gcash-upload')?.click();
+            }}
+            onDragOver={(e) => { e.preventDefault(); if (isEmailVerified) setIsDragging(true); }}
+            onDragLeave={() => setIsDragging(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              if (!isEmailVerified) {
+                showToast('Email verification required: Please verify your email before uploading payment.', 'error');
+                return;
+              }
+              const file = e.dataTransfer.files?.[0];
+              if (file && file.type.startsWith('image/')) {
+                const syntheticEvent = {
+                  target: { files: [file] }
+                } as unknown as React.ChangeEvent<HTMLInputElement>;
+                onFileSelect(syntheticEvent);
+              }
+            }}
+            className={`group border-2 border-dashed rounded-xl p-3.5 text-center transition-all ${
+              !isEmailVerified
+                ? 'border-border-glass bg-white/[0.01] cursor-not-allowed opacity-50'
+                : isDragging
+                ? 'border-primary bg-primary/10 ring-2 ring-primary/40 cursor-pointer scale-[1.01]'
+                : 'border-border-glass hover:border-primary/50 bg-white/[0.015] hover:bg-primary/[0.04] cursor-pointer'
+            }`}
+          >
+            {receiptFile ? (
+              <div className="flex items-center gap-3 p-1">
+                {previewUrl && (
+                  <div className="w-14 h-14 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
+                    <img src={previewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
                   </div>
-                ) : (
-                  <span className="text-[0.72rem] text-text-dim font-medium">
-                    Receipt attached — ready
-                  </span>
                 )}
+                <div className="flex flex-col text-left min-w-0 flex-1">
+                  {analyzing ? (
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <svg className="w-3.5 h-3.5 animate-spin text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
+                          <path d="M12 2a10 10 0 0 1 10 10" />
+                        </svg>
+                        <span className="text-[0.78rem] text-text-main font-bold">Checking your receipt...</span>
+                      </div>
+                      <span className="text-[0.65rem] text-text-dim pl-5.5">Confirming payment details</span>
+                    </div>
+                  ) : (
+                    <span className="text-[0.72rem] text-text-dim font-medium">
+                      Receipt attached — ready
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ) : !receiptFile ? (
-            <div className="flex flex-col items-center gap-1.5 py-1">
-              <div className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${
-                isDragging
-                  ? 'bg-primary text-white border-primary scale-110 shadow-md'
-                  : 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/15 group-hover:scale-105'
-              }`}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                  <polyline points="17 8 12 3 7 8" />
-                  <line x1="12" y1="3" x2="12" y2="15" />
-                </svg>
+            ) : (
+              <div className="flex flex-col items-center gap-1.5 py-1">
+                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${
+                  isDragging
+                    ? 'bg-primary text-white border-primary scale-110 shadow-md'
+                    : 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/15 group-hover:scale-105'
+                }`}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                    <polyline points="17 8 12 3 7 8" />
+                    <line x1="12" y1="3" x2="12" y2="15" />
+                  </svg>
+                </div>
+                <span className="text-[0.78rem] text-text-main font-bold">
+                  {isDragging ? 'Drop your GCash receipt screenshot here!' : 'Drag & drop receipt here, or tap to browse'}
+                </span>
+                <span className="text-[0.65rem] text-text-dim">
+                  Drop screenshot file, tap to choose photo, or press <strong className="text-text-main font-mono">Ctrl + V</strong> to paste
+                </span>
               </div>
-              <span className="text-[0.78rem] text-text-main font-bold">
-                {isDragging ? 'Drop your GCash receipt screenshot here!' : 'Drag & drop receipt here, or tap to browse'}
-              </span>
-              <span className="text-[0.65rem] text-text-dim">
-                Drop screenshot file, tap to choose photo, or press <strong className="text-text-main font-mono">Ctrl + V</strong> to paste
-              </span>
-            </div>
-          ) : null}
-        </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Verification Notice or Friendly Encouragement Box */}

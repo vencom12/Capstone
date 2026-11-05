@@ -507,7 +507,10 @@ export default function CheckoutModal({
         // Hard rejection (non-receipt image, outdated receipt, duplicate receipt, wrong recipient, or insufficient amount)
         setAllowManualRef(false);
         setManualRef('');
-        const reasonText = verifyRes.message || verifyRes.flaggedReason || "Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.";
+        const rawReason = verifyRes.message || verifyRes.flaggedReason || '';
+        const reasonText = (rawReason && !rawReason.includes("does not appear to be an authentic payment receipt"))
+          ? rawReason
+          : "Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.";
         setAiVerificationResult(reasonText);
       }
     } catch (err: any) {
