@@ -635,6 +635,26 @@ server.listen(PORT, async () => {
         const prisma = require('./utils/prisma');
         await reconcileReservedCounts(prisma);
         console.log(`[OK] Inventory reservations reconciled successfully on startup.`);
+
+        // One-time cleanup of test accounts ("yenyen" and "Gene")
+        const testUsers = await prisma.user.findMany({
+            where: {
+                OR: [
+                    { username: { equals: 'yenyen', mode: 'insensitive' } },
+                    { username: { equals: 'Gene', mode: 'insensitive' } }
+                ]
+            }
+        });
+        for (const u of testUsers) {
+            await prisma.emailVerification.deleteMany({ where: { userId: u.id } }).catch(() => {});
+            await prisma.machine.updateMany({ where: { assignedUserId: u.id }, data: { assignedUserId: null } }).catch(() => {});
+            await prisma.order.deleteMany({ where: { userId: u.id } }).catch(() => {});
+            await prisma.transaction.deleteMany({ where: { userId: u.id } }).catch(() => {});
+            await prisma.receipt.deleteMany({ where: { userId: u.id } }).catch(() => {});
+            await prisma.user.update({ where: { id: u.id }, data: { favorites: { set: [] } } }).catch(() => {});
+            await prisma.user.delete({ where: { id: u.id } });
+            console.log(`[CLEANUP] Permanently removed account "${u.username}" (${u.email}) from database.`);
+        }
     } catch (err) {
         console.error('Failed to reconcile inventory reservations on startup:', err);
     }
