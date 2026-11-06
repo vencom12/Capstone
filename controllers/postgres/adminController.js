@@ -275,6 +275,7 @@ exports.updateUser = async (req, res) => {
             updateData.username = normalizedUsername;
         }
 
+        let emailChanged = false;
         if (email && email.trim()) {
             const normalizedEmail = email.trim().toLowerCase();
             const existingEmail = await prisma.user.findFirst({
@@ -286,7 +287,8 @@ exports.updateUser = async (req, res) => {
             if (existingEmail) {
                 return res.status(400).json({ message: `An account with the email "${normalizedEmail}" already exists (${existingEmail.role} account "${existingEmail.username}").` });
             }
-            if (currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
+            if (!currentUser.email || currentUser.email.toLowerCase() !== normalizedEmail) {
+                emailChanged = true;
                 updateData.email = normalizedEmail;
                 updateData.isEmailVerified = false;
                 updateData.tokenVersion = { increment: 1 };
@@ -329,8 +331,29 @@ exports.updateUser = async (req, res) => {
             data: updateData
         });
 
+        if (emailChanged && user.email) {
+            await prisma.emailVerification.deleteMany({ where: { userId: user.id } });
+            const rawToken = 'rst_' + crypto.randomBytes(32).toString('hex');
+            const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+            await prisma.emailVerification.create({
+                data: {
+                    userId: user.id,
+                    email: user.email,
+                    token: hashedToken,
+                    expiresAt
+                }
+            });
+            await sendStaffInvitationEmail(user.email, user.username, rawToken, user.role);
+        }
+
         const { password: _, ...safeUser } = user;
-        res.json(safeUser);
+        res.json({
+            ...safeUser,
+            message: emailChanged
+                ? `Staff updated! A new verification & activation email has been sent to ${user.email}.`
+                : 'Staff updated successfully'
+        });
     } catch (err) {
         console.error('updateUser error:', err);
         if (err.code === 'P2002') {

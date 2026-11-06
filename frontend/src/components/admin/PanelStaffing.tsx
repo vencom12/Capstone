@@ -238,13 +238,14 @@ export default function PanelStaffing({
       payload.password = password.trim();
     }
 
+    const emailChanged = isEdit && (editingStaff?.email || '').trim().toLowerCase() !== email.trim().toLowerCase();
     const optimisticUser = {
       ...(editingStaff || {}),
       username: username.trim(),
       email: email.trim(),
       role,
       shiftStatus: editingStaff?.shiftStatus || 'offline',
-      isEmailVerified: editingStaff?.isEmailVerified ?? false
+      isEmailVerified: emailChanged ? false : (editingStaff?.isEmailVerified ?? false)
     };
 
     const prevUsers = [...users];
@@ -271,7 +272,7 @@ export default function PanelStaffing({
         ? await api.put(path, payload)
         : await api.post(path, payload);
 
-      showToast(isEdit ? 'Staff updated successfully' : (res?.message || 'Staff invitation sent! Ask them to check their email to activate.'), 'success');
+      showToast(res?.message || (isEdit ? (emailChanged ? `Staff updated! A new verification email has been sent to ${email.trim()}.` : 'Staff updated successfully') : 'Staff invitation sent! Ask them to check their email to activate.'), 'success');
 
       if (!isEdit && res?.user && setUsers) {
         setUsers((prev) =>
