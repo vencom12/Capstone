@@ -1,5 +1,5 @@
-import { validateStrictPassword } from '@/lib/passwordValidator';
 'use client';
+import { validateStrictPassword } from '@/lib/passwordValidator';
 
 import { useState } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
