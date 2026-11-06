@@ -293,14 +293,19 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     personalization.courier = extraData.courier || personalization.courier || 'Store Pick-up';
     personalization.fulfillmentType = 'pickup';
 
+        const orderUpdateData = { 
+        status: newStatus, 
+        progress,
+        personalization,
+        stagingCubby: null
+    };
+    if (username && username !== 'System') {
+        orderUpdateData.processedBy = username;
+    }
+
     const updatedOrder = await tx.order.update({
         where: { id: orderId },
-        data: { 
-            status: newStatus, 
-            progress,
-            personalization,
-            stagingCubby: null
-        }
+        data: orderUpdateData
     });
 
     // Run self-healing database column reconciliation inside transition transactions
