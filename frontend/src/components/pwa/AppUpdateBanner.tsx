@@ -41,10 +41,6 @@ export default function AppUpdateBanner() {
     >
       <div className="bg-bg-card/95 backdrop-blur-xl border border-border-glass shadow-2xl rounded-2xl p-3 px-4 flex items-center justify-between gap-3 text-xs text-text-main">
         <div className="flex items-center gap-2.5 min-w-0">
-          <span className="relative flex h-2.5 w-2.5 shrink-0">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary" />
-          </span>
           <div className="min-w-0">
             <span className="font-bold text-text-main truncate block">New Version Available!</span>
             <span className="text-[11px] text-text-dim truncate block">
