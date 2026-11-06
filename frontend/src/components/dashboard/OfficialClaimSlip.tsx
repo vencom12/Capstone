@@ -349,8 +349,14 @@ export default function OfficialClaimSlip({
               <div className="text-[10px] text-zinc-600">
                 Pacific Mall Lucena • Ground Floor Counter
               </div>
+              <div className="text-[8.5px] font-mono font-bold text-zinc-600 mt-0.5">
+                VAT Reg. TIN: 432-891-720-000 NV
+              </div>
               <div className="text-[9px] text-zinc-500 mt-0.5">
                 M.L. Tagarao St., Lucena City • 0928 810 3928
+              </div>
+              <div className="text-[8.5px] font-mono font-bold text-zinc-600 mt-0.5">
+                VAT Reg. TIN: 432-891-720-000 NV
               </div>
             </div>
 
@@ -487,6 +493,9 @@ export default function OfficialClaimSlip({
               </div>
               <div className="text-[10px] text-zinc-600">
                 Pacific Mall Lucena • Ground Floor Counter
+              </div>
+              <div className="text-[8.5px] font-mono font-bold text-zinc-600 mt-0.5">
+                VAT Reg. TIN: 432-891-720-000 NV
               </div>
             </div>
 

@@ -255,6 +255,14 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
                 maxLength={100}
                 placeholder="Re-enter new password"
                 value={confirmPassword}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  showToast({
+                    title: 'Copy-Paste Restricted',
+                    message: 'Pasting is disabled for password confirmation. Please re-type your password.',
+                    type: 'warning'
+                  });
+                }}
                 onBlur={() => validateField('confirmPassword')}
                 onChange={(e) => {
                   const val = e.target.value;

@@ -880,9 +880,9 @@ export default function PanelAnalytics({
       <div className="glass-card p-5 border border-border-glass rounded-xl text-left">
         <div className="flex items-center justify-between pb-3 mb-3 border-b border-border-glass">
           <div>
-            <h3 className="text-sm font-bold text-text-main">Top Sold Garments &amp; Best Sellers</h3>
+            <h3 className="text-sm font-bold text-text-main">Top Sold Garments &amp; Inventory Velocity</h3>
             <p className="text-xs text-text-dim">
-              Ranked by pieces crafted. Material costs reflect Raw Materials inventory supplier unit costs.
+              Ranked by pieces crafted with real-time Fast-Moving vs. Slow-Moving demand classification.
             </p>
           </div>
           <span className="text-xs text-text-dim font-mono">
@@ -890,12 +890,47 @@ export default function PanelAnalytics({
           </span>
         </div>
 
+        {/* Inventory Velocity Summary Indicators */}
+        {categoryPerformance.length > 0 && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+            <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-text-dim font-bold uppercase tracking-wider block">Fast-Moving Items (≥10 pcs)</span>
+                <span className="text-base font-mono font-bold text-text-main">
+                  {categoryPerformance.filter((c) => c.units >= 10).length} categories
+                </span>
+              </div>
+              <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-main font-medium">Fast</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-text-dim font-bold uppercase tracking-wider block">Steady Demand (4–9 pcs)</span>
+                <span className="text-base font-mono font-bold text-text-main">
+                  {categoryPerformance.filter((c) => c.units >= 4 && c.units < 10).length} categories
+                </span>
+              </div>
+              <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-dim font-medium">Steady</span>
+            </div>
+
+            <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-text-dim font-bold uppercase tracking-wider block">Slow-Moving Items (≤3 pcs)</span>
+                <span className="text-base font-mono font-bold text-text-main">
+                  {categoryPerformance.filter((c) => c.units <= 3).length} categories
+                </span>
+              </div>
+              <span className="text-xs px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-text-dim font-medium">Slow</span>
+            </div>
+          </div>
+        )}
+
         {categoryPerformance.length === 0 ? (
           <div className="py-8 text-center text-xs text-text-dim">
             No orders recorded for {timeRange === 'today' ? 'today' : timeRange === 'week' ? 'the past 7 days' : timeRange === 'month' ? 'the past 30 days' : timeRange === '6months' ? 'the past 6 months' : timeRange === '1year' ? 'the past 1 year' : 'this period'}. Expand the timeframe to 6 Months, 1 Year, or All Time to view sales.
           </div>
         ) : isCategoryPageChanging ? (
-          <TableSkeleton rows={Math.min(categoryPageSize, 6)} cols={5} />
+          <TableSkeleton rows={Math.min(categoryPageSize, 6)} cols={6} />
         ) : (
           <>
             <div className="overflow-x-auto animate-table-fade">
@@ -903,6 +938,7 @@ export default function PanelAnalytics({
                 <thead>
                   <tr className="border-b border-border-glass text-text-dim text-[11px]">
                     <th className="pb-2.5 font-bold">Item Type</th>
+                    <th className="pb-2.5 font-bold text-center">Velocity Status</th>
                     <th className="pb-2.5 font-bold text-center">Pieces Crafted</th>
                     <th className="pb-2.5 font-bold text-right">Total Bounty</th>
                     <th className="pb-2.5 font-bold text-right">Material Cost</th>
@@ -914,6 +950,21 @@ export default function PanelAnalytics({
                     <tr key={row.category} className="hover:bg-white/5 transition">
                       <td className="py-3 text-text-main font-semibold text-sm">
                         {row.category}
+                      </td>
+                      <td className="py-3 text-center">
+                        {row.units >= 10 ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/10 text-text-main border border-white/15 inline-flex items-center">
+                            Fast-Moving
+                          </span>
+                        ) : row.units <= 3 ? (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-text-dim border border-white/10 inline-flex items-center">
+                            Slow-Moving
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-white/5 text-text-dim border border-white/10 inline-flex items-center">
+                            Steady Demand
+                          </span>
+                        )}
                       </td>
                       <td className="py-3 text-center font-mono font-bold text-text-main text-sm">
                         {row.units} pcs

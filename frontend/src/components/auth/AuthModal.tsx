@@ -813,9 +813,11 @@ export default function AuthModal() {
       if (name === 'username') {
         const val = (customVal !== undefined ? customVal : username).trim();
         if (!val) {
-          next.username = 'Please choose a username.';
+          next.username = 'Please choose a username / name.';
         } else if (val.length < 3) {
           next.username = 'Must be at least 3 characters.';
+        } else if (mode === 'register' && /[0-9]/.test(val)) {
+          next.username = 'Name cannot contain numbers. Only letters, spaces, and hyphens allowed.';
         } else {
           delete next.username;
         }
@@ -1101,6 +1103,14 @@ export default function AuthModal() {
                 maxLength={100}
                 placeholder="Re-enter password"
                 value={forgotConfirmPass}
+                onPaste={(e) => {
+                  e.preventDefault();
+                  showToast({
+                    title: 'Copy-Paste Restricted',
+                    message: 'Pasting is disabled for password confirmation. Please re-type your password.',
+                    type: 'warning'
+                  });
+                }}
                 onChange={(e) => {
                   setForgotConfirmPass(e.target.value);
                   if (forgotPassError) setForgotPassError(null);
@@ -1317,6 +1327,14 @@ export default function AuthModal() {
                   maxLength={100}
                   placeholder="Re-enter password" 
                   value={confirmPassword} 
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    showToast({
+                      title: 'Copy-Paste Restricted',
+                      message: 'Pasting is disabled for password confirmation. Please re-type your password.',
+                      type: 'warning'
+                    });
+                  }}
                   onBlur={() => validateField('googleConfirm')}
                   onChange={(e) => { 
                     const val = e.target.value;
@@ -1580,8 +1598,14 @@ export default function AuthModal() {
                   type="text" 
                   maxLength={30}
                   autoComplete="off"
-                  placeholder="e.g. johndoe"
+                  placeholder="e.g. Juan dela Cruz"
                   value={username}
+                  onKeyDown={(e) => {
+                    if (mode === 'register' && /[0-9]/.test(e.key) && !e.ctrlKey && !e.metaKey) {
+                      e.preventDefault();
+                      setFieldErrors((prev) => ({ ...prev, username: 'Name cannot contain numbers. Only letters, spaces, and hyphens allowed.' }));
+                    }
+                  }}
                   onBlur={() => {
                     validateField('username');
                     if (username.trim().length >= 3) {
@@ -1589,7 +1613,11 @@ export default function AuthModal() {
                     }
                   }}
                   onChange={(e) => { 
-                    const val = e.target.value;
+                    let val = e.target.value;
+                    if (mode === 'register' && /[0-9]/.test(val)) {
+                      setFieldErrors((prev) => ({ ...prev, username: 'Name cannot contain numbers. Only letters, spaces, and hyphens allowed.' }));
+                      val = val.replace(/[0-9]/g, '');
+                    }
                     setUsername(val); 
                     if (fieldErrors.username) validateField('username', val);
                     if (formError) setFormError(null); 

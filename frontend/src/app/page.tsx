@@ -91,6 +91,37 @@ export default function StorefrontPage() {
     }
   }, []);
 
+  // 1-to-1 Session: When user hits browser Back button from a protected portal back to home, log out immediately
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const checkBackExit = () => {
+      const fromPortal = sessionStorage.getItem('stitch-visited-portal');
+      if (fromPortal) {
+        sessionStorage.removeItem('stitch-visited-portal');
+        const auth = useAuthStore.getState();
+        if (auth.isAuthenticated) {
+          auth.logout().then(() => {
+            import('@/components/ui/Toast').then(({ showToast }) => {
+              showToast('Session ended. Please log in again to continue.', 'info');
+            });
+          }).catch(() => {});
+        }
+      }
+    };
+
+    checkBackExit();
+
+    const handlePopState = () => {
+      if (window.location.pathname === '/') {
+        checkBackExit();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   useEffect(() => {
     if (isStaff) {
       if (!useUIStore.getState().welcomeData?.isOpen) {
@@ -160,6 +191,17 @@ export default function StorefrontPage() {
 
       socket.on('emergency_delay_notice_lifted', () => {
         window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { emergencyNotice: { active: false } } }));
+      });
+
+      socket.on('concurrent_login_ejected', () => {
+        const authStore = useAuthStore.getState();
+        if (authStore.isAuthenticated) {
+          authStore.logout().then(() => {
+            import('@/components/ui/Toast').then(({ showToast }) => {
+              showToast('This account has been logged in on another device.', 'error');
+            });
+          }).catch(() => {});
+        }
       });
     };
 

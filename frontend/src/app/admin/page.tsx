@@ -67,6 +67,9 @@ export default function AdminPage() {
   useEffect(() => {
     if (isAuthenticated) {
       isLoggingOutRef.current = false;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('stitch-visited-portal', 'admin');
+      }
     }
   }, [isAuthenticated]);
 
@@ -379,6 +382,15 @@ export default function AdminPage() {
 
       socket.on('settingsUpdated', (data: any) => {
         window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: data }));
+      });
+
+      socket.on('concurrent_login_ejected', () => {
+        const authStore = useAuthStore.getState();
+        if (authStore.isAuthenticated) {
+          authStore.logout().then(() => {
+            showToast('This account has been logged in on another device.', 'error');
+          }).catch(() => {});
+        }
       });
     };
 

@@ -25,7 +25,10 @@ const staffAuth = () => {
             });
             
             if (!user || user.tokenVersion !== decoded.tokenVersion) {
-                return res.status(401).json({ message: 'Session expired or revoked. Please log in again.' });
+                return res.status(401).json({ 
+                    code: 'SESSION_TERMINATED_CONCURRENT_LOGIN',
+                    message: 'This account has been logged in on another device.' 
+                });
             }
 
             if (user.isActive === false) {

@@ -314,6 +314,9 @@ export default function DashboardPage() {
         localStorage.setItem('stitch-dashboard-tab', 'tracking');
       }
     }
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('stitch-visited-portal', 'dashboard');
+    }
     setIsHydrated(true);
   }, []);
 
@@ -384,6 +387,15 @@ export default function DashboardPage() {
 
       socket.on('emergency_delay_notice_lifted', () => {
         window.dispatchEvent(new CustomEvent('settingsUpdated', { detail: { emergencyNotice: { active: false } } }));
+      });
+
+      socket.on('concurrent_login_ejected', () => {
+        const authStore = useAuthStore.getState();
+        if (authStore.isAuthenticated) {
+          authStore.logout().then(() => {
+            showToast('This account has been logged in on another device.', 'error');
+          }).catch(() => {});
+        }
       });
     };
 

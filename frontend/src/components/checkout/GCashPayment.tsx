@@ -345,12 +345,21 @@ export default function GCashPayment({
                 <div className="flex flex-col gap-2 w-full">
                   <input
                     type="text"
+                    inputMode="numeric"
                     maxLength={19}
                     placeholder="e.g. 1002 9384 1029"
                     value={manualRef}
+                    onKeyDown={(e) => {
+                      if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                      if (e.ctrlKey || e.metaKey) return;
+                      if (!/[0-9\s]/.test(e.key)) {
+                        e.preventDefault();
+                      }
+                    }}
                     onChange={(e) => {
-                      handleRefChange(e.target.value);
-                      if (refTouched) validateManualRef(e.target.value);
+                      const cleanDigits = e.target.value.replace(/[^0-9\s]/g, '');
+                      handleRefChange(cleanDigits);
+                      if (refTouched) validateManualRef(cleanDigits);
                     }}
                     onBlur={handleManualRefBlur}
                     className={`w-full bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.82rem] outline-none transition-all ${

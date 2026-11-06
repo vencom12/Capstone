@@ -1449,6 +1449,10 @@ export default function PanelSettings({
                         minLength={6}
                         placeholder="Re-enter new password"
                         value={confirmPass}
+                        onPaste={(e) => {
+                          e.preventDefault();
+                          showToast('Pasting is disabled for password confirmation. Please re-type your password.', 'error');
+                        }}
                         onChange={(e) => setConfirmPass(e.target.value)}
                         className="w-full bg-bg-dark/80 border border-border-glass px-3.5 py-2.5 rounded-lg text-text-main text-sm outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 transition-all placeholder:text-text-dim/60"
                         autoComplete="new-password"

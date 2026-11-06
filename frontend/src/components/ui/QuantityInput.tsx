@@ -94,14 +94,21 @@ export default function QuantityInput({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      e.currentTarget.blur();
-    } else if (e.key === 'ArrowUp') {
+    if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+      if (e.key === 'Enter') {
+        e.currentTarget.blur();
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        handleIncrement();
+      } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        handleDecrement();
+      }
+      return;
+    }
+    if (e.ctrlKey || e.metaKey) return;
+    if (!/[0-9]/.test(e.key)) {
       e.preventDefault();
-      handleIncrement();
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault();
-      handleDecrement();
     }
   };
 

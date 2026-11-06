@@ -373,7 +373,7 @@ async function sendVerificationOtpEmail(recipientEmail, recipientName, otpCode) 
     </div>
 
     <div style="color: #94a3b8; font-size: 11px; line-height: 1.4; text-align: center; margin-top: 10px;">
-      This code expires in 10 minutes. If you did not request this code, you can safely ignore this message.
+      This code expires in 3 minutes. If you did not request this code, you can safely ignore this message.
     </div>
   `;
 
@@ -412,7 +412,7 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken,
         ${otpCode}
       </div>
       <div style="color: #94a3b8; font-size: 11px; line-height: 1.4; text-align: center; margin-top: 8px;">
-        Enter this 6-digit code in the app to reset your password. Valid for 15 minutes.
+        Enter this 6-digit code in the app to reset your password. Valid for 3 minutes.
       </div>
     </div>
     ` : ''}

@@ -372,6 +372,10 @@ function ResetPasswordContent() {
               maxLength={100}
               placeholder="Re-enter your password"
               value={confirm}
+              onPaste={(e) => {
+                e.preventDefault();
+                showToast('Pasting is disabled for password confirmation. Please re-type your password.', 'error');
+              }}
               onBlur={() => validateField('confirm')}
               onChange={(e) => {
                 const val = e.target.value;

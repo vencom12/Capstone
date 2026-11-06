@@ -264,7 +264,7 @@ export default function InvoiceModal({
                   {businessSettings.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301'}
                 </div>
                 <div style={{ fontSize: '9px', fontWeight: '600', color: '#000000', marginTop: '2px' }}>
-                  Tel: {businessSettings.businessContact || '0928 810 3928'}
+                  Tel: {businessSettings.businessContact || '0928 810 3928'} • VAT Reg. TIN: 432-891-720-000 NV
                 </div>
                 <div style={{ display: 'inline-block', marginTop: '4px', padding: '1px 7px', border: '1px solid #000000', color: '#000000', fontSize: '8px', fontWeight: '800', letterSpacing: '0.8px', textTransform: 'uppercase', borderRadius: '2px', background: 'transparent' }}>
                   Official Receipt

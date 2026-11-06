@@ -183,6 +183,12 @@ export function apiFetch<T = unknown>(
         }
 
         if (typeof window !== 'undefined') {
+          if (error?.code === 'SESSION_TERMINATED_CONCURRENT_LOGIN' || (typeof error?.message === 'string' && error.message.includes('another device'))) {
+            import('@/components/ui/Toast').then(({ showToast }) => {
+              showToast('This account has been logged in on another device.', 'error');
+            }).catch(() => {});
+          }
+
           try {
             sessionStorage.removeItem('stitch-session-active');
             sessionStorage.removeItem('stitch-admin-tab');

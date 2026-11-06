@@ -202,7 +202,7 @@ export function printBagSlip(order: any): void {
         <div class="slip-container">
           <div class="shop-title">Edz Towels & Caps</div>
           <div style="font-size: 9.5px; margin-top: 1px;">PACIFIC MALL LUCENA • GROUND FLOOR</div>
-          <div style="font-size: 8.5px; color: #444;">Tel: 0917 582 8192</div>
+          <div style="font-size: 8.5px; color: #444;">Tel: 0928 810 3928 • VAT Reg. TIN: 432-891-720-000 NV</div>
 
           <div class="dashed-divider"></div>
 

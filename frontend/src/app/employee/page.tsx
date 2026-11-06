@@ -291,6 +291,9 @@ export default function EmployeePage() {
   useEffect(() => {
     if (isAuthenticated) {
       isLoggingOutRef.current = false;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('stitch-visited-portal', 'employee');
+      }
     }
   }, [isAuthenticated]);
 
@@ -404,6 +407,15 @@ export default function EmployeePage() {
           }
         } else if (['PRODUCT', 'INVENTORY', 'MACHINE'].includes(data.entity) && (data.action === 'CREATE' || data.action === 'DELETE')) {
           fetchEmployeeData();
+        }
+      });
+
+      socket.on('concurrent_login_ejected', () => {
+        const authStore = useAuthStore.getState();
+        if (authStore.isAuthenticated) {
+          authStore.logout().then(() => {
+            showToast('This account has been logged in on another device.', 'error');
+          }).catch(() => {});
         }
       });
     };

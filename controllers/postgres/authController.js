@@ -41,7 +41,7 @@ exports.sendRegistrationOtp = async (req, res) => {
 
         // Generate 6-digit numeric OTP code
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+        const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 10 minutes
 
         // Invalidate previous OTPs for this email
         await prisma.emailVerification.deleteMany({
@@ -66,7 +66,7 @@ exports.sendRegistrationOtp = async (req, res) => {
         return res.json({
             success: true,
             message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code.`,
-            expiresInSeconds: 600
+            expiresInSeconds: 180
         });
     } catch (err) {
         console.error('sendRegistrationOtp Error:', err);
@@ -250,7 +250,7 @@ exports.sendLinkOtp = async (req, res) => {
 
         const user = await prisma.user.findUnique({ where: { id: userId } });
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+        const expiresAt = new Date(Date.now() + 3 * 60 * 1000);
 
         await prisma.emailVerification.deleteMany({
             where: { email: cleanEmail }
@@ -272,7 +272,7 @@ exports.sendLinkOtp = async (req, res) => {
         return res.json({
             success: true,
             message: `Verification code sent to ${cleanEmail}. Please enter the 6-digit code.`,
-            expiresInSeconds: 600
+            expiresInSeconds: 180
         });
     } catch (err) {
         console.error('sendLinkOtp Error:', err);
@@ -394,7 +394,25 @@ exports.login = async (req, res) => {
         }
 
         const expiresIn = rememberMe ? '30d' : '1d';
-        const token = jwt.sign({ id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 }, process.env.JWT_SECRET, { expiresIn });
+        // 1-to-1 Session Enforcement: Eject any existing session on other devices/tabs
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user:${user.id}`).emit('concurrent_login_ejected', {
+                message: 'This account has been logged in on another device.'
+            });
+        }
+
+        const nextTokenVersion = (user.tokenVersion || 0) + 1;
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { 
+                tokenVersion: nextTokenVersion, 
+                lastLoginAt: new Date(), 
+                lastActiveAt: new Date() 
+            }
+        }).catch((e) => console.warn('Failed to update tokenVersion/lastLoginAt:', e?.message));
+
+        const token = jwt.sign({ id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: nextTokenVersion }, process.env.JWT_SECRET, { expiresIn });
 
         const cookieOptions = {
             httpOnly: true,
@@ -801,8 +819,22 @@ exports.googleAuth = async (req, res) => {
             data: updateData
         });
 
+        // 1-to-1 Session Enforcement for Google login
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user:${user.id}`).emit('concurrent_login_ejected', {
+                message: 'This account has been logged in on another device.'
+            });
+        }
+
+        const nextTokenVersion = (user.tokenVersion || 0) + 1;
+        await prisma.user.update({
+            where: { id: user.id },
+            data: { tokenVersion: nextTokenVersion }
+        }).catch((e) => console.warn('Failed to update tokenVersion in googleAuth:', e?.message));
+
         const token = jwt.sign(
-            { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: user.tokenVersion || 0 },
+            { id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: nextTokenVersion },
             process.env.JWT_SECRET,
             { expiresIn: '30d' }
         );
@@ -994,7 +1026,7 @@ exports.forgotPassword = async (req, res) => {
                 userId: user.id,
                 email: user.email,
                 token: otpToken,
-                expiresAt: new Date(Date.now() + 15 * 60 * 1000)
+                expiresAt: new Date(Date.now() + 3 * 60 * 1000)
             }
         });
 
