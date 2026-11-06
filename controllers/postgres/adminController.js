@@ -231,7 +231,8 @@ exports.createUser = async (req, res) => {
                 role: role || 'employee',
                 username: normalizedUsername || existingCustomer.username,
                 email: normalizedEmail || existingCustomer.email,
-                password: hashedPassword
+                password: hashedPassword,
+                isEmailVerified: true
             };
             if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) {
                 updateData.phoneNumber = phoneNumber.trim();
@@ -269,7 +270,8 @@ exports.createUser = async (req, res) => {
             username: normalizedUsername,
             email: normalizedEmail,
             password: hashedPassword,
-            role: role || 'employee'
+            role: role || 'employee',
+            isEmailVerified: true
         };
 
         if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) {
@@ -330,7 +332,7 @@ exports.updateUser = async (req, res) => {
             }
             if (currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
                 updateData.email = normalizedEmail;
-                updateData.isEmailVerified = false;
+                updateData.isEmailVerified = (currentUser.role === 'admin' || currentUser.role === 'employee' || role === 'admin' || role === 'employee');
                 updateData.tokenVersion = { increment: 1 };
             } else {
                 updateData.email = normalizedEmail;
