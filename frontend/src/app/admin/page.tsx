@@ -63,6 +63,44 @@ export default function AdminPage() {
     }
   }, []);
 
+  // 1-to-1 Session Guard: Invalidate session immediately if portal was reached via Back or Forward button
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const enforceBackForwardEviction = () => {
+      const navEntries = window.performance?.getEntriesByType?.('navigation');
+      const navTiming = navEntries && (navEntries[0] as PerformanceNavigationTiming | undefined);
+      if (navTiming?.type === 'back_forward') {
+        const auth = useAuthStore.getState();
+        if (auth.isAuthenticated) {
+          auth.logout().finally(() => {
+            window.location.replace('/?auth=login');
+          });
+          return true;
+        }
+      }
+      return false;
+    };
+
+    if (enforceBackForwardEviction()) return;
+
+    const handlePageShow = (e: PageTransitionEvent) => {
+      if (e.persisted) {
+        const auth = useAuthStore.getState();
+        if (auth.isAuthenticated) {
+          auth.logout().finally(() => {
+            window.location.replace('/?auth=login');
+          });
+        }
+      }
+    };
+
+    window.addEventListener('pageshow', handlePageShow);
+    return () => {
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, []);
+
   // Reset logout lock when authenticated admin enters
   useEffect(() => {
     if (isAuthenticated) {
