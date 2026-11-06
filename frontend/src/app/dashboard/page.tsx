@@ -1318,7 +1318,7 @@ export default function DashboardPage() {
                   type="email"
                   required
                   autoFocus
-                  maxLength={100} placeholder="you@gmail.com"
+                  maxLength={100} placeholder="you@example.com"
                   value={linkEmailInput}
                   onChange={(e) => {
                     setLinkEmailInput(e.target.value);

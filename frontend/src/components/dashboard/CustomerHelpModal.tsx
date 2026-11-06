@@ -400,7 +400,7 @@ export default function CustomerHelpModal({ isOpen, onClose, defaultOrderId, def
                   <input
                     type="email"
                     maxLength={100}
-                    placeholder="e.g. maria@gmail.com"
+                    placeholder="e.g. maria@example.com"
                     value={customerEmail}
                     onBlur={() => validateField('customerEmail')}
                     onChange={(e) => {

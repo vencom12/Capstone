@@ -900,7 +900,7 @@ export default function PanelStaffing({
             <input
               type="text"
               maxLength={30}
-              placeholder="e.g. revin_artisan"
+              placeholder="e.g. staff_artisan"
               value={username}
               onChange={(e) => {
                 setUsername(e.target.value);
@@ -928,7 +928,7 @@ export default function PanelStaffing({
             <input
               type="email"
               maxLength={100}
-              placeholder="e.g. revin@stitchopt.com"
+              placeholder="e.g. staff@stitchopt.com"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);

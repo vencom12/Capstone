@@ -928,7 +928,7 @@ export default function AuthModal() {
                 type="text" 
                 maxLength={100}
                 autoFocus
-                placeholder="e.g. revinaryven7@gmail.com" 
+                placeholder="e.g. user@example.com or username" 
                 value={email} 
                 onChange={(e) => {
                   const val = e.target.value;
