@@ -1,3 +1,4 @@
+import { validateStrictPassword } from '@/lib/passwordValidator';
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -366,11 +367,10 @@ export default function AuthModal() {
       }
     }
 
-    if (!password) {
-      errors.password = 'Please create a password.';
-    } else if (password.length < 6) {
-      errors.password = 'Must be at least 6 characters.';
-    }
+    const passErr = validateStrictPassword(password);
+      if (passErr) {
+        errors.password = passErr;
+      }
 
     if (!agreedToTerms) {
       errors.terms = 'Please accept our Studio Policies to continue.';
@@ -723,8 +723,9 @@ export default function AuthModal() {
     e.preventDefault();
     setForgotPassError(null);
 
-    if (forgotNewPass.length < 6) {
-      setForgotPassError('Password must be at least 6 characters.');
+    const passErr = validateStrictPassword(forgotNewPass);
+    if (passErr) {
+      setForgotPassError(passErr);
       return;
     }
     if (forgotNewPass !== forgotConfirmPass) {
@@ -759,8 +760,9 @@ export default function AuthModal() {
     if (!googleSetup) return;
 
     const errors: FieldErrors = {};
-    if (!newPassword || newPassword.length < 6) {
-      errors.googlePassword = 'Password must be at least 6 characters.';
+    const passErr = validateStrictPassword(newPassword);
+    if (passErr) {
+      errors.googlePassword = passErr;
     }
     if (newPassword !== confirmPassword) {
       errors.googleConfirm = 'Passwords do not match. Please retype them.';
@@ -846,10 +848,9 @@ export default function AuthModal() {
       } else if (name === 'password') {
         const val = customVal !== undefined ? customVal : password;
         if (mode === 'register') {
-          if (!val) {
-            next.password = 'Please create a password.';
-          } else if (val.length < 6) {
-            next.password = 'Must be at least 6 characters.';
+          const passErr = validateStrictPassword(val);
+          if (passErr) {
+            next.password = passErr;
           } else {
             delete next.password;
           }
@@ -869,10 +870,9 @@ export default function AuthModal() {
         }
       } else if (name === 'googlePassword') {
         const val = customVal !== undefined ? customVal : newPassword;
-        if (!val) {
-          next.googlePassword = 'Password must be at least 6 characters.';
-        } else if (val.length < 6) {
-          next.googlePassword = 'Must be at least 6 characters.';
+        const passErr = validateStrictPassword(val);
+        if (passErr) {
+          next.googlePassword = passErr;
         } else {
           delete next.googlePassword;
         }
@@ -1067,7 +1067,7 @@ export default function AuthModal() {
                   type={forgotPassShow ? 'text' : 'password'}
                   maxLength={100}
                   autoFocus
-                  placeholder="At least 6 characters"
+                  placeholder="Min. 8 chars (A-Z, a-z, 0-9)"
                   value={forgotNewPass}
                   onChange={(e) => {
                     setForgotNewPass(e.target.value);
@@ -1129,7 +1129,7 @@ export default function AuthModal() {
               fullWidth
               size="md"
               className="mt-1 font-bold text-sm py-2.5 shadow-sm"
-              disabled={isSavingNewPassword || forgotNewPass.length < 6 || !forgotConfirmPass}
+              disabled={isSavingNewPassword || forgotNewPass.length < 8 || !forgotConfirmPass}
             >
               {isSavingNewPassword ? 'Updating Password...' : 'Reset Password & Sign In'}
             </GlassButton>
@@ -1158,8 +1158,8 @@ export default function AuthModal() {
 
   if (view === 'googleSetup' && googleSetup) {
     const isGoogleStep1Done = Boolean(googleSetup.username.trim().length >= 3);
-    const isGoogleStep2Done = Boolean(newPassword.length >= 6 && !fieldErrors.googlePassword);
-    const isGoogleStep3Done = Boolean(confirmPassword.length >= 6 && confirmPassword === newPassword && !fieldErrors.googleConfirm);
+    const isGoogleStep2Done = Boolean(newPassword.length >= 8 && !fieldErrors.googlePassword);
+    const isGoogleStep3Done = Boolean(confirmPassword.length >= 8 && confirmPassword === newPassword && !fieldErrors.googleConfirm);
     const isGoogleStep4Done = Boolean(isFormSubmitting || isRegistrationSuccess);
 
     const activeGoogleStep = !isGoogleStep1Done ? 1 : !isGoogleStep2Done ? 2 : !isGoogleStep3Done ? 3 : 4;
@@ -1280,7 +1280,7 @@ export default function AuthModal() {
                   type={showPassword ? 'text' : 'password'} 
                   maxLength={100}
                   autoComplete="new-password"
-                  placeholder="At least 6 characters" 
+                  placeholder="Min. 8 chars (A-Z, a-z, 0-9)" 
                   value={newPassword} 
                   onBlur={() => validateField('googlePassword')}
                   onChange={(e) => { 
@@ -1470,7 +1470,7 @@ export default function AuthModal() {
   // 5-Step Customer Registration Progress (Username -> Email (Optional) -> Password -> Policies -> Create My Account)
   const isStep1Done = Boolean(username.trim().length >= 3 && !fieldErrors.username);
   const isStep2Done = Boolean(email.trim().length === 0 || (!fieldErrors.email && email.includes('@')));
-  const isStep3Done = Boolean(password.length >= 6 && !fieldErrors.password);
+  const isStep3Done = Boolean(password.length >= 8 && !fieldErrors.password);
   const isStep4Done = Boolean(agreedToTerms);
   // Step 5 is ONLY done when the user clicks Create My Account and submission is in progress or completed!
   const isStep5Done = Boolean(isFormSubmitting || isRegistrationSuccess);

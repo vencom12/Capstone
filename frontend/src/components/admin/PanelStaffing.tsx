@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 import Pagination from '@/components/ui/Pagination';
 import InlineError from '@/components/ui/InlineError';
 import { validateEmail } from '@/lib/emailValidator';
+import { validateStrictPassword } from '@/lib/passwordValidator';
 
 interface PanelStaffingProps {
   users: any[];
@@ -67,12 +68,11 @@ export default function PanelStaffing({
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('employee');
-  const [phone, setPhone] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ username?: string; email?: string; password?: string; phone?: string }>({});
-  const [touched, setTouched] = useState<{ username?: boolean; email?: boolean; password?: boolean; phone?: boolean }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ username?: string; email?: string; password?: string }>({});
+  const [touched, setTouched] = useState<{ username?: boolean; email?: boolean; password?: boolean }>({});
   const [shakeKey, setShakeKey] = useState(0);
 
-  const validateField = (field: 'username' | 'email' | 'password' | 'phone', val: string, isEditing: boolean = !!editingStaff) => {
+  const validateField = (field: 'username' | 'email' | 'password', val: string, isEditing: boolean = !!editingStaff) => {
     let err = '';
     const clean = val.trim();
     if (field === 'username') {
@@ -86,21 +86,17 @@ export default function PanelStaffing({
         if (!res.isValid) err = res.error || 'Please enter a valid email address';
       }
     } else if (field === 'password') {
-      if (!isEditing && !clean) err = 'Password is required';
-      else if (clean && clean.length < 8) err = 'Password must be at least 8 characters';
-    } else if (field === 'phone') {
-      if (clean) {
-        const digits = clean.replace(/\D/g, '');
-        if (digits.length < 10) err = 'Please enter a valid phone number (at least 10 digits)';
+      if (isEditing && clean) {
+        err = validateStrictPassword(clean) || '';
       }
     }
     setFieldErrors((prev) => ({ ...prev, [field]: err }));
     return err;
   };
 
-  const handleBlur = (field: 'username' | 'email' | 'password' | 'phone') => {
+  const handleBlur = (field: 'username' | 'email' | 'password') => {
     setTouched((prev) => ({ ...prev, [field]: true }));
-    const val = field === 'username' ? username : field === 'email' ? email : field === 'password' ? password : phone;
+    const val = field === 'username' ? username : field === 'email' ? email : password;
     validateField(field, val);
   };
 
@@ -202,14 +198,12 @@ export default function PanelStaffing({
       setEmail(staff.email || '');
       setPassword(''); // Do not populate password on edit
       setRole(staff.role || 'employee');
-      setPhone(staff.phoneNumber || '');
     } else {
       setEditingStaff(null);
       setUsername('');
       setEmail('');
       setPassword('');
       setRole('employee');
-      setPhone('');
     }
     setIsOpen(true);
   };
@@ -221,15 +215,14 @@ export default function PanelStaffing({
     const isEdit = !!editingStaff;
     const errUsername = validateField('username', username, isEdit);
     const errEmail = validateField('email', email, isEdit);
-    const errPassword = validateField('password', password, isEdit);
-    const errPhone = validateField('phone', phone, isEdit);
+    const errPassword = isEdit ? validateField('password', password, isEdit) : '';
 
-    if (errUsername || errEmail || errPassword || errPhone) {
-      setTouched({ username: true, email: true, password: true, phone: true });
+    if (errUsername || errEmail || errPassword) {
+      setTouched({ username: true, email: true, password: true });
       setShakeKey((k) => k + 1);
       showToast({
         title: 'Form Validation Error',
-        message: errUsername || errEmail || errPassword || errPhone || 'Please fix the highlighted fields',
+        message: errUsername || errEmail || errPassword || 'Please fix the highlighted fields',
         type: 'error'
       });
       return;
@@ -238,11 +231,10 @@ export default function PanelStaffing({
     const payload: any = {
       username: username.trim(),
       email: email.trim(),
-      role,
-      phoneNumber: phone.trim() ? phone.trim() : undefined
+      role
     };
 
-    if (password.trim()) {
+    if (isEdit && password.trim()) {
       payload.password = password.trim();
     }
 
@@ -251,7 +243,6 @@ export default function PanelStaffing({
       username: username.trim(),
       email: email.trim(),
       role,
-      phoneNumber: phone.trim() || undefined,
       shiftStatus: editingStaff?.shiftStatus || 'offline',
       isEmailVerified: editingStaff?.isEmailVerified ?? false
     };
@@ -280,7 +271,7 @@ export default function PanelStaffing({
         ? await api.put(path, payload)
         : await api.post(path, payload);
 
-      showToast(isEdit ? 'Staff updated successfully' : 'Staff added successfully', 'success');
+      showToast(isEdit ? 'Staff updated successfully' : (res?.message || 'Staff invitation sent! Ask them to check their email to activate.'), 'success');
 
       if (!isEdit && res?.user && setUsers) {
         setUsers((prev) =>
@@ -621,8 +612,8 @@ export default function PanelStaffing({
                           <span className="truncate max-w-[180px] font-mono text-xs text-text-main" title={u.email}>
                             {isDeleted ? 'privacy-scrubbed@anonymized' : u.email}
                           </span>
-                          {customer && !isDeleted && (
-                            <span className={`text-[0.65rem] font-semibold shrink-0 ${u.isEmailVerified ? 'text-success' : 'text-text-dim'}`}>
+                          {!isDeleted && (
+                            <span className={`text-[0.65rem] font-semibold shrink-0 ${u.isEmailVerified ? 'text-success' : 'text-warning'}`}>
                               {u.isEmailVerified ? 'Verified' : 'Unverified'}
                             </span>
                           )}
@@ -776,11 +767,9 @@ export default function PanelStaffing({
                   <span className="text-[0.65rem] text-text-dim block mb-0.5">Email</span>
                   <div className="flex items-center justify-between">
                     <span className="text-text-main font-semibold">{u.email}</span>
-                    {customer && (
-                      <span className={`text-[0.65rem] font-semibold ${u.isEmailVerified ? 'text-success' : 'text-text-dim'}`}>
-                        {u.isEmailVerified ? 'Verified' : 'Unverified'}
-                      </span>
-                    )}
+                    <span className={`text-[0.65rem] font-semibold ${u.isEmailVerified ? 'text-success' : 'text-warning'}`}>
+                      {u.isEmailVerified ? 'Verified' : 'Unverified'}
+                    </span>
                   </div>
                 </div>
 
@@ -872,14 +861,13 @@ export default function PanelStaffing({
       <GlassModal
         isOpen={isOpen}
         onClose={() => setIsOpen(false)}
-        title={editingStaff ? 'Edit Personnel Details' : 'Add Staff Member'}
+        title={editingStaff ? 'Edit Personnel Details' : 'Invite Staff Member'}
         onDiscard={() => {
           setEditingStaff(null);
           setUsername('');
           setEmail('');
           setPassword('');
           setRole('employee');
-          setPhone('');
           setFieldErrors({});
           setTouched({});
         }}
@@ -920,7 +908,7 @@ export default function PanelStaffing({
 
           <div className="modal-section">
             <label className="modal-label flex items-center justify-between">
-              <span>Email Address</span>
+              <span>Staff Email Address (Gmail)</span>
               {touched.email && !fieldErrors.email && email.trim() && (
                 <span className="text-primary text-[0.68rem] font-bold">✓ Valid syntax</span>
               )}
@@ -928,7 +916,7 @@ export default function PanelStaffing({
             <input
               type="email"
               maxLength={100}
-              placeholder="e.g. staff@stitchopt.com"
+              placeholder="e.g. employee@gmail.com"
               value={email}
               onChange={(e) => {
                 setEmail(e.target.value);
@@ -946,51 +934,67 @@ export default function PanelStaffing({
             )}
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="modal-section">
-              <label className="modal-label flex items-center justify-between" id="staff-password-label">
-                <span>{editingStaff ? 'Reset Password (Optional)' : 'Password'}</span>
-                {touched.password && !fieldErrors.password && password.trim() && (
-                  <span className="text-primary text-[0.68rem] font-bold">✓ Good</span>
+          {editingStaff ? (
+            <div className="grid grid-cols-2 gap-4">
+              <div className="modal-section">
+                <label className="modal-label flex items-center justify-between" id="staff-password-label">
+                  <span>Reset Password (Optional)</span>
+                  {touched.password && !fieldErrors.password && password.trim() && (
+                    <span className="text-primary text-[0.68rem] font-bold">✓ Strong</span>
+                  )}
+                </label>
+                <input
+                  type="password"
+                  maxLength={100}
+                  placeholder="Min. 8 chars (A-Z, a-z, 0-9)"
+                  value={password}
+                  onChange={(e) => {
+                    setPassword(e.target.value);
+                    if (touched.password) validateField('password', e.target.value);
+                  }}
+                  onBlur={() => handleBlur('password')}
+                  className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full transition-all ${
+                    touched.password && fieldErrors.password
+                      ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
+                      : 'border-border-glass focus:border-white/40'
+                  }`}
+                />
+                {touched.password && fieldErrors.password && (
+                  <InlineError message={fieldErrors.password} variant="field" />
                 )}
-              </label>
-              <input
-                type="password"
-                maxLength={100}
-                placeholder={editingStaff ? '••••••••' : 'Enter strong password (min 8 chars)'}
-                value={password}
-                onChange={(e) => {
-                  setPassword(e.target.value);
-                  if (touched.password) validateField('password', e.target.value);
-                }}
-                onBlur={() => handleBlur('password')}
-                className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full transition-all ${
-                  touched.password && fieldErrors.password
-                    ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                    : 'border-border-glass focus:border-white/40'
-                }`}
-              />
-              {touched.password && fieldErrors.password && (
-                <InlineError message={fieldErrors.password} variant="field" />
-              )}
-            </div>
-            <div className="modal-section">
-              <label className="modal-label">Access Role designation</label>
-              {editingStaff && isCurrentAdmin(editingStaff) ? (
-                <div>
+              </div>
+              <div className="modal-section">
+                <label className="modal-label">Access Role designation</label>
+                {isCurrentAdmin(editingStaff) ? (
+                  <div>
+                    <select
+                      value={role}
+                      disabled
+                      className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-dim text-sm outline-none w-full cursor-not-allowed font-sans opacity-70"
+                      title="You cannot change your own role to prevent accidental admin lockout"
+                    >
+                      <option value="admin">Administrator (Your Account)</option>
+                    </select>
+                    <span className="text-[0.65rem] text-text-dim/60 italic block mt-1">
+                      Your own administrative role is locked to prevent accidental lockout.
+                    </span>
+                  </div>
+                ) : (
                   <select
                     value={role}
-                    disabled
-                    className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-dim text-sm outline-none w-full cursor-not-allowed font-sans opacity-70"
-                    title="You cannot change your own role to prevent accidental admin lockout"
+                    onChange={(e) => setRole(e.target.value)}
+                    className="bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none w-full cursor-pointer font-sans"
                   >
-                    <option value="admin">Administrator (Your Account)</option>
+                    <option value="employee">Artisan / Employee</option>
+                    <option value="admin">Administrator</option>
                   </select>
-                  <span className="text-[0.65rem] text-text-dim/60 italic block mt-1">
-                    Your own administrative role is locked to prevent accidental lockout.
-                  </span>
-                </div>
-              ) : (
+                )}
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="modal-section">
+                <label className="modal-label">Access Role designation</label>
                 <select
                   value={role}
                   onChange={(e) => setRole(e.target.value)}
@@ -999,43 +1003,18 @@ export default function PanelStaffing({
                   <option value="employee">Artisan / Employee</option>
                   <option value="admin">Administrator</option>
                 </select>
-              )}
-            </div>
-          </div>
-
-          <div className="modal-section">
-            <label className="modal-label flex items-center justify-between">
-              <span>Phone Number (Optional)</span>
-              {touched.phone && !fieldErrors.phone && phone.trim() && (
-                <span className="text-primary text-[0.68rem] font-bold">✓ Valid</span>
-              )}
-            </label>
-            <input
-              type="tel"
-              maxLength={25}
-              placeholder="e.g. +639123456789 or 09123456789"
-              value={phone}
-              onChange={(e) => {
-                setPhone(e.target.value);
-                if (touched.phone) validateField('phone', e.target.value);
-              }}
-              onBlur={() => handleBlur('phone')}
-              className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full font-mono transition-all ${
-                touched.phone && fieldErrors.phone
-                  ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                  : 'border-border-glass focus:border-white/40'
-              }`}
-            />
-            {touched.phone && fieldErrors.phone && (
-              <InlineError message={fieldErrors.phone} variant="field" />
-            )}
-          </div>
+              </div>
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 text-xs text-text-dim leading-relaxed">
+                <span className="text-primary font-bold">Email Activation Required:</span> An invitation email with an <b className="text-text-main">Activate Staff Account</b> button will be sent to this Gmail address so the staff member can verify their email and create their own secure password.
+              </div>
+            </>
+          )}
 
           <button
             type="submit"
             className="bg-primary text-white font-bold py-3.5 rounded-xl mt-4 hover:bg-primary-light transition-all cursor-pointer border-none shadow-sm hover:shadow-md text-center w-full text-sm font-sans"
           >
-            {editingStaff ? 'Save Personnel Details' : 'Add Staff'}
+            {editingStaff ? 'Save Personnel Details' : 'Send Staff Activation Email'}
           </button>
         </form>
       </GlassModal>

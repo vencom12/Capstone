@@ -1,3 +1,4 @@
+const { sendStaffInvitationEmail } = require('../../utils/emailService');
 const crypto = require('crypto');
 const prisma = require('../../utils/prisma');
 const socketUtil = require('../../utils/socketUtil');
@@ -161,7 +162,7 @@ exports.getAllUsers = async (req, res) => {
 
 exports.createUser = async (req, res) => {
     try {
-        const { username, email, password, role, phoneNumber, address } = req.body;
+        const { username, email, role } = req.body;
 
         if (!username || !username.trim()) {
             return res.status(400).json({ message: 'Username is required' });
@@ -169,94 +170,29 @@ exports.createUser = async (req, res) => {
         if (!email || !email.trim()) {
             return res.status(400).json({ message: 'Email address is required' });
         }
-        if (!password || !password.trim()) {
-            return res.status(400).json({ message: 'Password is required' });
-        }
 
         const normalizedUsername = username.trim();
         const normalizedEmail = email.trim().toLowerCase();
 
-        // 1. Check if user already exists by email
+        // 1. Hard check: Email must be unique across all users
         const existingEmail = await prisma.user.findFirst({
             where: { email: { equals: normalizedEmail, mode: 'insensitive' } }
         });
+        if (existingEmail) {
+            if (existingEmail.role === 'customer') {
+                return res.status(400).json({
+                    message: `The email "${normalizedEmail}" is already registered to a customer account. Internal staff accounts cannot be converted from retail customers. Please provide a dedicated staff email.`
+                });
+            }
+            return res.status(400).json({
+                message: `A staff account with email "${normalizedEmail}" already exists (${existingEmail.role} account "${existingEmail.username}").`
+            });
+        }
 
-        // 2. Check if user already exists by username
+        // 2. Hard check: Username must be unique across all users
         const existingUsername = await prisma.user.findFirst({
             where: { username: { equals: normalizedUsername, mode: 'insensitive' } }
         });
-
-        // Case A: The account already exists as a customer -> Automatically promote to staff!
-        const existingCustomer = (existingEmail && existingEmail.role === 'customer')
-            ? existingEmail
-            : (existingUsername && existingUsername.role === 'customer')
-                ? existingUsername
-                : null;
-
-        if (existingCustomer) {
-            // Ensure username isn't taken by a third party
-            if (normalizedUsername && normalizedUsername !== existingCustomer.username) {
-                const usernameConflict = await prisma.user.findFirst({
-                    where: {
-                        username: { equals: normalizedUsername, mode: 'insensitive' },
-                        id: { not: existingCustomer.id }
-                    }
-                });
-                if (usernameConflict) {
-                    return res.status(400).json({
-                        message: `The username "${normalizedUsername}" is already taken by another account. Please select a different username.`
-                    });
-                }
-            }
-
-            // Ensure email isn't taken by a third party
-            if (normalizedEmail && normalizedEmail !== existingCustomer.email.toLowerCase()) {
-                const emailConflict = await prisma.user.findFirst({
-                    where: {
-                        email: { equals: normalizedEmail, mode: 'insensitive' },
-                        id: { not: existingCustomer.id }
-                    }
-                });
-                if (emailConflict) {
-                    return res.status(400).json({
-                        message: `The email "${normalizedEmail}" is already used by another account.`
-                    });
-                }
-            }
-
-            const bcrypt = require('bcryptjs');
-            const hashedPassword = await bcrypt.hash(password.trim(), 10);
-
-            const updateData = {
-                role: role || 'employee',
-                username: normalizedUsername || existingCustomer.username,
-                email: normalizedEmail || existingCustomer.email,
-                password: hashedPassword,
-                isEmailVerified: true
-            };
-            if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) {
-                updateData.phoneNumber = phoneNumber.trim();
-            }
-
-            const updatedUser = await prisma.user.update({
-                where: { id: existingCustomer.id },
-                data: updateData
-            });
-
-            return res.json({
-                id: updatedUser.id,
-                message: `Existing customer account "${updatedUser.username}" was promoted to ${role === 'admin' ? 'Administrator' : 'Artisan / Employee'} staff successfully!`,
-                user: { id: updatedUser.id, username: updatedUser.username, role: updatedUser.role }
-            });
-        }
-
-        // Case B: Existing user is already an employee or admin
-        if (existingEmail) {
-            return res.status(400).json({
-                message: `A staff account with email "${normalizedEmail}" already exists (${existingEmail.role} account "${existingEmail.username}"). You can edit their credentials directly in the table.`
-            });
-        }
-
         if (existingUsername) {
             return res.status(400).json({
                 message: `The username "${normalizedUsername}" is already taken by another account. Please select a different username.`
@@ -264,24 +200,44 @@ exports.createUser = async (req, res) => {
         }
 
         const bcrypt = require('bcryptjs');
-        const hashedPassword = await bcrypt.hash(password.trim(), 10);
+        // Initial random cryptographic placeholder password until employee sets their own via activation link
+        const tempPassword = crypto.randomBytes(32).toString('hex');
+        const hashedPassword = await bcrypt.hash(tempPassword, 10);
 
-        const createData = {
-            username: normalizedUsername,
-            email: normalizedEmail,
-            password: hashedPassword,
-            role: role || 'employee',
-            isEmailVerified: true
-        };
-
-        if (phoneNumber && typeof phoneNumber === 'string' && phoneNumber.trim()) {
-            createData.phoneNumber = phoneNumber.trim();
-        }
-
+        // Account is created in pending activation state (isEmailVerified = false)
         const user = await prisma.user.create({
-            data: createData
+            data: {
+                username: normalizedUsername,
+                email: normalizedEmail,
+                password: hashedPassword,
+                role: role || 'employee',
+                isEmailVerified: false
+            }
         });
-        res.json({ id: user.id, message: 'User created successfully', user: { id: user.id, username: user.username, role: user.role } });
+
+        // Generate cryptographically secure activation token with 24-hour expiration
+        const rawToken = 'rst_' + crypto.randomBytes(32).toString('hex');
+        const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
+        const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+        // Store activation record
+        await prisma.emailVerification.create({
+            data: {
+                userId: user.id,
+                email: user.email,
+                token: hashedToken,
+                expiresAt
+            }
+        });
+
+        // Dispatch activation email to staff member's real Gmail with activation button
+        await sendStaffInvitationEmail(user.email, user.username, rawToken, user.role);
+
+        res.json({
+            id: user.id,
+            message: `Staff account created successfully! An activation email has been sent to ${user.email}.`,
+            user: { id: user.id, username: user.username, role: user.role }
+        });
     } catch (err) {
         console.error('createUser error:', err);
         if (err.code === 'P2002') {
@@ -332,7 +288,7 @@ exports.updateUser = async (req, res) => {
             }
             if (currentUser.email && currentUser.email.toLowerCase() !== normalizedEmail) {
                 updateData.email = normalizedEmail;
-                updateData.isEmailVerified = (currentUser.role === 'admin' || currentUser.role === 'employee' || role === 'admin' || role === 'employee');
+                updateData.isEmailVerified = false;
                 updateData.tokenVersion = { increment: 1 };
             } else {
                 updateData.email = normalizedEmail;
@@ -360,8 +316,12 @@ exports.updateUser = async (req, res) => {
         if (address !== undefined) updateData.address = address ? address.trim() : null;
 
         if (password && password.trim()) {
+            const cleanPass = password.trim();
+            if (cleanPass.length < 8 || !/[A-Z]/.test(cleanPass) || !/[a-z]/.test(cleanPass) || !/[0-9]/.test(cleanPass)) {
+                return res.status(400).json({ message: 'Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.' });
+            }
             const bcrypt = require('bcryptjs');
-            updateData.password = await bcrypt.hash(password.trim(), 10);
+            updateData.password = await bcrypt.hash(cleanPass, 10);
         }
 
         const user = await prisma.user.update({

@@ -13,7 +13,7 @@ const validate = (req, res, next) => {
 const registerValidation = [
     body('username').trim().isLength({ min: 3 }).escape(),
     body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
-    body('password').isLength({ min: 6 }),
+    body('password').isLength({ min: 8 }),
     body('phoneNumber').optional().trim().escape(),
     body('address').optional().trim().escape(),
     body('otpCode').optional().trim(),

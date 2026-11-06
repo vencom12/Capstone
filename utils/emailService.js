@@ -734,7 +734,55 @@ async function sendDelayNotificationEmail(recipientEmail, recipientName, order, 
   });
 }
 
+
+async function sendStaffInvitationEmail(recipientEmail, recipientName, token, roleName = 'Employee') {
+  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const activateUrl = `${baseUrl}/reset-password?token=${token}&type=staff_activation`;
+  const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
+
+  const contentHtml = `
+    <div style="color: #e2e8f0; font-size: 13px; line-height: 1.6; margin-bottom: 14px;">
+      Hi <strong style="color: #ffffff;">${recipientName || 'Staff Member'}</strong>, an administrator has provisioned your 
+      <strong>${businessName}</strong> ${roleName === 'admin' ? 'Administrator' : 'Studio Staff / Artisan'} workstation access.
+    </div>
+
+    <div style="color: #94a3b8; font-size: 12px; line-height: 1.5; margin-bottom: 18px;">
+      Please click the activation button below to verify your email address and create your private secure password.
+    </div>
+
+    <div style="margin: 20px 0;">
+      <a href="${activateUrl}" 
+         style="display: block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
+                color: #ffffff; text-decoration: none; padding: 12px 20px; border-radius: 8px; 
+                font-size: 14px; font-weight: 700; letter-spacing: 0.3px;
+                box-shadow: 0 4px 12px rgba(185, 28, 28, 0.35);">
+        Activate Staff Account &rarr;
+      </a>
+    </div>
+
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 10px 12px; margin-top: 14px;">
+      <div style="color: #64748b; font-size: 10.5px; line-height: 1.4; word-break: break-all;">
+        Or open in your browser: <a href="${activateUrl}" style="color: #ef4444; text-decoration: underline;">${activateUrl}</a>
+      </div>
+    </div>
+  `;
+
+  const htmlContent = renderEmailShell({
+    title: 'Staff Account Activation',
+    subtitle: 'Kiosk & Workshop System Access',
+    contentHtml,
+  });
+
+  return dispatchEmail({
+    to: recipientEmail,
+    subject: `Activate Your Staff Account — ${businessName}`,
+    html: htmlContent,
+    simulationInfo: { tag: 'STAFF ACTIVATION', url: activateUrl },
+  });
+}
+
 module.exports = {
+  sendStaffInvitationEmail,
   generateVerificationToken,
   sendVerificationEmail,
   sendVerificationOtpEmail,

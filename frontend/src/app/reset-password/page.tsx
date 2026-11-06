@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import InlineError from '@/components/ui/InlineError';
 import { showToast } from '@/components/ui/Toast';
+import { validateStrictPassword } from '@/lib/passwordValidator';
 
 interface TokenInfo {
   maskedEmail?: string;
@@ -20,6 +21,7 @@ function ResetPasswordContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const rawToken = searchParams.get('token');
+  const isStaffActivation = searchParams.get('type') === 'staff_activation';
   const [token, setToken] = useState(rawToken || '');
   const { validateResetToken, resetPassword } = useAuthStore();
   const hasValidated = useRef(false);
@@ -35,6 +37,7 @@ function ResetPasswordContent() {
   const [status, setStatus] = useState<'form' | 'success' | 'error'>('form');
   const [message, setMessage] = useState('');
   const [redirectCount, setRedirectCount] = useState(4);
+  const [targetPortalUrl, setTargetPortalUrl] = useState('/dashboard');
 
   // Pre-validate token on mount
   useEffect(() => {
@@ -44,7 +47,7 @@ function ResetPasswordContent() {
     if (!rawToken) {
       setValidating(false);
       setStatus('error');
-      setMessage('No reset link found. Please click the link sent to your email or request a new one.');
+      setMessage('No activation or reset link found. Please click the button sent to your email.');
       return;
     }
 
@@ -61,12 +64,12 @@ function ResetPasswordContent() {
           });
         } else {
           setStatus('error');
-          setMessage(res.message || 'This reset link has expired or has already been used.');
+          setMessage(res.message || 'This link has expired or has already been used.');
         }
       })
       .catch((err) => {
         setStatus('error');
-        setMessage(err.message || 'Could not verify your reset link. It may have expired or already been used.');
+        setMessage(err.message || 'Could not verify your link. It may have expired or already been used.');
       })
       .finally(() => {
         setValidating(false);
@@ -96,13 +99,14 @@ function ResetPasswordContent() {
     }
   }, [password]);
 
-  // Criteria checklist
+  // Strict Criteria checklist
   const criteria = useMemo(() => {
     const hasMinLength = password.length >= 8;
-    const hasNumOrSymbol = /[0-9]|[^A-Za-z0-9]/.test(password);
+    const hasUpperAndLower = /[A-Z]/.test(password) && /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
     const matches = confirm.length > 0 && password === confirm;
-    const isValid = hasMinLength && matches;
-    return { hasMinLength, hasNumOrSymbol, matches, isValid };
+    const isValid = hasMinLength && hasUpperAndLower && hasNumber && matches;
+    return { hasMinLength, hasUpperAndLower, hasNumber, matches, isValid };
   }, [password, confirm]);
 
   // Auto-redirect timer on success
@@ -112,24 +116,23 @@ function ResetPasswordContent() {
       setRedirectCount((prev) => {
         if (prev <= 1) {
           clearInterval(timer);
-          router.push('/dashboard');
+          router.push(targetPortalUrl);
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
-  }, [status, router]);
+  }, [status, router, targetPortalUrl]);
 
   const validateField = (name: keyof FieldErrors, customVal?: string) => {
     setFieldErrors((prev) => {
       const next = { ...prev };
       if (name === 'password') {
         const val = customVal !== undefined ? customVal : password;
-        if (!val) {
-          next.password = 'Please enter a password.';
-        } else if (val.length < 8) {
-          next.password = 'Must be at least 8 characters.';
+        const passErr = validateStrictPassword(val);
+        if (passErr) {
+          next.password = passErr;
         } else {
           delete next.password;
         }
@@ -150,15 +153,14 @@ function ResetPasswordContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!token) {
-      setMessage('Reset link is missing or has expired.');
+      setMessage('Activation or reset link is missing or has expired.');
       return;
     }
 
     const errors: FieldErrors = {};
-    if (!password) {
-      errors.password = 'Please enter a password.';
-    } else if (password.length < 8) {
-      errors.password = 'Must be at least 8 characters.';
+    const passErr = validateStrictPassword(password);
+    if (passErr) {
+      errors.password = passErr;
     }
     if (!confirm) {
       errors.confirm = 'Please confirm your password.';
@@ -172,7 +174,7 @@ function ResetPasswordContent() {
       setTimeout(() => setFormShaking(false), 450);
       showToast({
         title: 'Please Check Your Password',
-        message: 'Please fill in the password fields properly before submitting.',
+        message: errors.password || errors.confirm || 'Please satisfy all password security rules.',
         type: 'warning',
       });
       return;
@@ -184,18 +186,27 @@ function ResetPasswordContent() {
     try {
       const res = await resetPassword(token, password);
       if (res.success) {
+        const role = res.user?.role;
+        const nextUrl = role === 'admin' ? '/admin' : role === 'employee' ? '/employee' : '/dashboard';
+        setTargetPortalUrl(nextUrl);
         setStatus('success');
-        setMessage(res.message || 'Password updated successfully!');
+        setMessage(
+          isStaffActivation
+            ? 'Staff account activated & email verified! Logging you into your workstation...'
+            : res.message || 'Password updated successfully!'
+        );
         showToast({
-          title: 'Password Updated',
-          message: 'Your password has been changed successfully. You are now signed in!',
+          title: isStaffActivation ? 'Staff Account Activated!' : 'Password Updated',
+          message: isStaffActivation
+            ? 'Your email is verified and your staff password is now active!'
+            : 'Your password has been changed successfully. You are now signed in!',
           type: 'success',
         });
         if (typeof window !== 'undefined') {
           window.history.replaceState({}, document.title, window.location.pathname);
         }
       } else {
-        const errMsg = res.message || 'Could not reset password.';
+        const errMsg = res.message || 'Could not set password.';
         if (
           errMsg.toLowerCase().includes('already been used') ||
           errMsg.toLowerCase().includes('expired') ||
@@ -207,7 +218,7 @@ function ResetPasswordContent() {
       }
     } catch (err: any) {
       setStatus('error');
-      setMessage(err.message || 'This reset link has already been used or has expired.');
+      setMessage(err.message || 'This link has already been used or has expired.');
     } finally {
       setSubmitting(false);
     }
@@ -230,8 +241,10 @@ function ResetPasswordContent() {
             <circle cx="12" cy="12" r="10" strokeDasharray="32" strokeDashoffset="12" />
           </svg>
         </div>
-        <h2 className="text-lg font-bold text-text-main m-0">Checking Your Reset Link...</h2>
-        <p className="text-xs text-text-dim mt-2 mb-0">Just a moment while we verify your link.</p>
+        <h2 className="text-lg font-bold text-text-main m-0">
+          {isStaffActivation ? 'Verifying Staff Activation Link...' : 'Checking Your Reset Link...'}
+        </h2>
+        <p className="text-xs text-text-dim mt-2 mb-0">Just a moment while we verify your security token.</p>
       </div>
     );
   }
@@ -269,23 +282,34 @@ function ResetPasswordContent() {
         </div>
 
         <h1 className="text-2xl font-extrabold text-text-main m-0 tracking-tight">
-          {status === 'success' ? 'Password Updated!' : status === 'error' ? 'Reset Link Problem' : 'Create New Password'}
+          {status === 'success'
+            ? isStaffActivation
+              ? 'Staff Account Activated!'
+              : 'Password Updated!'
+            : status === 'error'
+            ? 'Link Expired or Invalid'
+            : isStaffActivation
+            ? 'Activate Staff Account'
+            : 'Create New Password'}
         </h1>
 
         {status === 'form' && tokenInfo && (
           <p className="text-xs text-text-dim mt-1.5 mb-0">
-            Updating password for <span className="font-semibold text-primary">{tokenInfo.maskedEmail || tokenInfo.username}</span>
+            {isStaffActivation ? 'Setting up workstation password for ' : 'Updating password for '}
+            <span className="font-semibold text-primary">{tokenInfo.username || tokenInfo.maskedEmail}</span>
           </p>
         )}
       </div>
 
-      {/* Main Password Reset Form */}
+      {/* Main Password Setup Form */}
       {status === 'form' && (
         <form noValidate onSubmit={handleSubmit} className={`flex flex-col gap-4 ${formShaking ? 'animate-shake' : ''}`} suppressHydrationWarning>
           {/* New Password Input */}
           <div className="flex flex-col gap-1.5">
             <div className="flex justify-between items-center min-w-0 gap-2">
-              <label className="text-xs font-semibold text-text-main whitespace-nowrap shrink-0">New Password *</label>
+              <label className="text-xs font-semibold text-text-main whitespace-nowrap shrink-0">
+                {isStaffActivation ? 'Create Staff Password *' : 'New Password *'}
+              </label>
               <div className="shrink min-w-0 justify-end">
                 {fieldErrors.password ? (
                   <InlineError variant="label" message={fieldErrors.password} />
@@ -300,7 +324,7 @@ function ResetPasswordContent() {
               <input
                 type={show ? 'text' : 'password'}
                 maxLength={100}
-                placeholder="At least 8 characters"
+                placeholder="Min. 8 chars (A-Z, a-z, 0-9)"
                 value={password}
                 onBlur={() => validateField('password')}
                 onChange={(e) => {
@@ -327,7 +351,7 @@ function ResetPasswordContent() {
                   </svg>
                 ) : (
                   <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8z" />
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                     <circle cx="12" cy="12" r="3" />
                   </svg>
                 )}
@@ -389,7 +413,7 @@ function ResetPasswordContent() {
             />
           </div>
 
-          {/* Real-time Checklist */}
+          {/* Real-time Strict Security Checklist */}
           <div className="bg-bg-dark/60 border border-border-glass rounded-xl p-3 flex flex-col gap-1.5 text-xs">
             <div className="flex items-center gap-2">
               <span className={criteria.hasMinLength ? 'text-emerald-400' : 'text-zinc-500'}>
@@ -400,11 +424,19 @@ function ResetPasswordContent() {
               </span>
             </div>
             <div className="flex items-center gap-2">
-              <span className={criteria.hasNumOrSymbol ? 'text-emerald-400' : 'text-zinc-500'}>
-                {criteria.hasNumOrSymbol ? '✓' : '○'}
+              <span className={criteria.hasUpperAndLower ? 'text-emerald-400' : 'text-zinc-500'}>
+                {criteria.hasUpperAndLower ? '✓' : '○'}
               </span>
-              <span className={criteria.hasNumOrSymbol ? 'text-text-main font-medium' : 'text-zinc-500'}>
-                Contains at least 1 number or symbol
+              <span className={criteria.hasUpperAndLower ? 'text-text-main font-medium' : 'text-zinc-500'}>
+                Includes uppercase (A-Z) and lowercase (a-z) letters
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className={criteria.hasNumber ? 'text-emerald-400' : 'text-zinc-500'}>
+                {criteria.hasNumber ? '✓' : '○'}
+              </span>
+              <span className={criteria.hasNumber ? 'text-text-main font-medium' : 'text-zinc-500'}>
+                Includes at least 1 number (0-9)
               </span>
             </div>
             {confirm.length > 0 && (
@@ -427,7 +459,13 @@ function ResetPasswordContent() {
             suppressHydrationWarning
             className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white bg-primary hover:bg-primary-hover active:scale-[0.99] border-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg shadow-primary/25 mt-1"
           >
-            {submitting ? 'Updating Password...' : 'Update Password & Sign In'}
+            {submitting
+              ? isStaffActivation
+                ? 'Activating Account...'
+                : 'Updating Password...'
+              : isStaffActivation
+              ? 'Activate Account & Sign In'
+              : 'Update Password & Sign In'}
           </button>
         </form>
       )}
@@ -438,19 +476,19 @@ function ResetPasswordContent() {
           <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
             <p className="text-sm font-semibold text-emerald-400 m-0">{message}</p>
             <p className="text-xs text-text-dim mt-1.5 mb-0">
-              A security notification has also been dispatched to your email address for your protection.
+              Your email address is now verified and your credentials are secured.
             </p>
           </div>
 
           <p className="text-xs text-text-dim m-0">
-            Redirecting to your dashboard in <span className="font-bold text-primary">{redirectCount}s</span>...
+            Redirecting to your portal in <span className="font-bold text-primary">{redirectCount}s</span>...
           </p>
 
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push(targetPortalUrl)}
             className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white bg-primary hover:bg-primary-hover border-none cursor-pointer transition-all shadow-lg shadow-primary/25"
           >
-            Go to Dashboard Now →
+            Enter Portal Now →
           </button>
         </div>
       )}
@@ -466,7 +504,7 @@ function ResetPasswordContent() {
             onClick={() => router.push('/?auth=forgot')}
             className="w-full py-3 px-6 rounded-xl font-bold text-sm text-white bg-primary hover:bg-primary-hover border-none cursor-pointer transition-all shadow-lg shadow-primary/25"
           >
-            Request a New Reset Link →
+            Request a New Link →
           </button>
 
           <button
@@ -488,7 +526,7 @@ export default function ResetPasswordPage() {
         fallback={
           <div className="text-text-dim flex items-center gap-2">
             <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-            <span>Loading password reset...</span>
+            <span>Loading...</span>
           </div>
         }
       >

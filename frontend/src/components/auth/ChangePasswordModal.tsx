@@ -1,3 +1,4 @@
+import { validateStrictPassword } from '@/lib/passwordValidator';
 'use client';
 
 import { useState } from 'react';
@@ -58,10 +59,9 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
         }
       } else if (name === 'newPassword') {
         const val = customVal !== undefined ? customVal : newPassword;
-        if (!val) {
-          next.newPassword = 'New password is required.';
-        } else if (val.length < 6) {
-          next.newPassword = 'Must be at least 6 characters.';
+        const passErr = validateStrictPassword(val);
+        if (passErr) {
+          next.newPassword = passErr;
         } else if (currentPassword && val === currentPassword) {
           next.newPassword = 'Cannot be same as current.';
         } else {
@@ -90,10 +90,9 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
     if (!currentPassword) {
       errors.currentPassword = 'Current password is required.';
     }
-    if (!newPassword) {
-      errors.newPassword = 'New password is required.';
-    } else if (newPassword.length < 6) {
-      errors.newPassword = 'Must be at least 6 characters.';
+    const passErr = validateStrictPassword(newPassword);
+    if (passErr) {
+      errors.newPassword = passErr;
     } else if (currentPassword && newPassword === currentPassword) {
       errors.newPassword = 'Cannot be same as current.';
     }
@@ -225,7 +224,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
               <input
                 type={showPasswords ? 'text' : 'password'}
                 maxLength={100}
-                placeholder="At least 6 characters"
+                placeholder="Min. 8 chars (A-Z, a-z, 0-9)"
                 value={newPassword}
                 onBlur={() => validateField('newPassword')}
                 onChange={(e) => {

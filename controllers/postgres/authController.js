@@ -1,3 +1,13 @@
+
+function validateStrictPassword(password) {
+    if (!password || typeof password !== 'string') return 'Password is required.';
+    if (password.length < 8) return 'Password must be at least 8 characters long.';
+    if (!/[A-Z]/.test(password)) return 'Password must include at least one uppercase letter (A-Z).';
+    if (!/[a-z]/.test(password)) return 'Password must include at least one lowercase letter (a-z).';
+    if (!/[0-9]/.test(password)) return 'Password must include at least one number (0-9).';
+    return null;
+}
+
 const prisma = require('../../utils/prisma');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
@@ -123,8 +133,9 @@ exports.register = async (req, res) => {
             return res.status(400).json({ message: 'Please choose a username of at least 3 characters.' });
         }
 
-        if (!password || password.length < 6) {
-            return res.status(400).json({ message: 'Password must be at least 6 characters.' });
+        const passErr = validateStrictPassword(password);
+        if (passErr) {
+            return res.status(400).json({ message: passErr });
         }
 
         // If email was entered, enforce domain validation and 6-digit OTP verification
@@ -883,8 +894,9 @@ exports.googleComplete = async (req, res) => {
         if (!setupToken || !password) {
             return res.status(400).json({ success: false, message: 'Password is required.' });
         }
-        if (String(password).length < 6) {
-            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+        const passErr = validateStrictPassword(password);
+        if (passErr) {
+            return res.status(400).json({ success: false, message: passErr });
         }
 
         let payload;
@@ -1124,8 +1136,9 @@ exports.resetPasswordWithOtp = async (req, res) => {
         if (!emailOrUsername || !otpCode) {
             return res.status(400).json({ success: false, message: 'Email/username and 6-digit verification code are required.' });
         }
-        if (!password || String(password).length < 6) {
-            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+        const passErr = validateStrictPassword(password);
+        if (passErr) {
+            return res.status(400).json({ success: false, message: passErr });
         }
 
         const input = String(emailOrUsername).trim();
@@ -1227,8 +1240,9 @@ exports.resetPassword = async (req, res) => {
         if (!token || !String(token).startsWith('rst_')) {
             return res.status(400).json({ success: false, message: 'Invalid or expired reset link.' });
         }
-        if (!password || String(password).length < 6) {
-            return res.status(400).json({ success: false, message: 'Password must be at least 6 characters.' });
+        const passErr = validateStrictPassword(password);
+        if (passErr) {
+            return res.status(400).json({ success: false, message: passErr });
         }
 
         const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
@@ -1404,8 +1418,9 @@ exports.changePassword = async (req, res) => {
         if (!currentPassword) {
             return res.status(400).json({ success: false, message: 'Please enter your current password.' });
         }
-        if (!newPassword || String(newPassword).length < 6) {
-            return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long.' });
+        const passErr = validateStrictPassword(newPassword);
+        if (passErr) {
+            return res.status(400).json({ success: false, message: passErr });
         }
         if (confirmPassword !== undefined && newPassword !== confirmPassword) {
             return res.status(400).json({ success: false, message: 'New password and confirmation do not match.' });
