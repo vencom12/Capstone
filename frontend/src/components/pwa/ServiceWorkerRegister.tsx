@@ -101,6 +101,33 @@ export default function ServiceWorkerRegister() {
 
     const registerSW = () => {
       if (!('serviceWorker' in navigator)) return;
+
+      const isLocalDev =
+        process.env.NODE_ENV !== 'production' ||
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        window.location.hostname === '::1';
+
+      // In local development, NEVER activate service worker: unregister any leftover SW
+      // from past production tests so it doesn't intercept Webpack HMR or chunk requests.
+      if (isLocalDev) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          for (const reg of registrations) {
+            reg.unregister().catch(() => {});
+          }
+        });
+        if ('caches' in window) {
+          caches.keys().then((keys) => {
+            for (const key of keys) {
+              if (key.startsWith('stitch-opt-')) {
+                caches.delete(key).catch(() => {});
+              }
+            }
+          });
+        }
+        return;
+      }
+
       navigator.serviceWorker
         .register('/sw.js', { updateViaCache: 'none' })
         .then((reg) => {

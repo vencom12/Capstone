@@ -1,5 +1,5 @@
 // Build Version: 2026-11-04T11:53:09.261Z
-const BUILD_VERSION = '2026-11-05T12:53:50.360Z';
+const BUILD_VERSION = '2026-11-06T07:05:08.453Z';
 // Stitch-Opt Lightweight Service Worker
 const CACHE_NAME = `stitch-opt-${BUILD_VERSION}`;
 const STATIC_ASSETS = [
@@ -47,13 +47,16 @@ self.addEventListener('message', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Bypass non-GET requests, service worker, manifest, socket.io, and backend APIs
+  // Bypass non-GET requests, service worker, manifest, socket.io, Next.js HMR/dev, and backend APIs
   if (
     event.request.method !== 'GET' ||
     url.pathname === '/sw.js' ||
     url.pathname === '/manifest.json' ||
     url.pathname.startsWith('/api/') ||
-    url.pathname.startsWith('/socket.io/')
+    url.pathname.startsWith('/socket.io/') ||
+    url.pathname.startsWith('/_next/webpack-hmr') ||
+    url.pathname.includes('hot-update') ||
+    url.pathname.endsWith('.map')
   ) {
     return;
   }
@@ -81,6 +84,16 @@ self.addEventListener('fetch', (event) => {
         });
       })
     );
+    return;
+  }
+
+  // Only intercept HTML page navigation requests for offline fallback
+  const isNavigation = event.request.mode === 'navigate' ||
+    (event.request.headers.get('accept') && event.request.headers.get('accept').includes('text/html'));
+
+  if (!isNavigation) {
+    // For non-navigation requests (scripts, json, data), let the network error propagate naturally.
+    // Crucial: Never return HTML (caches.match('/')) for a script/data request, which causes "Unexpected token '<'".
     return;
   }
 
