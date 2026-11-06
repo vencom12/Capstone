@@ -401,11 +401,9 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken,
 
   const contentHtml = `
     <div style="color: #e2e8f0; font-size: 13px; line-height: 1.5; margin-bottom: 12px;">
-      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>, we received a request to reset your password.
-      ${otpCode ? 'Use the 6-digit verification code below to reset your password:' : 'Tap below to choose a new one:'}
+      Hi <strong style="color: #ffffff;">${recipientName || 'Valued Client'}</strong>, we received a request to reset your password. Use the 6-digit verification code below to reset your password:
     </div>
 
-    ${otpCode ? `
     <div style="margin: 18px 0; text-align: center;">
       <div style="display: inline-block; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2);
                   color: #ffffff; padding: 12px 28px; border-radius: 8px; font-size: 28px; font-weight: 800; letter-spacing: 6px; font-family: monospace;">
@@ -415,17 +413,6 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken,
         Enter this 6-digit code in the app to reset your password. Valid for 3 minutes.
       </div>
     </div>
-    ` : ''}
-
-    <div style="margin: 14px 0; text-align: center;">
-      <a href="${resetUrl}" 
-         style="display: inline-block; text-align: center; background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%); 
-                color: #ffffff; text-decoration: none; padding: 10px 18px; border-radius: 6px; 
-                font-size: 12px; font-weight: 700; letter-spacing: 0.3px;
-                box-shadow: 0 2px 8px rgba(185, 28, 28, 0.35);">
-        Or Click Here to Reset Password &rarr;
-      </a>
-    </div>
 
     <div style="color: #64748b; font-size: 10.5px; text-align: center; margin-top: 10px;">
       If you did not request this code, you can safely ignore this email.
@@ -434,7 +421,7 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken,
 
   const htmlContent = renderEmailShell({
     title: 'Reset Password',
-    subtitle: otpCode ? '6-digit verification code' : 'Security link valid for 1 hour',
+    subtitle: '6-digit verification code (valid for 3 minutes)',
     contentHtml,
   });
 
