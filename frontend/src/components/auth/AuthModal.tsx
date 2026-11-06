@@ -290,6 +290,7 @@ export default function AuthModal() {
     setGoogleSetupData(null);
     setNewPassword('');
     setConfirmPassword('');
+    setForgotTarget('');
     setAgreedToTerms(false);
     setIsTermsOpen(false);
     if (authParam && !shouldSkip && !isAuthenticated) {
@@ -647,7 +648,7 @@ export default function AuthModal() {
     setForgotError(null);
     setFieldErrors({});
 
-    const target = (overrideTarget || email || forgotTarget).trim();
+    const target = (overrideTarget || forgotTarget).trim();
     if (!target) {
       setFieldErrors({ forgotTarget: 'Please enter your email or username.' });
       setFormShaking(true);
@@ -929,10 +930,9 @@ export default function AuthModal() {
                 maxLength={100}
                 autoFocus
                 placeholder="e.g. user@example.com or username" 
-                value={email} 
+                value={forgotTarget} 
                 onChange={(e) => {
                   const val = e.target.value;
-                  setEmail(val);
                   setForgotTarget(val);
                   if (fieldErrors.forgotTarget) setFieldErrors({});
                   if (forgotError) setForgotError(null);
@@ -947,7 +947,7 @@ export default function AuthModal() {
               fullWidth 
               size="lg" 
               className="mt-1 font-bold text-sm" 
-              disabled={isFormSubmitting || !email.trim() || forgotCooldown > 0}
+              disabled={isFormSubmitting || !forgotTarget.trim() || forgotCooldown > 0}
             >
               {isFormSubmitting 
                 ? 'Sending Code...' 
