@@ -1133,8 +1133,6 @@ export default function CheckoutModal({
               setManualRef={setManualRef}
               onManualRefChange={setManualRef}
               onSubmitManualRef={handleSubmitManualRef}
-              onBypassPayment={handleBypassGCash}
-              isBypassing={isBypassing}
               isEmailVerified={isEmailVerified}
               allowManualRef={allowManualRef}
             />

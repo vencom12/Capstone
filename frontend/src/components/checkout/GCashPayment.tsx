@@ -393,28 +393,6 @@ export default function GCashPayment({
         </div>
       )}
 
-      {/* Developer / Testing Payment Bypass Link (Subtle, non-intrusive) */}
-      {onBypassPayment && (
-        <div className="flex items-center justify-center pt-2 border-t border-border-glass/40">
-          <button
-            type="button"
-            onClick={onBypassPayment}
-            disabled={isBypassing || analyzing}
-            className="text-[0.72rem] text-text-dim hover:text-text-main font-medium cursor-pointer bg-transparent border-none p-1 flex items-center gap-1.5 transition-colors disabled:opacity-50"
-            title="Instant test mode bypass for development"
-          >
-            {isBypassing ? (
-              <>
-                <div className="w-3 h-3 border-2 border-text-dim border-t-transparent rounded-full animate-spin" />
-                <span>Bypassing GCash &amp; Placing Order...</span>
-              </>
-            ) : (
-              <span>Test Mode: 1-Click Payment Bypass</span>
-            )}
-          </button>
-        </div>
-      )}
-
       {/* QR Code Fullscreen Lightbox Modal */}
       {showQrModal && activeQrCodeUrl && (
         <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" onClick={() => setShowQrModal(false)}>
