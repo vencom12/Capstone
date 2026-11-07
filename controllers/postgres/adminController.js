@@ -451,11 +451,29 @@ exports.deleteUser = async (req, res) => {
 
 exports.sendUserPasswordReset = async (req, res) => {
     try {
-        const targetUser = await prisma.user.findUnique({ where: { id: req.params.id } });
+        const { email } = req.body || {};
+        let targetUser = await prisma.user.findUnique({ where: { id: req.params.id } });
         if (!targetUser) return res.status(404).json({ message: 'User not found' });
-        if (!targetUser.email) return res.status(400).json({ message: 'User does not have an email address on file.' });
+        if (!targetUser.email && (!email || !email.trim())) return res.status(400).json({ message: 'User does not have an email address on file.' });
 
-        const { generateVerificationToken, sendPasswordResetEmail } = require('../../utils/emailService');
+        if (email && email.trim() && email.trim().toLowerCase() !== targetUser.email.toLowerCase()) {
+            const newEmail = email.trim().toLowerCase();
+            const existingEmail = await prisma.user.findFirst({
+                where: {
+                    email: { equals: newEmail, mode: 'insensitive' },
+                    id: { not: targetUser.id }
+                }
+            });
+            if (existingEmail) {
+                return res.status(400).json({ message: `An account with the email "${newEmail}" already exists.` });
+            }
+            targetUser = await prisma.user.update({
+                where: { id: targetUser.id },
+                data: { email: newEmail, isEmailVerified: false, tokenVersion: { increment: 1 } }
+            });
+        }
+
+        const { generateVerificationToken } = require('../../utils/emailService');
         await prisma.emailVerification.deleteMany({ where: { userId: targetUser.id } });
         const rawToken = 'rst_' + generateVerificationToken();
         const hashedToken = crypto.createHash('sha256').update(rawToken).digest('hex');
@@ -464,25 +482,21 @@ exports.sendUserPasswordReset = async (req, res) => {
                 userId: targetUser.id,
                 email: targetUser.email,
                 token: hashedToken,
-                expiresAt: new Date(Date.now() + 60 * 60 * 1000)
+                expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000)
             }
         });
         const emailResult = await sendStaffInvitationEmail(targetUser.email, targetUser.username, rawToken, targetUser.role);
-        const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-        const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
         if (emailResult?.provider) {
             res.json({ 
                 success: true,
-                message: `Password reset email dispatched to ${targetUser.email} via ${emailResult.provider}!`,
-                resetUrl
+                message: `Verification & activation email sent to ${targetUser.email}!`
             });
         } else {
             res.json({ 
                 success: true,
                 simulated: true,
-                message: `Reset link generated for ${targetUser.email} (Email service in local simulation mode). Set GMAIL_APP_PASSWORD in .env for real delivery.`,
-                resetUrl
+                message: `Verification link generated for ${targetUser.email} (Email service in local simulation mode).`
             });
         }
     } catch (err) {

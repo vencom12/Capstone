@@ -215,14 +215,13 @@ export default function PanelStaffing({
     const isEdit = !!editingStaff;
     const errUsername = validateField('username', username, isEdit);
     const errEmail = validateField('email', email, isEdit);
-    const errPassword = isEdit ? validateField('password', password, isEdit) : '';
 
-    if (errUsername || errEmail || errPassword) {
-      setTouched({ username: true, email: true, password: true });
+    if (errUsername || errEmail) {
+      setTouched({ username: true, email: true });
       setShakeKey((k) => k + 1);
       showToast({
         title: 'Form Validation Error',
-        message: errUsername || errEmail || errPassword || 'Please fix the highlighted fields',
+        message: errUsername || errEmail || 'Please fix the highlighted fields',
         type: 'error'
       });
       return;
@@ -233,10 +232,6 @@ export default function PanelStaffing({
       email: email.trim(),
       role
     };
-
-    if (isEdit && password.trim()) {
-      payload.password = password.trim();
-    }
 
     const emailChanged = isEdit && (editingStaff?.email || '').trim().toLowerCase() !== email.trim().toLowerCase();
     const optimisticUser = {
@@ -279,15 +274,12 @@ export default function PanelStaffing({
       const errMsg = err?.message || 'Failed to save staff';
       // Keep the modal open so the admin is not kicked out of the form!
       setShakeKey((k) => k + 1);
-      if (errMsg.toLowerCase().includes('password') || errMsg.toLowerCase().includes('previously used') || errMsg.toLowerCase().includes('same')) {
-        setTouched((prev) => ({ ...prev, password: true }));
-        setErrors((prev) => ({ ...prev, password: errMsg }));
-      } else if (errMsg.toLowerCase().includes('email')) {
+      if (errMsg.toLowerCase().includes('email')) {
         setTouched((prev) => ({ ...prev, email: true }));
-        setErrors((prev) => ({ ...prev, email: errMsg }));
+        setFieldErrors((prev) => ({ ...prev, email: errMsg }));
       } else if (errMsg.toLowerCase().includes('username')) {
         setTouched((prev) => ({ ...prev, username: true }));
-        setErrors((prev) => ({ ...prev, username: errMsg }));
+        setFieldErrors((prev) => ({ ...prev, username: errMsg }));
       }
       showToast(errMsg, 'error');
     }
@@ -354,20 +346,15 @@ export default function PanelStaffing({
     if (isSendingReset) return;
     setIsSendingReset(true);
     try {
-      const res = await api.post<{ message: string; simulated?: boolean; resetUrl?: string }>(`/api/admin/users/${userId}/reset-password`, {});
-      if (res?.resetUrl) {
-        navigator.clipboard?.writeText(res.resetUrl).catch(() => {});
-        if (res.simulated) {
-          showToast(`Reset link generated & copied to clipboard! (${userEmail})`, 'info');
-        } else {
-          showToast(`Reset email sent to ${userEmail} & copied to clipboard for counter walk-in support!`, 'success');
-        }
-      } else {
-        showToast(res?.message || `Password reset link sent to ${userEmail}!`, 'success');
+      const res = await api.post<{ message: string; simulated?: boolean; resetUrl?: string }>(`/api/admin/users/${userId}/reset-password`, { email: userEmail });
+      if (editingStaff && (editingStaff.id === userId || editingStaff._id === userId) && userEmail && userEmail.trim().toLowerCase() !== (editingStaff.email || '').toLowerCase()) {
+        setEditingStaff({ ...editingStaff, email: userEmail.trim().toLowerCase(), isEmailVerified: false });
       }
+      showToast(res?.message || `Verification & activation email sent to ${userEmail}!`, 'success');
+      refreshData().catch(() => {});
     } catch (err: any) {
       console.error(err);
-      showToast(err?.message || 'Failed to send reset email', 'error');
+      showToast(err?.message || 'Failed to resend verification email', 'error');
     } finally {
       setIsSendingReset(false);
     }
@@ -939,33 +926,35 @@ export default function PanelStaffing({
           </div>
 
           {editingStaff ? (
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
               <div className="modal-section">
-                <label className="modal-label flex items-center justify-between" id="staff-password-label">
-                  <span>Reset Password (Optional)</span>
-                  {touched.password && !fieldErrors.password && password.trim() && (
-                    <span className="text-primary text-[0.68rem] font-bold">✓ Strong</span>
-                  )}
+                <label className="modal-label flex items-center justify-between">
+                  <span>Email Verification</span>
+                  <span
+                    className={`text-[0.68rem] font-bold ${
+                      editingStaff.isEmailVerified ? 'text-success' : 'text-warning'
+                    }`}
+                  >
+                    {editingStaff.isEmailVerified ? '✓ Verified' : '● Unverified'}
+                  </span>
                 </label>
-                <input
-                  type="password"
-                  maxLength={100}
-                  placeholder="Min. 8 chars (A-Z, a-z, 0-9)"
-                  value={password}
-                  onChange={(e) => {
-                    setPassword(e.target.value);
-                    if (touched.password) validateField('password', e.target.value);
-                  }}
-                  onBlur={() => handleBlur('password')}
-                  className={`bg-bg-surface border p-3 rounded-xl text-text-main text-sm outline-none w-full transition-all ${
-                    touched.password && fieldErrors.password
-                      ? 'border-danger/70 bg-danger/[0.04] ring-1 ring-danger/30'
-                      : 'border-border-glass focus:border-white/40'
-                  }`}
-                />
-                {touched.password && fieldErrors.password && (
-                  <InlineError message={fieldErrors.password} variant="field" />
-                )}
+                <button
+                  type="button"
+                  disabled={isSendingReset}
+                  onClick={() =>
+                    handleSendResetEmail(
+                      editingStaff.id || editingStaff._id,
+                      email.trim() || editingStaff.email
+                    )
+                  }
+                  className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold p-3 rounded-xl text-xs outline-none w-full transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 font-sans"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                  <span>{isSendingReset ? 'Sending Verification...' : 'Resend Verification'}</span>
+                </button>
               </div>
               <div className="modal-section">
                 <label className="modal-label">Access Role designation</label>
