@@ -3,13 +3,6 @@ const jwt = require('jsonwebtoken');
 /**
  * Resolves the appropriate JWT token from request cookies and headers
  * based on route context, headers, and requested roles.
- *
- * Prevents identity crosstalk (e.g. customer orders being attributed to admin)
- * when multiple portal sessions coexist in the same browser.
- *
- * @param {import('express').Request} req
- * @param {string[]} [roles]
- * @returns {string|null}
  */
 function resolveToken(req, roles = []) {
     if (!req) return null;
@@ -38,6 +31,9 @@ function resolveToken(req, roles = []) {
 
     // 2. Role-specific check if roles array is specified
     if (Array.isArray(roles) && roles.length > 0) {
+        if (roles.includes('admin') && roles.includes('employee') && !roles.includes('customer')) {
+            return cookies.admin_token || cookies.employee_token || cookies.token || null;
+        }
         if (roles.includes('admin') && !roles.includes('customer')) {
             return cookies.admin_token || cookies.token || null;
         }
@@ -51,10 +47,13 @@ function resolveToken(req, roles = []) {
 
     // 3. Path-based context if no explicit portal header was sent
     if (path.includes('/api/admin')) {
-        return cookies.admin_token || cookies.token || null;
+        return cookies.admin_token || cookies.employee_token || cookies.token || null;
     }
     if (path.includes('/api/employee')) {
         return cookies.employee_token || cookies.admin_token || cookies.token || null;
+    }
+    if (path.includes('/api/ai/chat') || path.includes('/api/ai/logs')) {
+        return cookies.admin_token || cookies.employee_token || cookies.token || null;
     }
     if (path.includes('/api/customer')) {
         return cookies.customer_token || cookies.token || cookies.employee_token || cookies.admin_token || null;

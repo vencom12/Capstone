@@ -41,6 +41,19 @@ async function refreshCSRFToken(): Promise<string | null> {
   return null;
 }
 
+const getPortalHeader = (url: string): string | undefined => {
+  if (typeof window !== 'undefined') {
+    const pathname = window.location.pathname;
+    if (pathname.startsWith('/admin')) return 'admin';
+    if (pathname.startsWith('/employee')) return 'employee';
+    if (pathname.startsWith('/dashboard')) return 'customer';
+  }
+  if (url.startsWith('/api/admin')) return 'admin';
+  if (url.startsWith('/api/employee')) return 'employee';
+  if (url.startsWith('/api/customer')) return 'customer';
+  return undefined;
+};
+
 const inFlightGetRequests = new Map<string, Promise<any>>();
 
 export function apiFetch<T = unknown>(
@@ -64,15 +77,9 @@ export function apiFetch<T = unknown>(
     'X-Requested-With': 'XMLHttpRequest',
   };
 
-  if (typeof window !== 'undefined') {
-    const pathname = window.location.pathname;
-    if (pathname.startsWith('/admin') || url.startsWith('/api/admin')) {
-      headers['X-Portal'] = 'admin';
-    } else if (pathname.startsWith('/employee') || url.startsWith('/api/employee')) {
-      headers['X-Portal'] = 'employee';
-    } else if (pathname.startsWith('/dashboard') || url.startsWith('/api/customer')) {
-      headers['X-Portal'] = 'customer';
-    }
+  const portal = getPortalHeader(url);
+  if (portal) {
+    headers['X-Portal'] = portal;
   }
 
   if (_csrfToken) {
@@ -305,15 +312,29 @@ export const api = {
       }
     }
 
+    const portal = getPortalHeader(url);
+    const dlHeaders: Record<string, string> = {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-Token': _csrfToken || '',
+    };
+    if (portal) dlHeaders['X-Portal'] = portal;
+
     const response = await fetch(fullUrl, {
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-Token': _csrfToken || '',
-      },
+      headers: dlHeaders,
       credentials: 'include',
     });
 
-    if (!response.ok) throw new Error('Download failed');
+    if (!response.ok) {
+      const errText = await response.text().catch(() => '');
+      let errMsg = 'Download failed';
+      try {
+        const parsed = JSON.parse(errText);
+        errMsg = parsed.message || parsed.error || errMsg;
+      } catch {
+        if (errText && errText.length < 160) errMsg = errText;
+      }
+      throw new Error(errMsg);
+    }
 
     const blob = await response.blob();
     const blobUrl = window.URL.createObjectURL(blob);
@@ -328,11 +349,15 @@ export const api = {
 
   getBlob: async (url: string): Promise<Blob> => {
     const fullUrl = url.startsWith('/') ? `${API_BASE}${url}` : url;
+    const portal = getPortalHeader(url);
+    const blobHeaders: Record<string, string> = {
+      'X-Requested-With': 'XMLHttpRequest',
+      'X-CSRF-Token': _csrfToken || '',
+    };
+    if (portal) blobHeaders['X-Portal'] = portal;
+
     const response = await fetch(fullUrl, {
-      headers: {
-        'X-Requested-With': 'XMLHttpRequest',
-        'X-CSRF-Token': _csrfToken || '',
-      },
+      headers: blobHeaders,
       credentials: 'include',
     });
 

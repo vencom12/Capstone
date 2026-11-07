@@ -461,7 +461,7 @@ exports.sendUserPasswordReset = async (req, res) => {
                 expiresAt: new Date(Date.now() + 60 * 60 * 1000)
             }
         });
-        const emailResult = await sendPasswordResetEmail(targetUser.email, targetUser.username, rawToken);
+        const emailResult = await sendStaffInvitationEmail(targetUser.email, targetUser.username, rawToken, targetUser.role);
         const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
         const resetUrl = `${baseUrl}/reset-password?token=${rawToken}`;
 
@@ -1377,21 +1377,69 @@ exports.testAISettings = async (req, res) => {
     }
 };
 
+exports.getInventory = async (req, res) => {
+    try {
+        const items = await prisma.inventory.findMany({ orderBy: { item: 'asc' } });
+        res.json(items);
+    } catch (err) {
+        console.error('getInventory error:', err);
+        res.status(500).json({ message: 'Failed to fetch inventory' });
+    }
+};
+
 exports.downloadShoppingListPdf = async (req, res) => {
     try {
         const PDFDocument = require('pdfkit');
+        const { enrichProductsWithStock } = require('../../utils/inventoryManager');
 
-        // Fetch all inventory items
-        const inventory = await prisma.inventory.findMany();
-        const lowStockItems = inventory.filter((i) => i.count <= (i.minThreshold || 10));
+        const [inventory, rawProducts, settings] = await Promise.all([
+            prisma.inventory.findMany({ orderBy: { count: 'asc' } }),
+            prisma.product.findMany({ orderBy: { name: 'asc' } }),
+            prisma.systemSettings.findUnique({ where: { id: 'global' } })
+        ]);
 
-        if (lowStockItems.length === 0) {
-            return res.status(400).send('All inventory items are healthy. No restocks required!');
+        const enrichedProducts = await enrichProductsWithStock(rawProducts);
+        const lowStockItems = inventory.filter((i) => (i.minThreshold && i.count <= i.minThreshold) || i.count <= 5);
+
+        const restockRows = [];
+        lowStockItems.forEach((item) => {
+            const minVal = item.minThreshold || 10;
+            const suggestedOrder = Math.max(5, minVal * 2 - item.count);
+            restockRows.push({
+                name: item.item,
+                current: `${item.count}`,
+                order: `+${suggestedOrder}`,
+                subtext: `(safety limit: ${minVal} / unit: ${item.unit || 'Cones'})`
+            });
+        });
+
+        for (const p of enrichedProducts) {
+            let rawVariants = p.variants;
+            if (typeof rawVariants === 'string') {
+                try { rawVariants = JSON.parse(rawVariants); } catch { rawVariants = []; }
+            }
+            if (!Array.isArray(rawVariants)) rawVariants = [];
+            const oosVariants = rawVariants.filter((v) => v && (v.isOutOfStock || (v.availableStock ?? 0) <= 0));
+            if (oosVariants.length > 0) {
+                restockRows.push({
+                    name: p.name,
+                    current: '0',
+                    order: '+20',
+                    subtext: `(depleted: ${oosVariants.map((v) => v.name).slice(0, 3).join(', ')})`
+                });
+            } else if (rawVariants.length === 0 && (p.isOutOfStock || (p.availableStock ?? 0) <= 0)) {
+                restockRows.push({
+                    name: p.name,
+                    current: '0',
+                    order: '+20',
+                    subtext: '(catalog blank out of stock)'
+                });
+            }
         }
 
         // Calculate dynamic height based on number of items
-        const itemsCount = lowStockItems.length;
-        const pageHeight = Math.max(260, 160 + itemsCount * 45 + 50);
+        const itemsCount = Math.max(1, restockRows.length);
+        const pageHeight = Math.max(280, 170 + itemsCount * 45 + 60);
         const doc = new PDFDocument({ size: [300, pageHeight], margin: 15 });
 
         // Set response headers: inline for previewing in modal/browser, attachment for forced download
@@ -1404,14 +1452,13 @@ exports.downloadShoppingListPdf = async (req, res) => {
         doc.pipe(res);
 
         // Header
-        const settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
         const bizName = settings?.businessName || 'Edz Towels & Caps';
 
         doc.font('Helvetica-Bold').fontSize(14).text(bizName, { align: 'center' });
         doc.font('Helvetica-Bold').fontSize(9).text('AUTO-PROCUREMENT ERP', { align: 'center' });
         doc.moveDown(0.2);
         doc.font('Helvetica').fontSize(7).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
-        doc.text(`Operator: ${req.user?.username || 'Administrator'}`, { align: 'center' });
+        doc.text(`Operator: ${req.user?.username || 'Staff'}`, { align: 'center' });
 
         doc.moveDown(0.5);
         doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
@@ -1422,32 +1469,33 @@ exports.downloadShoppingListPdf = async (req, res) => {
         doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
         doc.moveDown(0.5);
 
-        // Table Header (using monospaced columns centered)
-        doc.font('Courier-Bold').fontSize(8);
-        const headerLine = 'MATERIAL'.padEnd(18) + 'STOCK'.padStart(8) + 'ORDER'.padStart(10);
-        doc.text(headerLine, { align: 'center' });
-        doc.font('Courier').fontSize(8);
-        doc.moveDown(0.5);
+        if (restockRows.length === 0) {
+            doc.font('Helvetica-Bold').fontSize(8.5).text('All workshop materials & product variants', { align: 'center' });
+            doc.text('are currently above safety thresholds.', { align: 'center' });
+            doc.moveDown(0.6);
+        } else {
+            // Table Header (using monospaced columns centered)
+            doc.font('Courier-Bold').fontSize(8);
+            const headerLine = 'ITEM / MATERIAL'.padEnd(18) + 'STOCK'.padStart(8) + 'ORDER'.padStart(10);
+            doc.text(headerLine, { align: 'center' });
+            doc.font('Courier').fontSize(8);
+            doc.moveDown(0.5);
 
-        // Items List
-        lowStockItems.forEach((item) => {
-            const minVal = item.minThreshold || 10;
-            const target = minVal * 2;
-            const suggestedOrder = Math.max(0, target - item.count);
+            // Items List
+            restockRows.forEach((row) => {
+                const name = row.name.substring(0, 17).padEnd(18);
+                const current = row.current.padStart(8);
+                const order = row.order.padStart(10);
 
-            const name = item.item.substring(0, 17).padEnd(18);
-            const current = `${item.count}`.padStart(8);
-            const order = `+${suggestedOrder}`.padStart(10);
+                doc.font('Courier-Bold').text(name + current + order, { align: 'center' });
 
-            doc.font('Courier-Bold').text(name + current + order, { align: 'center' });
-
-            // Subtext showing the safety threshold and unit details
-            doc.font('Courier-Oblique').fontSize(7);
-            const subtext = `  (safety limit: ${minVal} / unit: ${item.unit})`.padEnd(36);
-            doc.text(subtext, { align: 'center' });
-            doc.fontSize(8); // Reset font size
-            doc.moveDown(0.4);
-        });
+                doc.font('Courier-Oblique').fontSize(6.8);
+                const subtext = `  ${row.subtext.substring(0, 38)}`.padEnd(36);
+                doc.text(subtext, { align: 'center' });
+                doc.fontSize(8);
+                doc.moveDown(0.4);
+            });
+        }
 
         doc.font('Courier').fontSize(8).text('------------------------------------------', { align: 'center' });
         doc.moveDown(0.5);

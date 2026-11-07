@@ -647,7 +647,7 @@ exports.chat = async (req, res) => {
             if (depletedOrOosProducts.length === 0 && lowMaterials.length === 0) {
                 return res.json({
                     success: true,
-                    reply: "**Stock Levels Healthy:** All blank garments, variants, and store items are above minimum safety thresholds.",
+                    reply: "**Stock Levels Healthy:** All blank garments, variants, and store items are above minimum safety thresholds.\n\n[action:download-pdf|Download Requisition (PDF)]\n[action:download-png|Download Restock Slip (PNG)]",
                     tokensUsed: 0
                 });
             }
@@ -665,7 +665,7 @@ exports.chat = async (req, res) => {
                 reply += `| **${p.name}** | 0 Pcs (${p.oosVariants.slice(0, 2).join(', ')}) | 5 Pcs |\n`;
             });
 
-            reply += `\n[action:create-acquisition|Create Acquisition Form Now]`;
+            reply += `\n[action:create-acquisition|Create Acquisition Form Now]\n[action:download-pdf|Download Requisition (PDF)]\n[action:download-png|Download Restock Slip (PNG)]`;
 
             return res.json({
                 success: true,
@@ -674,8 +674,13 @@ exports.chat = async (req, res) => {
             });
         }
 
-        // 3. Supply Acquisition & Purchase Requisition Form (100% Zero-Token DB Fast Path)
-        if (/\b(acquisition form|create acquisition|draft acquisition|requisition form|purchase requisition|order supplies|restock form)\b/i.test(cleanMsg)) {
+        // 3. Supply Acquisition & Purchase Requisition Form / PDF & PNG Restock Slip (100% Zero-Token DB Fast Path)
+        const isAcquisitionOrRestockDownload =
+            /\b(acquisition form|create acquisition|draft acquisition|requisition form|purchase requisition|order supplies|restock form|restock slip|shopping list)\b/i.test(cleanMsg) ||
+            (/\b(pdf|png|image|img|slip|download|export|generate|print)\b/i.test(cleanMsg) &&
+                !/\b(revenue|financial|sales|profit|income)\b/i.test(cleanMsg));
+
+        if (isAcquisitionOrRestockDownload) {
             const { enrichProductsWithStock } = require('../../utils/inventoryManager');
             const [allInv, rawProducts] = await Promise.all([
                 prisma.inventory.findMany({ orderBy: { count: 'asc' } }),
@@ -705,7 +710,7 @@ exports.chat = async (req, res) => {
             if (lowMaterials.length === 0 && depletedVariantsList.length === 0) {
                 return res.json({
                     success: true,
-                    reply: "**No Restock Needed:** All workshop materials and blank garments are currently above safety limits.",
+                    reply: "**No Restock Needed:** All workshop materials and blank garments are currently above safety limits.\n\nYou can still download an official Stock Status Slip below:\n\n[action:download-pdf|Download Requisition (PDF)]\n[action:download-png|Download Restock Slip (PNG)]",
                     tokensUsed: 0
                 });
             }
@@ -798,11 +803,15 @@ exports.chat = async (req, res) => {
         }
 
         // 5. Daily Sales & Revenue Breakdown (100% Zero-Token DB Fast Path)
-        if (/\b(revenue snapshot|today's sales|todays sales|sales breakdown|daily revenue|financial snapshot|financial.*revenue|revenue.*breakdown|sales.*breakdown|financial breakdown)\b/i.test(cleanMsg)) {
+        const isFinancialQuery =
+            /\b(revenue snapshot|today's sales|todays sales|sales breakdown|daily revenue|financial snapshot|financial.*revenue|revenue.*breakdown|sales.*breakdown|financial breakdown|financial report|sales report|revenue report)\b/i.test(cleanMsg) ||
+            (/\b(pdf|download|export|generate|print)\b/i.test(cleanMsg) && /\b(revenue|financial|sales|profit|income)\b/i.test(cleanMsg));
+
+        if (isFinancialQuery) {
             if (dbUser.role !== 'admin') {
                 return res.json({
                     success: true,
-                    reply: "Access Restricted: Financial and revenue snapshots are restricted to Administrators only.",
+                    reply: "Access Restricted: Financial and revenue reports are restricted to Administrators only.\n\nFor operator inventory & restock documents, use the buttons below:\n\n[action:download-pdf|Download Requisition (PDF)]\n[action:download-png|Download Restock Slip (PNG)]",
                     tokensUsed: 0
                 });
             }
@@ -1200,6 +1209,13 @@ exports.chat = async (req, res) => {
           2. If the user instructs you to create MULTIPLE products (or inventory items, tasks), you MUST call the corresponding bulk or multiple tools to perform the actions.
           3. For multiple products creation, call the "bulkCreateProducts" tool with the exact list of products, making sure to capture all attributes specified by the user (such as custom name, price, tag, description, or imageUrl). If attributes are labeled or structured in the prompt, map them exactly.
         
+        INTERACTIVE PDF & IMAGE (PNG) DOWNLOAD BUTTONS:
+        - Whenever the user asks to generate, download, export, or print a PDF or image/PNG (such as a restock slip, requisition form, inventory report, or daily financial report), you MUST include the corresponding interactive action tag(s) on their own line at the end of your reply:
+          [action:download-pdf|Download Requisition (PDF)]
+          [action:download-png|Download Restock Slip (PNG)]
+          ${dbUser.role === 'admin' ? '[action:download-revenue-pdf|Download Daily Financial Report (PDF)]' : ''}
+        - NEVER invent fake URLs, sandbox links, or placeholder links for PDF/image downloads. Always use the exact [action:...|...] tags above.
+
         CRITICAL TOOL USE CONSTRAINTS:
         1. Do NOT call any database mutation functions/tools unless the user explicitly requests an action or modification to the database. For informational queries, brainstorming, or suggestions, do NOT call any tools; reply strictly with text.
         2. If you decide to call a tool, you MUST ONLY generate the tool call itself. Do NOT output any markdown, conversational text, explanations, or thoughts before or after the tool call, as this will crash the API client. You will have a chance to explain or confirm the action in the subsequent chat turn once the system provides the tool execution result.
@@ -1471,7 +1487,7 @@ exports.chat = async (req, res) => {
         const groqOptions = { 
             messages,
             temperature: 0.2,
-            max_tokens: 450
+            max_tokens: 1500
         };
         if (roleTools.length > 0) {
             groqOptions.tools = roleTools;
@@ -1499,7 +1515,7 @@ exports.chat = async (req, res) => {
             data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { 
                 messages, 
                 temperature: 0.2, 
-                max_tokens: 250 
+                max_tokens: 1000 
             });
         }
         // Mode B: Fallback XML-like function parsing (when Llama generates pseudo-XML in plain text)
@@ -1548,14 +1564,17 @@ exports.chat = async (req, res) => {
                 data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, { 
                     messages, 
                     temperature: 0.2, 
-                    max_tokens: 250 
+                    max_tokens: 1000 
                 });
             }
         }
 
         if (data.choices && data.choices[0] && data.choices[0].message) {
-            const reply = data.choices[0].message.content;
-            const tokensUsed = data.usage?.total_tokens || (Math.ceil(((reply || '').length + (cleanMsg || '').length) / 3.5));
+            let reply = (data.choices[0].message.content || '').trim();
+            if (!reply) {
+                reply = "Action processed. Use the quick commands or buttons below if you need to download a report:\n\n[action:download-pdf|Download Requisition (PDF)]\n[action:download-png|Download Restock Slip (PNG)]";
+            }
+            const tokensUsed = data.usage?.total_tokens || (Math.ceil((reply.length + (cleanMsg || '').length) / 3.5));
             res.json({ success: true, reply, tokensUsed });
         } else {
             console.error('[AI Error] Groq API Response lacks choices. Full Response:', JSON.stringify(data));
@@ -2826,7 +2845,7 @@ CRITICAL RULES:
         const data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, {
             messages,
             temperature: 0.3,
-            max_tokens: 250
+            max_tokens: 1000
         });
 
         if (!data.choices || !data.choices[0] || !data.choices[0].message) {

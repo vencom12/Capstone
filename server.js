@@ -33,7 +33,9 @@ app.use(cors({
                           origin.startsWith('http://127.0.0.1') ||
                           origin.startsWith('http://[::1]') ||
                           /^https:\/\/[a-zA-Z0-9-]+\.onrender\.com$/.test(origin) ||
-                          /^https:\/\/[a-zA-Z0-9-]+\.render\.com$/.test(origin);
+                          /^https:\/\/[a-zA-Z0-9-]+\.render\.com$/.test(origin) ||
+                          origin === 'https://stitchopt.online' ||
+                          origin === 'https://www.stitchopt.online';
                           
         if (isAllowed) {
             callback(null, true);

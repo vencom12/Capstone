@@ -273,7 +273,9 @@ export default function PersistentAssistant() {
   // Fetch AI Action Logs
   const fetchLogs = async () => {
     try {
+      const portal = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin') ? 'admin' : 'employee';
       const response = await fetch(`${API_BASE}/api/ai/logs`, {
+        headers: { 'X-Portal': portal },
         credentials: 'include'
       });
       const data = await response.json();
@@ -360,10 +362,12 @@ export default function PersistentAssistant() {
     setIsTyping(true);
 
     try {
+      const portal = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin') ? 'admin' : 'employee';
       const response = await fetch(`${API_BASE}/api/ai/chat`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'X-Portal': portal,
         },
         body: JSON.stringify({
           message: userText,
@@ -441,13 +445,55 @@ export default function PersistentAssistant() {
     } else if (actionType === 'download-png') {
       try {
         showToast('Preparing Restock Slip PNG...', 'info');
-        const invRes = await api.get<any[]>('/api/admin/inventory');
-        const lowItems = Array.isArray(invRes) ? invRes.filter(i => i.count <= (i.minThreshold || 5)) : [];
+        const [invRes, prodRes] = await Promise.all([
+          api.get<any[]>('/api/admin/inventory').catch(() => []),
+          api.get<any[]>('/api/products').catch(() => [])
+        ]);
+
+        const slipRows: { label: string; stockLeft: string; orderQty: string }[] = [];
+
+        if (Array.isArray(invRes)) {
+          invRes
+            .filter((i) => (i.minThreshold && i.count <= i.minThreshold) || i.count <= 5)
+            .forEach((it) => {
+              const unit = it.unit || 'Cones';
+              const need = Math.max(5, (it.minThreshold || 10) * 2 - it.count);
+              slipRows.push({
+                label: it.item,
+                stockLeft: `${it.count} ${unit}`,
+                orderQty: `+${need} ${unit}`
+              });
+            });
+        }
+
+        if (Array.isArray(prodRes)) {
+          prodRes.forEach((p) => {
+            let rawVariants = p.variants;
+            if (typeof rawVariants === 'string') {
+              try { rawVariants = JSON.parse(rawVariants); } catch { rawVariants = []; }
+            }
+            if (!Array.isArray(rawVariants)) rawVariants = [];
+            const oosVariants = rawVariants.filter((v: any) => v && (v.isOutOfStock || (v.availableStock ?? 0) <= 0));
+            if (oosVariants.length > 0) {
+              slipRows.push({
+                label: `${p.name} (${oosVariants.map((v: any) => v.name).slice(0, 2).join(', ')})`,
+                stockLeft: '0 Pcs',
+                orderQty: '+20 Pcs'
+              });
+            } else if (rawVariants.length === 0 && (p.isOutOfStock || (p.availableStock ?? 0) <= 0)) {
+              slipRows.push({
+                label: p.name,
+                stockLeft: '0 Pcs',
+                orderQty: '+20 Pcs'
+              });
+            }
+          });
+        }
 
         const canvas = document.createElement('canvas');
-        canvas.width = 600;
+        canvas.width = 640;
         const rowH = 34;
-        const totalRows = Math.max(1, lowItems.length);
+        const totalRows = Math.max(1, slipRows.length);
         canvas.height = 240 + totalRows * rowH;
         const ctx = canvas.getContext('2d');
         if (ctx) {
@@ -475,12 +521,12 @@ export default function PersistentAssistant() {
           ctx.fillText('ORDER QTY', canvas.width - 35, 111);
 
           let curY = 145;
-          if (lowItems.length === 0) {
+          if (slipRows.length === 0) {
             ctx.textAlign = 'center';
             ctx.fillStyle = '#64748B';
-            ctx.fillText('All workshop stockpiles are healthy.', canvas.width / 2, curY);
+            ctx.fillText('All workshop stockpiles and product variants are healthy.', canvas.width / 2, curY);
           } else {
-            lowItems.forEach((it, idx) => {
+            slipRows.forEach((row, idx) => {
               if (idx % 2 === 1) {
                 ctx.fillStyle = '#F8FAFC';
                 ctx.fillRect(20, curY - 20, canvas.width - 40, rowH);
@@ -488,17 +534,16 @@ export default function PersistentAssistant() {
               ctx.textAlign = 'left';
               ctx.fillStyle = '#0F172A';
               ctx.font = '600 13px sans-serif';
-              ctx.fillText(it.item.slice(0, 32), 35, curY);
+              ctx.fillText(row.label.slice(0, 38), 35, curY);
 
               ctx.textAlign = 'right';
               ctx.fillStyle = '#64748B';
               ctx.font = '12px sans-serif';
-              ctx.fillText(`${it.count} ${it.unit || 'units'}`, canvas.width - 140, curY);
+              ctx.fillText(row.stockLeft, canvas.width - 140, curY);
 
-              const need = Math.max(5, (it.minThreshold || 10) * 2 - it.count);
               ctx.fillStyle = '#059669';
               ctx.font = 'bold 13px sans-serif';
-              ctx.fillText(`+${need} ${it.unit || 'units'}`, canvas.width - 35, curY);
+              ctx.fillText(row.orderQty, canvas.width - 35, curY);
               curY += rowH;
             });
           }
@@ -518,14 +563,16 @@ export default function PersistentAssistant() {
               const a = document.createElement('a');
               a.href = url;
               a.download = `EDS_RESTOCK_SLIP_${dateStr}.png`;
+              document.body.appendChild(a);
               a.click();
+              document.body.removeChild(a);
               URL.revokeObjectURL(url);
               showToast('Restock Slip PNG downloaded!', 'success');
             }
           }, 'image/png');
         }
       } catch (err: any) {
-        showToast('Failed to generate restock image', 'error');
+        showToast(err?.message || 'Failed to generate restock image', 'error');
       }
     }
   };
@@ -772,6 +819,33 @@ export default function PersistentAssistant() {
         continue;
       }
 
+      // Interactive Action Buttons: [action:TYPE|LABEL] (handles standalone, bulleted, or multiple tags)
+      if (trimmed.includes('[action:')) {
+        const actionRegex = /\[action:([^\|]+)\|([^\]]+)\]/g;
+        const foundActions: { type: string; label: string }[] = [];
+        let m: RegExpExecArray | null;
+        while ((m = actionRegex.exec(trimmed)) !== null) {
+          foundActions.push({ type: m[1].trim(), label: m[2].trim() });
+        }
+        if (foundActions.length > 0) {
+          if (currentList) flushList(elementKey++);
+          foundActions.forEach((act) => {
+            elements.push(
+              <div key={elementKey++} className="my-1.5 flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleCustomAction(act.type)}
+                  className="w-full py-2 px-3.5 rounded-xl text-xs font-semibold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer border bg-white/10 hover:bg-white/20 text-text-main border-border-glass"
+                >
+                  <span>{act.label}</span>
+                </button>
+              </div>
+            );
+          });
+          continue;
+        }
+      }
+
       const bulletMatch = trimmed.match(/^[*+-]\s+(.*)/);
       const orderedMatch = trimmed.match(/^(\d+)\.\s+(.*)/);
 
@@ -790,27 +864,6 @@ export default function PersistentAssistant() {
       }
 
       if (!trimmed) continue;
-
-      // Interactive Action Buttons: [action:TYPE|LABEL]
-      const actionMatch = trimmed.match(/^\[action:([^\|]+)\|([^\]]+)\]$/);
-      if (actionMatch) {
-        if (currentList) flushList(elementKey++);
-        const actionType = actionMatch[1];
-        const actionLabel = actionMatch[2];
-        const isDownload = actionType.startsWith('download');
-        elements.push(
-          <div key={elementKey++} className="my-1.5 flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleCustomAction(actionType)}
-              className="w-full py-2 px-3.5 rounded-xl text-xs font-semibold transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer border bg-white/10 hover:bg-white/20 text-text-main border-border-glass"
-            >
-              <span>{actionLabel}</span>
-            </button>
-          </div>
-        );
-        continue;
-      }
 
       elements.push(
         <p key={elementKey++} className="m-0 mb-1.5 last:mb-0 text-[0.82rem] leading-relaxed text-text-main">

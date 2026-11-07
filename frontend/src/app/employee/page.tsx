@@ -646,7 +646,7 @@ export default function EmployeePage() {
 
     try {
       showToast('Preparing secure receipt download...', 'info');
-      await api.download(`/api/customer/receipt/${receiptId}/download`, `STITCH_OPT_RECEIPT_${receiptId}.pdf`);
+      await api.download(`/api/admin/receipt/${receiptId}/download`, `STITCH_OPT_RECEIPT_${receiptId}.pdf`);
       showToast('Receipt PDF downloaded successfully', 'success');
     } catch (err) {
       console.error('Download failed:', err);

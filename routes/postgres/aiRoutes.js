@@ -37,8 +37,8 @@ const storefrontChatLimiter = createTokenBucketLimiter({
     }
 });
 
-router.post('/chat', auth(), staffChatLimiter, aiController.chat);
-router.get('/logs', auth(), aiController.getLogs);
+router.post('/chat', auth(['admin', 'employee']), staffChatLimiter, aiController.chat);
+router.get('/logs', auth(['admin', 'employee']), aiController.getLogs);
 router.post('/verify-receipt', auth(), verifyReceiptLimiter, aiController.verifyReceipt);
 router.get('/models', aiController.listModels);
 

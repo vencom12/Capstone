@@ -8,6 +8,18 @@ const crypto = require('crypto');
 
 let resendClient = null;
 
+function getFrontendBaseUrl() {
+  const raw = (process.env.FRONTEND_URL || '').trim().replace(/\/+$/, '');
+  if (!raw || raw.includes('capstone-btr7.onrender.com')) {
+    if (process.env.RENDER || process.env.NODE_ENV === 'production') {
+      return 'https://stitchopt.online';
+    }
+    return raw || 'http://localhost:3000';
+  }
+  return raw;
+}
+
+
 /**
  * Returns the Resend client if RESEND_API_KEY is configured.
  * Resend sends over standard HTTPS (Port 443), bypassing Render's SMTP port blocks.
@@ -313,7 +325,7 @@ function renderEmailShell({ title, subtitle, statusBadge, contentHtml }) {
  * Sends a verification email with a clickable link.
  */
 async function sendVerificationEmail(recipientEmail, recipientName, verificationToken) {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendBaseUrl();
   const verifyUrl = `${baseUrl}/verify-email?token=${verificationToken}`;
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
 
@@ -334,7 +346,8 @@ async function sendVerificationEmail(recipientEmail, recipientName, verification
 
     <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 8px 10px;">
       <div style="color: #64748b; font-size: 10px; line-height: 1.4; word-break: break-all;">
-        Or paste into browser: <a href="${verifyUrl}" style="color: #ef4444; text-decoration: underline;">${verifyUrl}</a>
+        If the button above is blocked by your network, copy and paste this direct link into your browser:<br/>
+        <span style="color: #f87171; font-family: monospace; font-weight: 700; user-select: all;">${verifyUrl.replace('://', '://&#8203;')}</span>
       </div>
     </div>
   `;
@@ -395,7 +408,7 @@ async function sendVerificationOtpEmail(recipientEmail, recipientName, otpCode) 
  * Sends a password reset email with a one-hour link.
  */
 async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken, otpCode) {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendBaseUrl();
   const resetUrl = `${baseUrl}/reset-password?token=${resetToken}`;
   const businessName = process.env.BUSINESS_NAME || 'Edz Towels & Caps';
 
@@ -437,7 +450,7 @@ async function sendPasswordResetEmail(recipientEmail, recipientName, resetToken,
  * Sends a security alert email when a password has been updated.
  */
 async function sendPasswordChangedAlertEmail(recipientEmail, recipientName) {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendBaseUrl();
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
   const resetUrl = `${baseUrl}/?auth=forgot`;
   const timeFormatted = new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila', dateStyle: 'medium', timeStyle: 'short' });
@@ -477,7 +490,7 @@ async function sendPasswordChangedAlertEmail(recipientEmail, recipientName) {
  * items, and store counter without scrolling on mobile phones.
  */
 async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendBaseUrl();
   const orderId = order.orderId || order.id || 'N/A';
   const trackingUrl = `${baseUrl}/dashboard?tab=orders`;
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
@@ -736,7 +749,7 @@ async function sendDelayNotificationEmail(recipientEmail, recipientName, order, 
 
 
 async function sendStaffInvitationEmail(recipientEmail, recipientName, token, roleName = 'Employee') {
-  const baseUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const baseUrl = getFrontendBaseUrl();
   const activateUrl = `${baseUrl}/reset-password?token=${token}&type=staff_activation`;
   const businessName = process.env.BUSINESS_NAME || 'Eds Towels & Caps';
 
@@ -762,7 +775,8 @@ async function sendStaffInvitationEmail(recipientEmail, recipientName, token, ro
 
     <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.06); border-radius: 6px; padding: 10px 12px; margin-top: 14px;">
       <div style="color: #64748b; font-size: 10.5px; line-height: 1.4; word-break: break-all;">
-        Or open in your browser: <a href="${activateUrl}" style="color: #ef4444; text-decoration: underline;">${activateUrl}</a>
+        If the button above is blocked by your network, copy and paste this direct link into your browser:<br/>
+        <span style="color: #f87171; font-family: monospace; font-weight: 700; user-select: all;">${activateUrl.replace('://', '://&#8203;')}</span>
       </div>
     </div>
   `;
