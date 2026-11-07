@@ -229,13 +229,13 @@ function ResetPasswordContent() {
           setMessage(errMsg);
         } else {
           // Keep the form open (e.g., when user enters a previously used password)
-          setFieldErrors((prev) => ({ ...prev, password: 'You cannot reuse a password you have used before.' }));
+          setFieldErrors((prev) => ({ ...prev, password: 'You cannot use your previous password' }));
           setMessage(errMsg);
           setFormShaking(true);
           setTimeout(() => setFormShaking(false), 450);
           showToast({
             title: 'Previously Used Password',
-            message: errMsg,
+            message: 'You cannot use your previous password',
             type: 'warning',
           });
         }
@@ -255,14 +255,14 @@ function ResetPasswordContent() {
       } else {
         // Keep the user inside the password creation form and notify them inline + via toast
         if (lowerErr.includes('same') || lowerErr.includes('previous') || lowerErr.includes('current password')) {
-          setFieldErrors((prev) => ({ ...prev, password: 'You cannot reuse a password you have used before.' }));
+          setFieldErrors((prev) => ({ ...prev, password: 'You cannot use your previous password' }));
         }
         setMessage(errMsg);
         setFormShaking(true);
         setTimeout(() => setFormShaking(false), 450);
         showToast({
           title: 'Choose a Different Password',
-          message: errMsg,
+          message: lowerErr.includes('same') || lowerErr.includes('previous') ? 'You cannot use your previous password' : errMsg,
           type: 'warning',
         });
       }

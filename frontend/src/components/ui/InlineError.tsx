@@ -33,7 +33,7 @@ export default function InlineError({
         id={id}
         role="alert"
         title={text}
-        className={`inline-flex items-center gap-1 text-[0.72rem] font-semibold text-rose-400 animate-fadeIn select-none leading-none whitespace-nowrap shrink min-w-0 text-right ${className}`}
+        className={`inline-flex items-center justify-end gap-1 text-[0.7rem] font-semibold text-rose-400 animate-fadeIn select-none leading-none shrink min-w-0 max-w-full overflow-hidden text-right ${className}`}
       >
         <svg
           className="w-3 h-3 shrink-0 text-rose-400"
@@ -48,7 +48,7 @@ export default function InlineError({
           <line x1="12" y1="8" x2="12" y2="12" />
           <line x1="12" y1="16" x2="12.01" y2="16" />
         </svg>
-        <span className="truncate whitespace-nowrap max-w-[210px] sm:max-w-[280px]">{text}</span>
+        <span className="truncate whitespace-nowrap min-w-0">{text}</span>
       </span>
     );
   }

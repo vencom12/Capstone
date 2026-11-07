@@ -745,23 +745,27 @@ export default function AuthModal() {
         handleClose();
       } else {
         const errMsg = res.message || 'Failed to update password.';
-        setForgotPassError(errMsg);
+        const isPrevPass = errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous');
+        const displayMsg = isPrevPass ? 'You cannot use your previous password' : errMsg;
+        setForgotPassError(displayMsg);
         setFormShaking(true);
         setTimeout(() => setFormShaking(false), 450);
         showToast({
           title: 'Choose a Different Password',
-          message: errMsg,
+          message: displayMsg,
           type: 'warning',
         });
       }
     } catch (err: any) {
       const errMsg = err.message || 'Failed to update password.';
-      setForgotPassError(errMsg);
+      const isPrevPass = errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous');
+      const displayMsg = isPrevPass ? 'You cannot use your previous password' : errMsg;
+      setForgotPassError(displayMsg);
       setFormShaking(true);
       setTimeout(() => setFormShaking(false), 450);
       showToast({
         title: 'Choose a Different Password',
-        message: errMsg,
+        message: displayMsg,
         type: 'warning',
       });
     } finally {
@@ -1077,7 +1081,14 @@ export default function AuthModal() {
 
           <form noValidate onSubmit={handleSaveForgotNewPassword} className="flex flex-col gap-3">
             <div className="flex flex-col gap-1">
-              <label className="text-[0.75rem] font-bold text-text-dim ml-1">New Password *</label>
+              <div className="flex items-center justify-between ml-1 min-w-0 gap-2">
+                <label className="text-[0.75rem] font-bold text-text-dim whitespace-nowrap shrink-0">New Password *</label>
+                <div className="shrink min-w-0 justify-end">
+                  {forgotPassError && (
+                    <InlineError variant="label" message={forgotPassError} />
+                  )}
+                </div>
+              </div>
               <div className="relative">
                 <input
                   type={forgotPassShow ? 'text' : 'password'}

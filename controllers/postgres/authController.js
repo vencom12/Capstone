@@ -1210,7 +1210,7 @@ exports.resetPasswordWithOtp = async (req, res) => {
             if (isSame) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Your new password cannot be the same as your current password.'
+                    message: 'You cannot use your previous password'
                 });
             }
         }
@@ -1308,7 +1308,7 @@ exports.resetPassword = async (req, res) => {
             if (isSamePassword) {
                 return res.status(400).json({ 
                     success: false, 
-                    message: 'Your new password cannot be the same as your current password. Please choose a different password.' 
+                    message: 'You cannot use your previous password' 
                 });
             }
         }
@@ -1475,7 +1475,7 @@ exports.changePassword = async (req, res) => {
             return res.status(400).json({ success: false, message: 'New password and confirmation do not match.' });
         }
         if (currentPassword === newPassword) {
-            return res.status(400).json({ success: false, message: 'New password cannot be the same as your current password.' });
+            return res.status(400).json({ success: false, message: 'You cannot use your previous password' });
         }
 
         const user = await prisma.user.findUnique({ where: { id: userId } });
@@ -1492,7 +1492,7 @@ exports.changePassword = async (req, res) => {
         // Verify new password is not identical to current password
         const isSamePassword = await bcrypt.compare(newPassword, user.password);
         if (isSamePassword) {
-            return res.status(400).json({ success: false, message: 'New password cannot be the same as your current password. Please choose a different password.' });
+            return res.status(400).json({ success: false, message: 'You cannot use your previous password' });
         }
 
         // Hash new password and increment tokenVersion (revoking other active sessions)

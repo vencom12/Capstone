@@ -63,7 +63,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
         if (passErr) {
           next.newPassword = passErr;
         } else if (currentPassword && val === currentPassword) {
-          next.newPassword = 'Cannot be same as current.';
+          next.newPassword = 'You cannot use your previous password';
         } else {
           delete next.newPassword;
         }
@@ -94,7 +94,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
     if (passErr) {
       errors.newPassword = passErr;
     } else if (currentPassword && newPassword === currentPassword) {
-      errors.newPassword = 'Cannot be same as current.';
+      errors.newPassword = 'You cannot use your previous password';
     }
     if (!confirmPassword) {
       errors.confirmPassword = 'Confirmation is required.';
@@ -129,23 +129,25 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
         }, 1500);
       } else {
         const errMsg = res.message || 'Failed to update password.';
-        setErrorMessage(errMsg);
-        if (errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous')) {
-          setFieldErrors((prev) => ({ ...prev, newPassword: 'You cannot reuse a password you have used before.' }));
+        const isPrevPass = errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous');
+        setErrorMessage(isPrevPass ? 'You cannot use your previous password' : errMsg);
+        if (isPrevPass) {
+          setFieldErrors((prev) => ({ ...prev, newPassword: 'You cannot use your previous password' }));
         }
         setFormShaking(true);
         setTimeout(() => setFormShaking(false), 450);
         showToast({
           title: 'Choose a Different Password',
-          message: errMsg,
+          message: isPrevPass ? 'You cannot use your previous password' : errMsg,
           type: 'warning',
         });
       }
     } catch (err: any) {
       const errMsg = err.message || 'Current password is incorrect or could not be verified.';
-      setErrorMessage(errMsg);
-      if (errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous')) {
-        setFieldErrors((prev) => ({ ...prev, newPassword: 'You cannot reuse a password you have used before.' }));
+      const isPrevPass = errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous');
+      setErrorMessage(isPrevPass ? 'You cannot use your previous password' : errMsg);
+      if (isPrevPass) {
+        setFieldErrors((prev) => ({ ...prev, newPassword: 'You cannot use your previous password' }));
       } else if (errMsg.toLowerCase().includes('current password is incorrect')) {
         setFieldErrors((prev) => ({ ...prev, currentPassword: 'Incorrect current password.' }));
       }
@@ -153,7 +155,7 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
       setTimeout(() => setFormShaking(false), 450);
       showToast({
         title: 'Password Update Notice',
-        message: errMsg,
+        message: isPrevPass ? 'You cannot use your previous password' : errMsg,
         type: 'warning',
       });
     } finally {
