@@ -21,7 +21,7 @@ async function parseReceiptWithLocalOCR(imageSource) {
             }
         }
         if (!referenceId) {
-            const digitSequenceMatch = text.match(/\b(20\d{10,12}|90\d{10,12}|50\d{10,12})\b/);
+            const digitSequenceMatch = text.match(/\b(\d{4}\s*\d{3}\s*\d{6}|\d{12,14})\b/);
             if (digitSequenceMatch) {
                 referenceId = digitSequenceMatch[1].replace(/\s+/g, '');
             }
@@ -56,7 +56,7 @@ async function parseReceiptWithLocalOCR(imageSource) {
         }
 
         let transactionDate = null;
-        const dateMatch = text.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}(?:\s+\d{1,2}:\d{2}(?:\s*(?:AM|PM))?)?/i);
+        const dateMatch = text.match(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s*\d{1,2},?\s*(202[4-7])(?:\s+\d{1,2}:\d{2}(?:\s*(?:AM|PM))?)?/i);
         if (dateMatch) {
             transactionDate = dateMatch[0];
         }

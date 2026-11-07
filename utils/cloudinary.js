@@ -16,4 +16,14 @@ const storage = new CloudinaryStorage({
     }
 });
 
-module.exports = { cloudinary, storage };
+// High-clarity storage for tall mobile payment receipt screenshots (preserves crisp OCR text)
+const receiptStorage = new CloudinaryStorage({
+    cloudinary: cloudinary,
+    params: {
+        folder: 'stitch-master-products',
+        allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
+        transformation: [{ width: 1600, height: 2400, crop: 'limit', quality: 'auto:good' }]
+    }
+});
+
+module.exports = { cloudinary, storage, receiptStorage };

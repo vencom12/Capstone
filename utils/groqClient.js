@@ -14,18 +14,12 @@ const MODELS_CACHE_TTL_MS = 10 * 60 * 1000;
 
 const DEFAULT_CHAT_FALLBACKS = [
     'openai/gpt-oss-120b',
-    'llama-3.3-70b-versatile',
-    'qwen/qwen3.6-27b',
     'openai/gpt-oss-20b',
-    'groq/compound-mini',
-    'llama-3.1-8b-instant'
+    'allam-2-7b'
 ];
 
 const DEFAULT_VISION_FALLBACKS = [
-    'meta-llama/llama-4-scout-17b-16e-instruct',
-    'meta-llama/llama-4-maverick-17b-128e-instruct',
-    'qwen/qwen3.8-27b',
-    'qwen/qwen3.6-27b'
+    'qwen/qwen3.8-27b'
 ];
 
 /**
@@ -251,6 +245,8 @@ const fetchGroqChatWithFallback = async (apiKey, url, initialModel, payloadWitho
     throw lastError || new Error('All AI chat models failed to return a valid completion.');
 };
 
+const sleepMs = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
 const fetchGroqVisionWithFallback = async (apiKey, url, initialModel, payloadWithoutModel) => {
     const modelsToTry = [];
     const addCandidate = (m) => {
@@ -268,44 +264,63 @@ const fetchGroqVisionWithFallback = async (apiKey, url, initialModel, payloadWit
 
     for (let i = 0; i < modelsToTry.length; i++) {
         const model = modelsToTry[i];
-        try {
-            console.log(`[Groq Vision Fetch] Attempting vision request using model: ${model}`);
-            const body = { model, ...payloadWithoutModel };
+        let rateLimitRetries = 0;
+        const maxRateLimitRetries = 2;
 
-            const response = await fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(body)
-            });
+        while (rateLimitRetries <= maxRateLimitRetries) {
+            try {
+                console.log(`[Groq Vision Fetch] Attempting vision request using model: ${model}${rateLimitRetries > 0 ? ` (retry ${rateLimitRetries})` : ''}`);
+                const body = { model, ...payloadWithoutModel };
 
-            const data = await response.json();
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
 
-            if (response.ok && data && !data.error && data.choices && data.choices[0]) {
-                data.usedModel = model;
-                if (initialModelDeprecated && model !== initialModel) {
-                    data.autoHealedFrom = initialModel;
-                    autoHealDatabaseModel('aiVisionModel', initialModel, model);
+                const data = await response.json();
+
+                if (response.ok && data && !data.error && data.choices && data.choices[0]) {
+                    data.usedModel = model;
+                    if (initialModelDeprecated && model !== initialModel) {
+                        data.autoHealedFrom = initialModel;
+                        autoHealDatabaseModel('aiVisionModel', initialModel, model);
+                    }
+                    return data;
                 }
-                return data;
-            }
 
-            const errMsg = data?.error?.message || data?.error?.code || response.statusText || 'Unknown error';
-            console.warn(`[Groq Vision Fetch Warning] Model ${model} failed: ${errMsg}`);
+                const errMsg = data?.error?.message || data?.error?.code || response.statusText || 'Unknown error';
+                console.warn(`[Groq Vision Fetch Warning] Model ${model} failed: ${errMsg}`);
 
-            if (isModelDeprecatedError(response.status, data, errMsg)) {
-                decommissionedModelsCache.add(model);
-                if (model === initialModel) {
-                    initialModelDeprecated = true;
+                if (isModelDeprecatedError(response.status, data, errMsg)) {
+                    decommissionedModelsCache.add(model);
+                    if (model === initialModel) {
+                        initialModelDeprecated = true;
+                    }
+                    lastError = new Error(`Groq API returned error for model ${model}: ${errMsg}`);
+                    break;
                 }
-            }
 
-            lastError = new Error(`Groq API returned error for model ${model}: ${errMsg}`);
-        } catch (err) {
-            console.warn(`[Groq Vision Fetch Error] Exception with model ${model}:`, err.message);
-            lastError = err;
+                const isRateLimited = response.status === 429 || data?.error?.code === 'rate_limit_exceeded' || /rate limit|tokens per minute|ITPM|TPM/i.test(errMsg);
+                if (isRateLimited && rateLimitRetries < maxRateLimitRetries) {
+                    const retryMatch = errMsg.match(/try again in\s+(\d+(?:\.\d+)?)s/i);
+                    const waitSeconds = retryMatch ? Math.min(20, Math.ceil(parseFloat(retryMatch[1])) + 1) : 6;
+                    console.log(`[Groq Vision Fetch] Rate limit hit on ${model}; waiting ${waitSeconds}s before retrying...`);
+                    rateLimitRetries += 1;
+                    await sleepMs(waitSeconds * 1000);
+                    continue;
+                }
+
+                lastError = new Error(`Groq API returned error for model ${model}: ${errMsg}`);
+                break;
+            } catch (err) {
+                console.warn(`[Groq Vision Fetch Error] Exception with model ${model}:`, err.message);
+                lastError = err;
+                break;
+            }
         }
 
         // If static vision fallbacks fail, dynamically query live vision models from the provider

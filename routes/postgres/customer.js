@@ -5,12 +5,12 @@ const customerController = require('../../controllers/postgres/customerControlle
 const auth = require('../../middleware/auth');
 const { resolveToken } = require('../../utils/tokenResolver');
 const multer = require('multer');
-const { storage } = require('../../utils/cloudinary');
+const { receiptStorage } = require('../../utils/cloudinary');
 
 const { body, validationResult } = require('express-validator');
 
 const upload = multer({
-    storage,
+    storage: receiptStorage,
     limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
     fileFilter: (req, file, cb) => {
         const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];

@@ -98,11 +98,18 @@ class GcashService {
         }
       }
 
-      // Derive GCash Express Send masked pattern dynamically from any configured full name
-      // e.g. "Juan Dela Cruz" -> starts with "ju", ends with initial "c" -> /^ju[a-z*•.\s]*c\.?$/i
+      // Derive GCash Express Send masked patterns algorithmically from any configured full name
+      // GCash masks first word as <First2>•••<Last1>, middle words as <First1>••, last word as <First1>.
       if (words.length >= 2 && words[0].length >= 2) {
         const firstTwo = words[0].slice(0, 2).toLowerCase();
+        const firstLast = words[0].length >= 3 ? words[0].slice(-1).toLowerCase() : '';
+        const middleInitials = words.slice(1, -1).map(w => w[0].toLowerCase()).join('');
         const lastInitial = words[words.length - 1].slice(0, 1).toLowerCase();
+
+        const exactMaskedLetters = `${firstTwo}${firstLast}${middleInitials}${lastInitial}`;
+        if (exactMaskedLetters.length >= 3) {
+          tokens.add(exactMaskedLetters);
+        }
         maskedRegexes.push(new RegExp(`^${firstTwo}[a-z*•.\\s]*${lastInitial}\\.?$`, 'i'));
       }
     }
@@ -160,7 +167,7 @@ class GcashService {
    * @returns {{ isValid: boolean, error?: string, warning?: string }}
    */
   validateReceiptData(aiResult, storeSettings = null) {
-    const { referenceId, paymentPlatform, recipientName, rawText } = aiResult;
+    const { referenceId, paymentPlatform, recipientName, recipientPhone, rawText } = aiResult;
 
     // 1. Platform validation
     if (paymentPlatform && !/gcash|instapay|maya|paymaya|e-wallet|express\s*send/i.test(paymentPlatform)) {
@@ -175,7 +182,7 @@ class GcashService {
       const sanitizedRef = String(referenceId).replace(/\s+/g, '');
       const isDigitsOnly = /^\d+$/.test(sanitizedRef);
       
-      if (!isDigitsOnly || sanitizedRef.length < 8 || sanitizedRef.length > 18) {
+      if (!isDigitsOnly || sanitizedRef.length < 10 || sanitizedRef.length > 16) {
         return {
           isValid: false,
           error: `Please make sure your GCash Reference Number is clear and visible on the screenshot.`
@@ -191,33 +198,35 @@ class GcashService {
           error: `Please upload your official GCash receipt screenshot for this payment.`
         };
       }
-
-      // Standard GCash ref format (13 digits typically starting with 00, 10, 20, 50, 90)
-      if (sanitizedRef.length === 13) {
-        const validPrefix = /^(00|10|20|50|90)/.test(sanitizedRef);
-        if (!validPrefix) {
-          console.warn(`[GCash Service] Non-standard 13-digit prefix detected for ref: ${sanitizedRef}`);
-        }
-      }
     }
 
-    // 3. Dynamic Recipient Identity Check (derived strictly from SystemSettings — no hardcoded aliases)
+    // 3. Dynamic Recipient Identity Check (derived strictly from SystemSettings — zero hardcoded aliases)
     if (recipientName && typeof recipientName === 'string' && storeSettings) {
       const cleanedRecipient = recipientName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const cleanedPhone = recipientPhone ? String(recipientPhone).replace(/\D/g, '') : '';
       const { tokens, maskedRegexes } = this.buildDynamicRecipientMatchers(storeSettings);
 
       if (tokens.length > 0 || maskedRegexes.length > 0) {
-        const isMaskedFormat = /[•*]/.test(recipientName) || maskedRegexes.some(rx => rx.test(recipientName.trim()));
+        const isMaskedNameMatch = maskedRegexes.some(rx => rx.test(recipientName.trim()));
         const isTokenMatch = tokens.some(token =>
-          cleanedRecipient.includes(token) || (cleanedRecipient.length >= 4 && token.includes(cleanedRecipient))
+          cleanedRecipient.includes(token) ||
+          (cleanedRecipient.length >= 4 && token.includes(cleanedRecipient)) ||
+          (cleanedPhone.length >= 3 && token.length >= 3 && /^\d+$/.test(token) && cleanedPhone.endsWith(token))
         );
         const cleanedRawText = rawText ? rawText.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
         const textHasRecipient = cleanedRawText
           ? tokens.some(token => cleanedRawText.includes(token))
           : false;
 
-        if (!isMaskedFormat && !isTokenMatch && !textHasRecipient && cleanedRecipient.length >= 4) {
-          console.warn(`[GCash Service] Recipient "${recipientName}" differs from configured store settings; flagged for staff review.`);
+        if (!isMaskedNameMatch && !isTokenMatch && !textHasRecipient && cleanedRecipient.length >= 4) {
+          if (storeSettings.hasExplicitGcashRecipient) {
+            const displayStoreName = storeSettings.businessName || storeSettings.gcashAccountName || 'our official store GCash account';
+            return {
+              isValid: false,
+              error: `This receipt shows payment was sent to "${recipientName}". Please send your payment to our official store GCash account (${displayStoreName}) and upload the receipt here.`
+            };
+          }
+          console.warn(`[GCash Service] Recipient "${recipientName}" noted for staff review (no explicit GCash recipient name configured in SystemSettings yet).`);
         }
       }
     }
