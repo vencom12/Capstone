@@ -1205,18 +1205,7 @@ export default function PanelStaffing({
             </div>
 
             {/* Administrative Quick Actions */}
-            <div className="pt-3 border-t border-border-glass flex items-center gap-2">
-              <button
-                type="button"
-                disabled={isSendingReset}
-                onClick={() => handleSendResetEmail(viewingProfileUser.id || viewingProfileUser._id, viewingProfileUser.email)}
-                className="flex-1 py-2.5 px-3 rounded-xl bg-primary/10 border border-primary/20 text-primary font-bold text-xs hover:bg-primary/20 transition-all cursor-pointer flex items-center justify-center gap-1.5 disabled:opacity-50"
-              >
-                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M21 2l-2 2m-1.5 1.5L14 9a5 5 0 1 0 3 3l6-6-2-2-3.5 3.5" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                <span>{isSendingReset ? 'Sending...' : "Send Reset Email to User's Gmail"}</span>
-              </button>
+            <div className="pt-3 border-t border-border-glass flex items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setViewingProfileUser(null)}

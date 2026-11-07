@@ -638,21 +638,29 @@ server.listen(PORT, async () => {
         await reconcileReservedCounts(prisma);
         console.log(`[OK] Inventory reservations reconciled successfully on startup.`);
 
-        // One-time cleanup of test accounts ("yenyen" and "Gene")
+        // One-time cleanup of test accounts ("yenyen" and "Gene" variants)
         const testUsers = await prisma.user.findMany({
             where: {
                 OR: [
-                    { username: { equals: 'yenyen', mode: 'insensitive' } },
-                    { username: { equals: 'Gene', mode: 'insensitive' } }
+                    { username: { startsWith: 'yenyen', mode: 'insensitive' } },
+                    { username: { startsWith: 'Gene', mode: 'insensitive' } }
                 ]
             }
         });
         for (const u of testUsers) {
+            const userOrders = await prisma.order.findMany({ where: { userId: u.id }, select: { id: true } });
+            const orderIds = userOrders.map((o) => o.id);
+            if (orderIds.length > 0) {
+                await prisma.review.deleteMany({ where: { orderId: { in: orderIds } } }).catch(() => {});
+                await prisma.receipt.deleteMany({ where: { orderId: { in: orderIds } } }).catch(() => {});
+                await prisma.transaction.deleteMany({ where: { orderId: { in: orderIds } } }).catch(() => {});
+            }
+            await prisma.review.deleteMany({ where: { userId: u.id } }).catch(() => {});
             await prisma.emailVerification.deleteMany({ where: { userId: u.id } }).catch(() => {});
             await prisma.machine.updateMany({ where: { assignedUserId: u.id }, data: { assignedUserId: null } }).catch(() => {});
-            await prisma.order.deleteMany({ where: { userId: u.id } }).catch(() => {});
-            await prisma.transaction.deleteMany({ where: { userId: u.id } }).catch(() => {});
             await prisma.receipt.deleteMany({ where: { userId: u.id } }).catch(() => {});
+            await prisma.transaction.deleteMany({ where: { userId: u.id } }).catch(() => {});
+            await prisma.order.deleteMany({ where: { userId: u.id } }).catch(() => {});
             await prisma.user.update({ where: { id: u.id }, data: { favorites: { set: [] } } }).catch(() => {});
             await prisma.user.delete({ where: { id: u.id } });
             console.log(`[CLEANUP] Permanently removed account "${u.username}" (${u.email}) from database.`);
