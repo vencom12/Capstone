@@ -1,8 +1,9 @@
 const ExcelJS = require('exceljs');
 
 /**
- * Generates a print-ready Microsoft Excel (.xlsx) workbook for Order History & Financial Statistics.
- * Supports 1 Day ('1day'), 1 Week ('week'), and 1 Month ('month') reporting windows.
+ * Generates a clean, easy-to-read, print-ready Microsoft Excel (.xlsx) report
+ * combining a simple Financial Summary + Order History on a single worksheet.
+ * Supports 1 Day ('1day'), 1 Week ('week'), and 1 Month ('month').
  */
 async function generateOrderHistoryExcelWorkbook({
     period = '1day',
@@ -27,33 +28,29 @@ async function generateOrderHistoryExcelWorkbook({
     }
 
     const now = new Date();
-    // Compute Philippine Time (UTC+8) window boundaries for accurate local reporting
     const phtOffsetMs = 8 * 60 * 60 * 1000;
     const phtNow = new Date(now.getTime() + phtOffsetMs);
-    const phtYear = phtNow.getUTCFullYear();
-    const phtMonth = phtNow.getUTCMonth();
-    const phtDay = phtNow.getUTCDate();
-    const startOfTodayUtc = new Date(Date.UTC(phtYear, phtMonth, phtDay, 0, 0, 0) - phtOffsetMs);
+    const startOfTodayUtc = new Date(Date.UTC(
+        phtNow.getUTCFullYear(),
+        phtNow.getUTCMonth(),
+        phtNow.getUTCDate(),
+        0, 0, 0
+    ) - phtOffsetMs);
     const startDate = new Date(startOfTodayUtc.getTime() - (periodDays - 1) * 24 * 60 * 60 * 1000);
 
     const businessName = settings?.businessName || 'Edz Towels & Caps';
     const businessAddress = settings?.businessAddress || 'Ground Floor, Pacific Mall Lucena City';
-    const businessContact = settings?.businessContact || '';
     const dailyRent = (settings && settings.dailyRent != null)
         ? Number(settings.dailyRent)
         : (process.env.DAILY_RENT ? parseFloat(process.env.DAILY_RENT) : 1500.00);
 
-    // Build Raw Material Cost Lookup Maps (by ID and by normalized name)
+    // Raw material unit cost lookup
     const invCostById = {};
     const invCostByName = {};
     (inventory || []).forEach(inv => {
         const unitCost = Number(inv.supplierUnitCost) || 0;
-        if (inv.id && unitCost > 0) {
-            invCostById[inv.id] = unitCost;
-        }
-        if (inv.item && unitCost > 0) {
-            invCostByName[String(inv.item).toLowerCase().trim()] = unitCost;
-        }
+        if (inv.id && unitCost > 0) invCostById[inv.id] = unitCost;
+        if (inv.item && unitCost > 0) invCostByName[String(inv.item).toLowerCase().trim()] = unitCost;
     });
 
     const productById = {};
@@ -71,7 +68,6 @@ async function generateOrderHistoryExcelWorkbook({
             (item.name && productByName[String(item.name).toLowerCase().trim()]) ||
             null;
 
-        // 1. Check variant-linked raw material cost
         if (prod && Array.isArray(prod.variants) && item.selectedVariant) {
             const matchedVar = prod.variants.find(v =>
                 v && v.name && String(v.name).trim().toLowerCase() === String(item.selectedVariant).trim().toLowerCase()
@@ -81,7 +77,6 @@ async function generateOrderHistoryExcelWorkbook({
             }
         }
 
-        // 2. Check product BOM recipe cost
         if (prod && Array.isArray(prod.recipe) && prod.recipe.length > 0) {
             let unitRecipeCost = 0;
             for (const r of prod.recipe) {
@@ -90,12 +85,9 @@ async function generateOrderHistoryExcelWorkbook({
                     unitRecipeCost += invCostById[matId] * (Number(r.quantityRequired || r.quantity) || 1);
                 }
             }
-            if (unitRecipeCost > 0) {
-                return unitRecipeCost * qty;
-            }
+            if (unitRecipeCost > 0) return unitRecipeCost * qty;
         }
 
-        // 3. Fallback keyword match against Inventory supplierUnitCost
         const lowerName = String(item.name || '').toLowerCase().trim();
         if (lowerName) {
             for (const [invName, cost] of Object.entries(invCostByName)) {
@@ -111,59 +103,52 @@ async function generateOrderHistoryExcelWorkbook({
     const isOrderCanceled = (status) => /cancel/i.test(String(status || ''));
     const isOrderCompleted = (status) => /^(completed|order delivered|delivered)$/i.test(String(status || '').trim());
 
-    // Enrich each order with financial details
-    let totalOrdersCount = orders.length;
-    let completedOrdersCount = 0;
-    let canceledOrdersCount = 0;
-    let activeOrPendingCount = 0;
-    let totalPiecesProduced = 0;
+    // Filter out abandoned online checkouts that are still 'Awaiting Payment' with zero payment uploaded
+    const relevantOrders = (orders || []).filter(o => {
+        const st = String(o.status || '').trim().toLowerCase();
+        const paySt = String(o.paymentStatus || '').trim().toLowerCase();
+        const pers = (o.personalization && typeof o.personalization === 'object') ? o.personalization : {};
+        const hasCredit = Number(pers.accountCredit) > 0;
+        const hasValidReceipt = o.receipt && o.receipt.status !== 'Rejected' && Number(o.receipt?.ocrData?.extractedAmount) > 0;
+        if (st === 'awaiting payment' && paySt !== 'paid' && !hasCredit && !hasValidReceipt) {
+            return false;
+        }
+        return true;
+    });
 
-    let grossBilledRevenue = 0;
-    let canceledOrderValue = 0;
+    let validOrdersCount = 0;
+    let canceledOrdersCount = 0;
+    let totalPieces = 0;
+    let totalRevenue = 0;
     let totalMoneySent = 0;
     let gcashMoneySent = 0;
-    let gcashOrdersCount = 0;
     let cashMoneySent = 0;
-    let cashOrdersCount = 0;
-    let walletMoneySent = 0;
-    let walletOrdersCount = 0;
-    let totalOutstandingBalance = 0;
+    let totalUnpaidBalance = 0;
     let totalMaterialsCost = 0;
 
-    const dailyBuckets = {};
-    for (let d = 0; d < periodDays; d++) {
-        const bucketUtc = new Date(startDate.getTime() + d * 24 * 60 * 60 * 1000 + phtOffsetMs);
-        const dayKey = bucketUtc.toISOString().slice(0, 10);
-        dailyBuckets[dayKey] = {
-            dateKey: dayKey,
-            ordersCount: 0,
-            piecesCount: 0,
-            billedRevenue: 0,
-            moneySent: 0,
-            materialsCost: 0,
-            overhead: dailyRent
-        };
-    }
-
-    const enrichedRows = orders.map(o => {
+    const orderRows = relevantOrders.map(o => {
         const canceled = isOrderCanceled(o.status);
         const completed = isOrderCompleted(o.status);
-        if (canceled) canceledOrdersCount++;
-        else if (completed) completedOrdersCount++;
-        else activeOrPendingCount++;
-
-        const billed = Math.round((Number(o.totalAmount || o.amount) || 0) * 100) / 100;
+        const orderTotal = Math.round((Number(o.totalAmount || o.amount) || 0) * 100) / 100;
         const pers = (o.personalization && typeof o.personalization === 'object') ? o.personalization : {};
         const ocr = (o.receipt?.ocrData && typeof o.receipt.ocrData === 'object') ? o.receipt.ocrData : {};
         const payStatus = String(o.paymentStatus || '').toLowerCase();
-        const payMethod = String(o.paymentMethod || o.receipt?.paymentMethod || 'cash').toLowerCase();
+        const rawMethod = String(o.paymentMethod || o.receipt?.paymentMethod || 'Cash').toLowerCase();
 
-        // Compute Money Sent (actual funds paid/sent by customer)
+        let paymentLabel = 'Cash';
+        if (rawMethod.includes('gcash') || rawMethod.includes('qr') || rawMethod.includes('online')) {
+            paymentLabel = 'GCash';
+        } else if (rawMethod.includes('maya')) {
+            paymentLabel = 'Maya';
+        } else if (rawMethod.includes('wallet')) {
+            paymentLabel = 'Credit';
+        }
+
         let moneySent = 0;
         if (!canceled) {
             if (payStatus === 'paid' || completed) {
                 const ocrExtracted = Number(ocr.extractedAmount) || 0;
-                moneySent = ocrExtracted >= billed ? ocrExtracted : billed;
+                moneySent = ocrExtracted >= orderTotal ? ocrExtracted : orderTotal;
             } else if (Number(pers.accountCredit) > 0) {
                 const topUp = pers.balanceTopUpPending ? 0 : (Number(pers.balanceTopUpAmount) || 0);
                 moneySent = Math.round((Number(pers.accountCredit) + topUp) * 100) / 100;
@@ -172,296 +157,98 @@ async function generateOrderHistoryExcelWorkbook({
             }
         }
 
-        const balanceDue = canceled ? 0 : Math.max(0, Math.round((billed - moneySent) * 100) / 100);
+        const balanceLeft = canceled ? 0 : Math.max(0, Math.round((orderTotal - moneySent) * 100) / 100);
 
         const itemsArr = Array.isArray(o.items) ? o.items : [];
-        let orderPieces = 0;
-        let orderMaterialsCost = 0;
-        const itemDescriptions = [];
+        let qty = 0;
+        let orderMatCost = 0;
+        const itemText = [];
 
         if (itemsArr.length > 0) {
             itemsArr.forEach(it => {
                 const q = Math.max(1, Number(it.quantity) || 1);
+                qty += q;
                 if (!canceled) {
-                    orderPieces += q;
-                    orderMaterialsCost += computeItemMaterialCost(it, o);
+                    orderMatCost += computeItemMaterialCost(it, o);
                 }
-                const variantStr = it.selectedVariant ? ` [${it.selectedVariant}]` : '';
-                itemDescriptions.push(`${q}x ${it.name || 'Item'}${variantStr}`);
+                const variantStr = it.selectedVariant ? ` (${it.selectedVariant})` : '';
+                itemText.push(`${q}x ${it.name || 'Item'}${variantStr}`);
             });
         } else {
-            if (!canceled) orderPieces += 1;
-            itemDescriptions.push(o.design || 'Custom Embroidery');
+            qty = 1;
+            itemText.push(o.design || 'Custom Embroidery');
         }
-        orderMaterialsCost = Math.round(orderMaterialsCost * 100) / 100;
 
         if (canceled) {
-            canceledOrderValue += billed;
+            canceledOrdersCount += 1;
         } else {
-            grossBilledRevenue += billed;
+            validOrdersCount += 1;
+            totalPieces += qty;
+            totalRevenue += orderTotal;
             totalMoneySent += moneySent;
-            totalOutstandingBalance += balanceDue;
-            totalPiecesProduced += orderPieces;
-            totalMaterialsCost += orderMaterialsCost;
+            totalUnpaidBalance += balanceLeft;
+            totalMaterialsCost += Math.round(orderMatCost * 100) / 100;
 
-            if (payMethod.includes('gcash') || payMethod.includes('qr') || payMethod.includes('online')) {
+            if (paymentLabel === 'GCash' || paymentLabel === 'Maya') {
                 gcashMoneySent += moneySent;
-                gcashOrdersCount++;
-            } else if (payMethod.includes('wallet')) {
-                walletMoneySent += moneySent;
-                walletOrdersCount++;
             } else {
                 cashMoneySent += moneySent;
-                cashOrdersCount++;
             }
         }
 
         const orderTimestamp = new Date(o.date || o.createdAt || now);
-        const phtOrderDate = new Date(orderTimestamp.getTime() + phtOffsetMs);
-        const dayKey = phtOrderDate.toISOString().slice(0, 10);
-        if (!dailyBuckets[dayKey]) {
-            dailyBuckets[dayKey] = {
-                dateKey: dayKey,
-                ordersCount: 0,
-                piecesCount: 0,
-                billedRevenue: 0,
-                moneySent: 0,
-                materialsCost: 0,
-                overhead: dailyRent
-            };
-        }
-        if (!canceled) {
-            dailyBuckets[dayKey].ordersCount += 1;
-            dailyBuckets[dayKey].piecesCount += orderPieces;
-            dailyBuckets[dayKey].billedRevenue += billed;
-            dailyBuckets[dayKey].moneySent += moneySent;
-            dailyBuckets[dayKey].materialsCost += orderMaterialsCost;
-        }
-
-        const orderGrossProfit = canceled ? 0 : Math.round((moneySent - orderMaterialsCost) * 100) / 100;
-        const orderMargin = (!canceled && moneySent > 0) ? (orderGrossProfit / moneySent) : 0;
-        const refNo = o.receipt?.referenceId || pers.referenceNumber || '—';
-
         return {
             orderId: o.orderId || o.id,
             dateFormatted: orderTimestamp.toLocaleString('en-US', {
                 timeZone: 'Asia/Manila',
-                year: 'numeric',
                 month: 'short',
                 day: '2-digit',
+                year: 'numeric',
                 hour: '2-digit',
                 minute: '2-digit'
             }),
-            client: o.client || 'Walk-In Customer',
-            itemsSummary: itemDescriptions.join('; '),
-            pieces: orderPieces,
+            client: o.client || 'Walk-In',
+            itemsSummary: itemText.join(', '),
+            qty: canceled ? 0 : qty,
+            displayQty: qty,
+            paymentLabel,
             status: o.status || 'Completed',
-            paymentMethod: payMethod.toUpperCase(),
-            paymentStatus: (o.paymentStatus || (completed ? 'paid' : 'unpaid')).toUpperCase(),
-            referenceNo: refNo,
-            billed,
+            orderTotal,
             moneySent,
-            balanceDue,
-            materialsCost: orderMaterialsCost,
-            grossProfit: orderGrossProfit,
-            grossMargin: orderMargin,
+            balanceLeft,
             canceled
         };
     });
 
-    // Aggregate Financial Calculations
-    const validOrdersCount = Math.max(0, totalOrdersCount - canceledOrdersCount);
-    const avgOrderValue = validOrdersCount > 0 ? (grossBilledRevenue / validOrdersCount) : 0;
-    const collectionRate = grossBilledRevenue > 0 ? (totalMoneySent / grossBilledRevenue) : 0;
+    totalRevenue = Math.round(totalRevenue * 100) / 100;
+    totalMoneySent = Math.round(totalMoneySent * 100) / 100;
+    gcashMoneySent = Math.round(gcashMoneySent * 100) / 100;
+    cashMoneySent = Math.round(cashMoneySent * 100) / 100;
+    totalUnpaidBalance = Math.round(totalUnpaidBalance * 100) / 100;
+    totalMaterialsCost = Math.round(totalMaterialsCost * 100) / 100;
 
-    const operatingOverhead = Math.round(dailyRent * periodDays * 100) / 100;
-    const totalExpenses = Math.round((totalMaterialsCost + operatingOverhead) * 100) / 100;
+    const totalOverhead = Math.round(dailyRent * periodDays * 100) / 100;
+    const totalExpenses = Math.round((totalMaterialsCost + totalOverhead) * 100) / 100;
+    const netProfit = Math.round((totalMoneySent - totalExpenses) * 100) / 100;
+    const roi = totalExpenses > 0 ? (netProfit / totalExpenses) : 0;
 
-    // Revenue & Profit Metrics (Cash Collected Basis & Billed Basis)
-    const grossProfitCollected = Math.round((totalMoneySent - totalMaterialsCost) * 100) / 100;
-    const netProfitCollected = Math.round((totalMoneySent - totalExpenses) * 100) / 100;
-    const netProfitBilled = Math.round((grossBilledRevenue - totalExpenses) * 100) / 100;
+    const currencyFmt = '"₱"#,##0.00;-"₱"#,##0.00;"₱"0.00';
+    const percentFmt = '0.00%';
 
-    const grossMarginPct = totalMoneySent > 0 ? (grossProfitCollected / totalMoneySent) : 0;
-    const netMarginPct = totalMoneySent > 0 ? (netProfitCollected / totalMoneySent) : 0;
+    const formatShortDate = (dt) => dt.toLocaleDateString('en-US', {
+        timeZone: 'Asia/Manila',
+        month: 'short',
+        day: '2-digit',
+        year: 'numeric'
+    });
 
-    // ROI = (Net Profit / Total Investment [Materials + Overhead])
-    const roiCollected = totalExpenses > 0 ? (netProfitCollected / totalExpenses) : 0;
-    const roiBilled = totalExpenses > 0 ? (netProfitBilled / totalExpenses) : 0;
-
-    // Build Workbook
     const workbook = new ExcelJS.Workbook();
     workbook.creator = businessName;
     workbook.created = now;
     workbook.modified = now;
 
-    const currencyFmt = '"₱"#,##0.00;-"₱"#,##0.00;"₱"0.00';
-    const percentFmt = '0.00%';
-
-    // =========================================================================
-    // SHEET 1: EXECUTIVE FINANCIAL SUMMARY (Print-Ready)
-    // =========================================================================
-    const summarySheet = workbook.addWorksheet('Financial Summary', {
-        pageSetup: {
-            paperSize: 9, // A4
-            orientation: 'portrait',
-            fitToPage: true,
-            fitToWidth: 1,
-            fitToHeight: 1,
-            showGridLines: true,
-            margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.2, footer: 0.2 }
-        }
-    });
-
-    summarySheet.columns = [
-        { key: 'metric', width: 42 },
-        { key: 'value', width: 24 },
-        { key: 'notes', width: 44 }
-    ];
-
-    // Title Banner
-    summarySheet.mergeCells('A1:C1');
-    const titleCell = summarySheet.getCell('A1');
-    titleCell.value = `${businessName.toUpperCase()} — ORDER HISTORY & FINANCIAL REPORT`;
-    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
-    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B1E1E' } };
-    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    summarySheet.getRow(1).height = 28;
-
-    const formatPhtDate = (dt) => dt.toLocaleDateString('en-US', {
-        timeZone: 'Asia/Manila',
-        year: 'numeric',
-        month: 'short',
-        day: '2-digit'
-    });
-
-    summarySheet.mergeCells('A2:C2');
-    const subCell = summarySheet.getCell('A2');
-    subCell.value = `Reporting Period: ${periodTitle} (${formatPhtDate(startDate)} – ${formatPhtDate(now)}) | ${businessAddress}${businessContact ? ' • ' + businessContact : ''}`;
-    subCell.font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF334155' } };
-    subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
-    subCell.alignment = { vertical: 'middle', horizontal: 'center' };
-    summarySheet.getRow(2).height = 20;
-
-    summarySheet.addRow([]);
-
-    const addSectionHeader = (sheet, title) => {
-        const row = sheet.addRow([title, 'AMOUNT / STATISTIC', 'ACCOUNTING FORMULA / NOTES']);
-        row.height = 22;
-        row.eachCell((cell, colNumber) => {
-            cell.font = { name: 'Calibri', size: 10.5, bold: true, color: { argb: 'FFFFFFFF' } };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-            cell.alignment = { vertical: 'middle', horizontal: colNumber === 2 ? 'right' : 'left' };
-            cell.border = {
-                top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-                bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-                left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
-                right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
-            };
-        });
-    };
-
-    const addStatRow = (sheet, label, val, fmt, note, highlight = false, valueColor = null) => {
-        const row = sheet.addRow([label, val, note]);
-        row.height = 20;
-        const valCell = row.getCell(2);
-        if (fmt) valCell.numFmt = fmt;
-        row.eachCell((cell, colNumber) => {
-            cell.font = {
-                name: 'Calibri',
-                size: 10.5,
-                bold: highlight || colNumber === 2,
-                color: { argb: (colNumber === 2 && valueColor) ? valueColor : 'FF0F172A' }
-            };
-            if (highlight) {
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-            }
-            cell.alignment = {
-                vertical: 'middle',
-                horizontal: colNumber === 2 ? 'right' : 'left'
-            };
-            cell.border = {
-                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-            };
-        });
-    };
-
-    // Section 1: Revenue & Money Sent
-    addSectionHeader(summarySheet, '1. REVENUE & MONEY SENT (COLLECTIONS)');
-    addStatRow(summarySheet, 'Gross Billed Revenue (Valid Orders)', grossBilledRevenue, currencyFmt, 'Total billed amount across non-canceled orders', true);
-    addStatRow(summarySheet, 'Total Money Sent / Collected (Cash + GCash + Wallet)', totalMoneySent, currencyFmt, 'Actual verified customer payments received', true, 'FF15803D');
-    addStatRow(summarySheet, '  • GCash Money Sent', gcashMoneySent, currencyFmt, `${gcashOrdersCount} GCash order(s)`);
-    addStatRow(summarySheet, '  • Cash Received at Counter', cashMoneySent, currencyFmt, `${cashOrdersCount} Cash order(s)`);
-    addStatRow(summarySheet, '  • Store Wallet / Account Credit Applied', walletMoneySent, currencyFmt, `${walletOrdersCount} Wallet order(s)`);
-    addStatRow(summarySheet, 'Outstanding / Uncollected Balance', totalOutstandingBalance, currencyFmt, 'Remaining balance yet to be paid by customers', false, totalOutstandingBalance > 0 ? 'FFB45309' : null);
-    addStatRow(summarySheet, 'Payment Collection Rate (%)', collectionRate, percentFmt, 'Money Sent ÷ Gross Billed Revenue');
-    addStatRow(summarySheet, 'Canceled Orders Value (Excluded)', canceledOrderValue, currencyFmt, `${canceledOrdersCount} canceled order(s) excluded from revenue`);
-
-    summarySheet.addRow([]);
-
-    // Section 2: Overhead, COGS & Profitability
-    addSectionHeader(summarySheet, '2. OVERHEAD, COSTS, PROFIT & ROI');
-    addStatRow(summarySheet, 'Raw Materials Cost (COGS)', totalMaterialsCost, currencyFmt, 'Garment & thread unit costs consumed (BYOG = ₱0)');
-    addStatRow(summarySheet, 'Gross Profit (Collected Revenue - COGS)', grossProfitCollected, currencyFmt, 'Money Sent minus Raw Materials Cost', true);
-    addStatRow(summarySheet, 'Gross Profit Margin (%)', grossMarginPct, percentFmt, 'Gross Profit ÷ Money Sent');
-    addStatRow(summarySheet, 'Daily Shop Overhead Rate (Rent & Utilities)', dailyRent, currencyFmt, 'Configured daily stall overhead in System Settings');
-    addStatRow(summarySheet, `Total Operating Overhead (${periodDays} Day${periodDays > 1 ? 's' : ''})`, operatingOverhead, currencyFmt, `₱${dailyRent.toFixed(2)}/day × ${periodDays} day(s)`, true);
-    addStatRow(summarySheet, 'Total Operating Expenses (COGS + Overhead)', totalExpenses, currencyFmt, 'Raw Materials Cost + Total Operating Overhead', true, 'FFB91C1C');
-    addStatRow(
-        summarySheet,
-        'NET PROFIT (Collected Cash Basis)',
-        netProfitCollected,
-        currencyFmt,
-        'Total Money Sent minus Total Operating Expenses',
-        true,
-        netProfitCollected >= 0 ? 'FF15803D' : 'FFB91C1C'
-    );
-    addStatRow(
-        summarySheet,
-        'Net Profit (Accrual / Billed Basis)',
-        netProfitBilled,
-        currencyFmt,
-        'Gross Billed Revenue minus Total Operating Expenses',
-        false,
-        netProfitBilled >= 0 ? 'FF15803D' : 'FFB91C1C'
-    );
-    addStatRow(summarySheet, 'Net Profit Margin (%)', netMarginPct, percentFmt, 'Net Profit (Collected) ÷ Money Sent');
-    addStatRow(
-        summarySheet,
-        'RETURN ON INVESTMENT — ROI (Collected Basis)',
-        roiCollected,
-        percentFmt,
-        '(Net Profit ÷ Total Operating Expenses) × 100%',
-        true,
-        roiCollected >= 0 ? 'FF15803D' : 'FFB91C1C'
-    );
-    addStatRow(
-        summarySheet,
-        'Return on Investment — ROI (Billed Basis)',
-        roiBilled,
-        percentFmt,
-        '(Billed Net Profit ÷ Total Operating Expenses) × 100%'
-    );
-
-    summarySheet.addRow([]);
-
-    // Section 3: Order Volume & Production Statistics
-    addSectionHeader(summarySheet, '3. ORDER VOLUME & PRODUCTION METRICS');
-    addStatRow(summarySheet, 'Total Orders Recorded', totalOrdersCount, '#,##0', 'All orders within selected timeframe');
-    addStatRow(summarySheet, 'Completed / Delivered Orders', completedOrdersCount, '#,##0', 'Fulfilled and claimed orders');
-    addStatRow(summarySheet, 'Active / In-Queue Orders', activeOrPendingCount, '#,##0', 'Orders currently in workshop or awaiting balance');
-    addStatRow(summarySheet, 'Canceled Orders', canceledOrdersCount, '#,##0', 'Voided or canceled tickets');
-    addStatRow(summarySheet, 'Total Garments / Pieces Produced', totalPiecesProduced, '#,##0', 'Total non-canceled pieces embroidered/packaged');
-    addStatRow(summarySheet, 'Average Order Value (AOV)', avgOrderValue, currencyFmt, 'Gross Billed Revenue ÷ Valid Non-Canceled Orders');
-
-    // =========================================================================
-    // SHEET 2: ORDER HISTORY LEDGER (Landscape Print-Ready)
-    // =========================================================================
-    const ledgerSheet = workbook.addWorksheet('Order History Ledger', {
-        views: [{ state: 'frozen', ySplit: 3 }],
+    // Single, clean, print-ready worksheet containing Financial Summary + Order History
+    const sheet = workbook.addWorksheet('Financial & Order Report', {
         pageSetup: {
             paperSize: 9, // A4
             orientation: 'landscape',
@@ -469,119 +256,268 @@ async function generateOrderHistoryExcelWorkbook({
             fitToWidth: 1,
             fitToHeight: 0,
             showGridLines: true,
-            printTitlesRow: '1:3',
-            margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
+            margins: { left: 0.35, right: 0.35, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
         }
     });
 
-    ledgerSheet.columns = [
-        { key: 'orderId', width: 15 },
-        { key: 'dateFormatted', width: 21 },
-        { key: 'client', width: 20 },
-        { key: 'itemsSummary', width: 36 },
-        { key: 'pieces', width: 9 },
-        { key: 'status', width: 18 },
-        { key: 'paymentMethod', width: 12 },
-        { key: 'paymentStatus', width: 12 },
-        { key: 'referenceNo', width: 17 },
-        { key: 'billed', width: 15 },
-        { key: 'moneySent', width: 15 },
-        { key: 'balanceDue', width: 15 },
-        { key: 'materialsCost', width: 15 },
-        { key: 'grossProfit', width: 15 },
-        { key: 'grossMargin', width: 13 }
+    sheet.columns = [
+        { key: 'orderId', width: 15 },       // A
+        { key: 'dateFormatted', width: 21 }, // B
+        { key: 'client', width: 19 },        // C
+        { key: 'itemsSummary', width: 34 },  // D
+        { key: 'qty', width: 8 },            // E
+        { key: 'payment', width: 12 },       // F
+        { key: 'status', width: 18 },        // G
+        { key: 'orderTotal', width: 15 },    // H
+        { key: 'moneySent', width: 15 },     // I
+        { key: 'balanceLeft', width: 14 }    // J
     ];
 
-    ledgerSheet.mergeCells('A1:O1');
-    const lTitle = ledgerSheet.getCell('A1');
-    lTitle.value = `${businessName.toUpperCase()} — DETAILED ORDER HISTORY LEDGER (${periodTitle.toUpperCase()})`;
-    lTitle.font = { name: 'Calibri', size: 13, bold: true, color: { argb: 'FFFFFFFF' } };
-    lTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B1E1E' } };
-    lTitle.alignment = { vertical: 'middle', horizontal: 'center' };
-    ledgerSheet.getRow(1).height = 26;
+    // 1. Report Title Banner
+    sheet.mergeCells('A1:J1');
+    const titleCell = sheet.getCell('A1');
+    titleCell.value = `${businessName.toUpperCase()} — FINANCIAL & ORDER HISTORY REPORT`;
+    titleCell.font = { name: 'Calibri', size: 14, bold: true, color: { argb: 'FFFFFFFF' } };
+    titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B1E1E' } };
+    titleCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getRow(1).height = 28;
 
-    ledgerSheet.mergeCells('A2:O2');
-    const lSub = ledgerSheet.getCell('A2');
-    lSub.value = `Generated: ${now.toLocaleString('en-US', { timeZone: 'Asia/Manila' })} PHT | Valid Orders: ${validOrdersCount} | Money Sent: ₱${totalMoneySent.toFixed(2)} | Overhead: ₱${operatingOverhead.toFixed(2)} | Net Profit: ₱${netProfitCollected.toFixed(2)} | ROI: ${(roiCollected * 100).toFixed(2)}%`;
-    lSub.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FF1E293B' } };
-    lSub.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } };
-    lSub.alignment = { vertical: 'middle', horizontal: 'center' };
-    ledgerSheet.getRow(2).height = 19;
+    sheet.mergeCells('A2:J2');
+    const subCell = sheet.getCell('A2');
+    subCell.value = `Period: ${periodTitle} (${formatShortDate(startDate)} – ${formatShortDate(now)})   •   ${businessAddress}`;
+    subCell.font = { name: 'Calibri', size: 10, color: { argb: 'FF334155' } };
+    subCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+    subCell.alignment = { vertical: 'middle', horizontal: 'center' };
+    sheet.getRow(2).height = 20;
 
-    const headerRow = ledgerSheet.addRow([
-        'Order ID',
-        'Date & Time (PHT)',
-        'Client / Customer',
-        'Items & Variants',
-        'Qty',
-        'Order Status',
-        'Method',
-        'Pay Status',
-        'GCash Ref No.',
-        'Billed Total',
-        'Money Sent',
-        'Balance Due',
-        'Materials Cost',
-        'Order Profit',
-        'Margin %'
-    ]);
-    headerRow.height = 22;
-    headerRow.eachCell((cell, colNumber) => {
-        cell.font = { name: 'Calibri', size: 9.5, bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-        cell.alignment = {
+    sheet.getRow(3).height = 8;
+
+    // 2. Clean Two-Box Financial Summary (Rows 4 to 10)
+    // Left Box (A-D): Sales & Money Sent | Right Box (F-J): Expenses, Profit & ROI
+    sheet.mergeCells('A4:C4');
+    sheet.getCell('A4').value = 'SALES & PAYMENTS';
+    sheet.getCell('D4').value = 'AMOUNT';
+
+    sheet.mergeCells('F4:H4');
+    sheet.getCell('F4').value = 'EXPENSES, PROFIT & ROI';
+    sheet.mergeCells('I4:J4');
+    sheet.getCell('I4').value = 'AMOUNT';
+
+    sheet.getRow(4).height = 22;
+    ['A4', 'B4', 'C4', 'D4', 'F4', 'G4', 'H4', 'I4', 'J4'].forEach(addr => {
+        const c = sheet.getCell(addr);
+        c.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+        c.alignment = {
             vertical: 'middle',
-            horizontal: colNumber >= 10 || colNumber === 5 ? 'right' : 'left',
-            wrapText: true
-        };
-        cell.border = {
-            top: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            bottom: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            left: { style: 'thin', color: { argb: 'FF94A3B8' } },
-            right: { style: 'thin', color: { argb: 'FF94A3B8' } }
+            horizontal: (addr === 'D4' || addr === 'I4' || addr === 'J4') ? 'right' : 'left'
         };
     });
 
-    if (enrichedRows.length === 0) {
-        const emptyRow = ledgerSheet.addRow(['No orders recorded in this selected period.']);
-        ledgerSheet.mergeCells(`A${emptyRow.number}:O${emptyRow.number}`);
+    const summaryPairs = [
+        {
+            leftLabel: 'Valid Orders',
+            leftVal: `${validOrdersCount} orders (${totalPieces} pcs)`,
+            leftFmt: null,
+            leftBold: false,
+            leftColor: 'FF0F172A',
+            rightLabel: 'Materials Cost',
+            rightVal: totalMaterialsCost,
+            rightFmt: currencyFmt,
+            rightBold: false,
+            rightColor: 'FF0F172A'
+        },
+        {
+            leftLabel: 'Total Revenue (Order Sales)',
+            leftVal: totalRevenue,
+            leftFmt: currencyFmt,
+            leftBold: true,
+            leftColor: 'FF0F172A',
+            rightLabel: `Overhead (₱${dailyRent.toLocaleString()}/day × ${periodDays}d)`,
+            rightVal: totalOverhead,
+            rightFmt: currencyFmt,
+            rightBold: false,
+            rightColor: 'FF0F172A'
+        },
+        {
+            leftLabel: 'Money Sent (Total Paid)',
+            leftVal: totalMoneySent,
+            leftFmt: currencyFmt,
+            leftBold: true,
+            leftColor: 'FF15803D',
+            rightLabel: 'Total Expenses (Materials + Overhead)',
+            rightVal: totalExpenses,
+            rightFmt: currencyFmt,
+            rightBold: true,
+            rightColor: 'FFB91C1C'
+        },
+        {
+            leftLabel: '   • GCash / Online',
+            leftVal: gcashMoneySent,
+            leftFmt: currencyFmt,
+            leftBold: false,
+            leftColor: 'FF334155',
+            rightLabel: 'NET PROFIT (Money Sent − Expenses)',
+            rightVal: netProfit,
+            rightFmt: currencyFmt,
+            rightBold: true,
+            rightColor: netProfit >= 0 ? 'FF15803D' : 'FFB91C1C',
+            rightHighlight: true
+        },
+        {
+            leftLabel: '   • Cash',
+            leftVal: cashMoneySent,
+            leftFmt: currencyFmt,
+            leftBold: false,
+            leftColor: 'FF334155',
+            rightLabel: 'ROI (Return on Investment)',
+            rightVal: roi,
+            rightFmt: percentFmt,
+            rightBold: true,
+            rightColor: roi >= 0 ? 'FF15803D' : 'FFB91C1C',
+            rightHighlight: true
+        },
+        {
+            leftLabel: 'Unpaid Balance',
+            leftVal: totalUnpaidBalance,
+            leftFmt: currencyFmt,
+            leftBold: totalUnpaidBalance > 0,
+            leftColor: totalUnpaidBalance > 0 ? 'FFB45309' : 'FF64748B',
+            rightLabel: 'Canceled Orders (Excluded)',
+            rightVal: `${canceledOrdersCount} order(s)`,
+            rightFmt: null,
+            rightBold: false,
+            rightColor: 'FF64748B'
+        }
+    ];
+
+    const thinBorder = {
+        top: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        bottom: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        left: { style: 'thin', color: { argb: 'FFCBD5E1' } },
+        right: { style: 'thin', color: { argb: 'FFCBD5E1' } }
+    };
+
+    summaryPairs.forEach((pair, idx) => {
+        const rNum = 5 + idx;
+        const row = sheet.getRow(rNum);
+        row.height = 20;
+
+        // Left side (A:C label, D value)
+        sheet.mergeCells(`A${rNum}:C${rNum}`);
+        const lLabel = sheet.getCell(`A${rNum}`);
+        const lVal = sheet.getCell(`D${rNum}`);
+        lLabel.value = pair.leftLabel;
+        lVal.value = pair.leftVal;
+        if (pair.leftFmt) lVal.numFmt = pair.leftFmt;
+
+        ['A', 'B', 'C', 'D'].forEach(col => {
+            const cell = sheet.getCell(`${col}${rNum}`);
+            cell.font = {
+                name: 'Calibri',
+                size: 10,
+                bold: col === 'D' ? true : pair.leftBold,
+                color: { argb: col === 'D' ? pair.leftColor : 'FF0F172A' }
+            };
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: pair.leftBold ? 'FFF8FAFC' : 'FFFFFFFF' }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: col === 'D' ? 'right' : 'left' };
+            cell.border = thinBorder;
+        });
+
+        // Right side (F:H label, I:J value)
+        sheet.mergeCells(`F${rNum}:H${rNum}`);
+        sheet.mergeCells(`I${rNum}:J${rNum}`);
+        const rLabel = sheet.getCell(`F${rNum}`);
+        const rVal = sheet.getCell(`I${rNum}`);
+        rLabel.value = pair.rightLabel;
+        rVal.value = pair.rightVal;
+        if (pair.rightFmt) rVal.numFmt = pair.rightFmt;
+
+        ['F', 'G', 'H', 'I', 'J'].forEach(col => {
+            const cell = sheet.getCell(`${col}${rNum}`);
+            const isValCol = col === 'I' || col === 'J';
+            cell.font = {
+                name: 'Calibri',
+                size: pair.rightHighlight ? 10.5 : 10,
+                bold: isValCol ? true : pair.rightBold,
+                color: { argb: isValCol ? pair.rightColor : 'FF0F172A' }
+            };
+            cell.fill = {
+                type: 'pattern',
+                pattern: 'solid',
+                fgColor: { argb: pair.rightHighlight ? 'FFF1F5F9' : 'FFFFFFFF' }
+            };
+            cell.alignment = { vertical: 'middle', horizontal: isValCol ? 'right' : 'left' };
+            cell.border = thinBorder;
+        });
+    });
+
+    sheet.getRow(11).height = 12;
+
+    // 3. Order History Table (Row 12 onward)
+    const tableHeaderRow = sheet.getRow(12);
+    tableHeaderRow.values = [
+        'Order ID',
+        'Date & Time',
+        'Customer',
+        'Items Ordered',
+        'Qty',
+        'Payment',
+        'Status',
+        'Order Total',
+        'Money Sent',
+        'Balance'
+    ];
+    tableHeaderRow.height = 22;
+    tableHeaderRow.eachCell((cell, colNumber) => {
+        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
+        cell.alignment = {
+            vertical: 'middle',
+            horizontal: (colNumber >= 8 || colNumber === 5) ? 'right' : 'left'
+        };
+        cell.border = thinBorder;
+    });
+
+    if (orderRows.length === 0) {
+        const emptyRow = sheet.addRow(['No orders recorded in this selected period.']);
+        sheet.mergeCells(`A${emptyRow.number}:J${emptyRow.number}`);
         emptyRow.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
+        emptyRow.getCell(1).font = { name: 'Calibri', size: 10, italic: true, color: { argb: 'FF64748B' } };
         emptyRow.height = 24;
     } else {
-        enrichedRows.forEach((r, idx) => {
-            const row = ledgerSheet.addRow([
+        orderRows.forEach((r, idx) => {
+            const row = sheet.addRow([
                 r.orderId,
                 r.dateFormatted,
                 r.client,
                 r.itemsSummary,
-                r.pieces,
+                r.displayQty,
+                r.paymentLabel,
                 r.status,
-                r.paymentMethod,
-                r.paymentStatus,
-                r.referenceNo,
-                r.billed,
+                r.orderTotal,
                 r.moneySent,
-                r.balanceDue,
-                r.materialsCost,
-                r.grossProfit,
-                r.grossMargin
+                r.balanceLeft
             ]);
             row.height = 20;
-            [10, 11, 12, 13, 14].forEach(c => { row.getCell(c).numFmt = currencyFmt; });
-            row.getCell(15).numFmt = percentFmt;
+            [8, 9, 10].forEach(c => { row.getCell(c).numFmt = currencyFmt; });
 
-            const zebraBg = r.canceled ? 'FFFEF2F2' : (idx % 2 === 1 ? 'FFF8FAFC' : 'FFFFFFFF');
+            const bg = r.canceled ? 'FFFEF2F2' : (idx % 2 === 1 ? 'FFF8FAFC' : 'FFFFFFFF');
             row.eachCell((cell, colNumber) => {
                 cell.font = {
                     name: 'Calibri',
                     size: 9.5,
                     color: { argb: r.canceled ? 'FF991B1B' : 'FF0F172A' },
-                    strike: r.canceled && colNumber >= 10
+                    strike: r.canceled && colNumber >= 8
                 };
-                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: zebraBg } };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
                 cell.alignment = {
                     vertical: 'middle',
-                    horizontal: (colNumber >= 10 || colNumber === 5) ? 'right' : 'left'
+                    horizontal: (colNumber >= 8 || colNumber === 5) ? 'right' : 'left'
                 };
                 cell.border = {
                     top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
@@ -592,33 +528,27 @@ async function generateOrderHistoryExcelWorkbook({
             });
         });
 
-        // Ledger Totals Row
-        const totalsRow = ledgerSheet.addRow([
-            'TOTALS (VALID)',
+        // Totals Row
+        const totalRow = sheet.addRow([
+            'TOTAL',
             `${validOrdersCount} valid order(s)`,
             '',
             '',
-            totalPiecesProduced,
+            totalPieces,
             '',
             '',
-            '',
-            '',
-            grossBilledRevenue,
+            totalRevenue,
             totalMoneySent,
-            totalOutstandingBalance,
-            totalMaterialsCost,
-            grossProfitCollected,
-            grossMarginPct
+            totalUnpaidBalance
         ]);
-        totalsRow.height = 23;
-        [10, 11, 12, 13, 14].forEach(c => { totalsRow.getCell(c).numFmt = currencyFmt; });
-        totalsRow.getCell(15).numFmt = percentFmt;
-        totalsRow.eachCell((cell, colNumber) => {
+        totalRow.height = 23;
+        [8, 9, 10].forEach(c => { totalRow.getCell(c).numFmt = currencyFmt; });
+        totalRow.eachCell((cell, colNumber) => {
             cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
             cell.alignment = {
                 vertical: 'middle',
-                horizontal: (colNumber >= 10 || colNumber === 5) ? 'right' : 'left'
+                horizontal: (colNumber >= 8 || colNumber === 5) ? 'right' : 'left'
             };
             cell.border = {
                 top: { style: 'medium', color: { argb: 'FF475569' } },
@@ -629,131 +559,8 @@ async function generateOrderHistoryExcelWorkbook({
         });
     }
 
-    // =========================================================================
-    // SHEET 3: DAILY FINANCIAL BREAKDOWN (Print-Ready)
-    // =========================================================================
-    const dailySheet = workbook.addWorksheet('Daily Breakdown', {
-        views: [{ state: 'frozen', ySplit: 2 }],
-        pageSetup: {
-            paperSize: 9,
-            orientation: 'landscape',
-            fitToPage: true,
-            fitToWidth: 1,
-            fitToHeight: 0,
-            showGridLines: true,
-            printTitlesRow: '1:2',
-            margins: { left: 0.4, right: 0.4, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 }
-        }
-    });
-
-    dailySheet.columns = [
-        { key: 'date', width: 16 },
-        { key: 'orders', width: 12 },
-        { key: 'pieces', width: 12 },
-        { key: 'billed', width: 18 },
-        { key: 'sent', width: 18 },
-        { key: 'materials', width: 18 },
-        { key: 'overhead', width: 18 },
-        { key: 'netProfit', width: 18 },
-        { key: 'roi', width: 14 }
-    ];
-
-    dailySheet.mergeCells('A1:I1');
-    const dTitle = dailySheet.getCell('A1');
-    dTitle.value = `${businessName.toUpperCase()} — DAILY REVENUE, OVERHEAD, NET PROFIT & ROI (${periodTitle.toUpperCase()})`;
-    dTitle.font = { name: 'Calibri', size: 12.5, bold: true, color: { argb: 'FFFFFFFF' } };
-    dTitle.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF8B1E1E' } };
-    dTitle.alignment = { vertical: 'middle', horizontal: 'center' };
-    dailySheet.getRow(1).height = 25;
-
-    const dHeader = dailySheet.addRow([
-        'Date (PHT)',
-        'Orders',
-        'Pieces',
-        'Billed Revenue',
-        'Money Sent',
-        'Materials Cost',
-        'Daily Overhead',
-        'Daily Net Profit',
-        'Daily ROI %'
-    ]);
-    dHeader.height = 22;
-    dHeader.eachCell((cell, colNumber) => {
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } };
-        cell.alignment = { vertical: 'middle', horizontal: colNumber === 1 ? 'left' : 'right' };
-    });
-
-    const sortedDays = Object.values(dailyBuckets).sort((a, b) => a.dateKey.localeCompare(b.dateKey));
-    sortedDays.forEach((b, idx) => {
-        const dayExpenses = b.materialsCost + b.overhead;
-        const dayNetProfit = b.moneySent - dayExpenses;
-        const dayRoi = dayExpenses > 0 ? (dayNetProfit / dayExpenses) : 0;
-
-        const row = dailySheet.addRow([
-            b.dateKey,
-            b.ordersCount,
-            b.piecesCount,
-            b.billedRevenue,
-            b.moneySent,
-            b.materialsCost,
-            b.overhead,
-            dayNetProfit,
-            dayRoi
-        ]);
-        row.height = 19;
-        [4, 5, 6, 7, 8].forEach(c => { row.getCell(c).numFmt = currencyFmt; });
-        row.getCell(9).numFmt = percentFmt;
-
-        const bg = idx % 2 === 1 ? 'FFF8FAFC' : 'FFFFFFFF';
-        row.eachCell((cell, colNumber) => {
-            cell.font = {
-                name: 'Calibri',
-                size: 9.5,
-                bold: colNumber === 8,
-                color: {
-                    argb: colNumber === 8
-                        ? (dayNetProfit >= 0 ? 'FF15803D' : 'FFB91C1C')
-                        : 'FF0F172A'
-                }
-            };
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } };
-            cell.alignment = { vertical: 'middle', horizontal: colNumber === 1 ? 'left' : 'right' };
-            cell.border = {
-                top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
-                right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
-            };
-        });
-    });
-
-    const dTotal = dailySheet.addRow([
-        `TOTAL (${periodDays}d)`,
-        validOrdersCount,
-        totalPiecesProduced,
-        grossBilledRevenue,
-        totalMoneySent,
-        totalMaterialsCost,
-        operatingOverhead,
-        netProfitCollected,
-        roiCollected
-    ]);
-    dTotal.height = 23;
-    [4, 5, 6, 7, 8].forEach(c => { dTotal.getCell(c).numFmt = currencyFmt; });
-    dTotal.getCell(9).numFmt = percentFmt;
-    dTotal.eachCell((cell, colNumber) => {
-        cell.font = { name: 'Calibri', size: 10, bold: true, color: { argb: 'FF0F172A' } };
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE2E8F0' } };
-        cell.alignment = { vertical: 'middle', horizontal: colNumber === 1 ? 'left' : 'right' };
-        cell.border = {
-            top: { style: 'medium', color: { argb: 'FF475569' } },
-            bottom: { style: 'double', color: { argb: 'FF475569' } }
-        };
-    });
-
     const dateStamp = new Date(now.getTime() + phtOffsetMs).toISOString().slice(0, 10);
-    const filename = `ORDER_HISTORY_FINANCIAL_${fileSlug}_${dateStamp}.xlsx`;
+    const filename = `FINANCIAL_REPORT_${fileSlug}_${dateStamp}.xlsx`;
     const buffer = await workbook.xlsx.writeBuffer();
 
     return {

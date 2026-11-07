@@ -165,7 +165,20 @@ async function autoHealDatabaseModel(field, oldModel, newModel) {
     }
 }
 
-const fetchGroqChatWithFallback = async (apiKey, url, initialModel, payloadWithoutModel) => {
+const fetchGroqChatWithFallback = async (apiKeyOrOpts, urlArg, initialModelArg, payloadWithoutModelArg) => {
+    let apiKey = apiKeyOrOpts;
+    let url = urlArg;
+    let initialModel = initialModelArg;
+    let payloadWithoutModel = payloadWithoutModelArg;
+
+    if (apiKeyOrOpts && typeof apiKeyOrOpts === 'object') {
+        const { apiKey: k, url: u, primaryModel, initialModel: im, model, ...restPayload } = apiKeyOrOpts;
+        apiKey = k;
+        url = u || 'https://api.groq.com/openai/v1/chat/completions';
+        initialModel = primaryModel || im || model;
+        payloadWithoutModel = restPayload;
+    }
+
     const modelsToTry = [];
     const addCandidate = (m) => {
         if (m && !modelsToTry.includes(m) && !decommissionedModelsCache.has(m)) {

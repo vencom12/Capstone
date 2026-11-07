@@ -761,7 +761,7 @@ export default function PanelAnalytics({
             disabled={isLoadingBi}
             onClick={() => fetchBiData(true)}
             className="px-3.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-text-main border border-border-glass text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shrink-0"
-            title="Re-run operational learning analysis over database records"
+            title="Refresh analytics and recommendations"
           >
             <svg
               width="13"
@@ -776,7 +776,7 @@ export default function PanelAnalytics({
               <polyline points="1 20 1 14 7 14" />
               <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
             </svg>
-            <span>{isLoadingBi ? 'Evaluating...' : 'Re-analyze Model'}</span>
+            <span>{isLoadingBi ? 'Refreshing...' : 'Refresh'}</span>
           </button>
         </div>
 
@@ -940,9 +940,9 @@ export default function PanelAnalytics({
                     <th className="pb-2.5 font-bold">Item Type</th>
                     <th className="pb-2.5 font-bold text-center">Velocity Status</th>
                     <th className="pb-2.5 font-bold text-center">Pieces Crafted</th>
-                    <th className="pb-2.5 font-bold text-right">Total Bounty</th>
+                    <th className="pb-2.5 font-bold text-right">Sales</th>
                     <th className="pb-2.5 font-bold text-right">Material Cost</th>
-                    <th className="pb-2.5 font-bold text-right">Net Profit</th>
+                    <th className="pb-2.5 font-bold text-right">Item Profit</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border-glass">
