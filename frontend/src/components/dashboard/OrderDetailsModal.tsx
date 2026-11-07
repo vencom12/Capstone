@@ -10,11 +10,11 @@ import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';
 import OrderReviewModal from '@/components/dashboard/OrderReviewModal';
 import InvoiceModal from '@/components/dashboard/InvoiceModal';
 import type { Order } from '@/lib/types';
-import { api } from '@/lib/api';
+import { api, apiFetch } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { useProductStore } from '@/stores/useProductStore';
 import { useBasketStore } from '@/stores/useBasketStore';
-import { getOrderStage, TOTAL_STEPS } from '@/lib/orderStatus';
+import { getOrderStage, getOrderCreditSummary, TOTAL_STEPS } from '@/lib/orderStatus';
 
 interface OrderDetailsModalProps {
   order: Order | null;
@@ -51,10 +51,15 @@ export default function OrderDetailsModal({
   const [isCancelling, setIsCancelling] = useState(false);
   const [helpCategory, setHelpCategory] = useState<string | undefined>(undefined);
   const [expandedRosterIdx, setExpandedRosterIdx] = useState<number | null>(null);
+  const [balanceRef, setBalanceRef] = useState('');
+  const [isSubmittingBalance, setIsSubmittingBalance] = useState(false);
+  const [isUploadingTopUp, setIsUploadingTopUp] = useState(false);
+  const [topUpReceiptUrl, setTopUpReceiptUrl] = useState('');
 
   if (!order) return null;
 
   const stage = getOrderStage(order);
+  const credit = getOrderCreditSummary(order);
   const percent = Math.min(100, Math.max(10, (stage.step / TOTAL_STEPS) * 100));
 
   const isCanceled = stage.tone === 'cancelled';
@@ -107,6 +112,58 @@ export default function OrderDetailsModal({
       showToast(err.message || 'Failed to cancel order', 'error');
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleUploadBalanceReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploadingTopUp(true);
+    try {
+      const formData = new FormData();
+      formData.append('receipt', file);
+      const uploadData = await apiFetch<{ url?: string }>('/api/customer/upload-receipt', {
+        method: 'POST',
+        body: formData
+      });
+      if (uploadData?.url) {
+        setTopUpReceiptUrl(uploadData.url);
+        showToast('Remaining balance receipt attached!', 'success');
+      } else {
+        showToast('Failed to upload receipt image.', 'error');
+      }
+    } catch {
+      showToast('Could not upload receipt screenshot. You can still submit your GCash reference number.', 'warning');
+    } finally {
+      setIsUploadingTopUp(false);
+    }
+  };
+
+  const handleSubmitRemainingBalance = async () => {
+    const cleanRef = balanceRef.trim();
+    if (!cleanRef && !topUpReceiptUrl) {
+      showToast('Please enter your GCash reference number or upload your receipt screenshot for the remaining balance.', 'warning');
+      return;
+    }
+    setIsSubmittingBalance(true);
+    try {
+      const res = await api.post<{ success: boolean; message: string }>(
+        `/api/customer/orders/${order.id || order.orderId}/pay-balance`,
+        {
+          referenceNumber: cleanRef || undefined,
+          receiptUrl: topUpReceiptUrl || undefined,
+          amountPaid: credit.outstandingBalance,
+          paymentMethod: 'gcash'
+        }
+      );
+      showToast(res?.message || 'Remaining balance payment submitted!', 'success');
+      setBalanceRef('');
+      setTopUpReceiptUrl('');
+      useProductStore.getState().fetchDashboardState().catch(() => {});
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to submit remaining balance payment.', 'error');
+    } finally {
+      setIsSubmittingBalance(false);
     }
   };
 
@@ -259,6 +316,73 @@ export default function OrderDetailsModal({
             <div className="w-full h-1.5 bg-border-glass rounded-full overflow-hidden">
               <div className="h-full bg-primary rounded-full transition-all duration-500" style={{ width: `${percent}%` }} />
             </div>
+          </div>
+        )}
+
+        {/* 3b. Option 3: Insufficient Payment / Account Credit & Outstanding Balance Breakdown */}
+        {credit.isInsufficientPayment && !isCanceled && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/35 flex flex-col gap-2.5">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
+                  Insufficient Payment — Remaining Balance Required
+                </span>
+                <p className="text-[0.72rem] text-text-main m-0 leading-relaxed">
+                  What you sent (<strong className="font-mono">₱{credit.accountCredit.toFixed(2)}</strong>) was not enough. We converted your payment into <strong>Account Credit</strong>. Please pay the remaining balance (<strong className="font-mono">₱{credit.outstandingBalance.toFixed(2)}</strong>) for your order to be processed.
+                </p>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-500 text-[0.62rem] font-bold uppercase shrink-0">
+                Lowest Priority
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-bg-surface border border-border-glass font-mono text-xs">
+              <div>
+                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Required</span>
+                <span className="font-black text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Account Credit</span>
+                <span className="font-black text-emerald-500">₱{credit.accountCredit.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Outstanding Balance</span>
+                <span className="font-black text-amber-500">₱{credit.outstandingBalance.toFixed(2)}</span>
+              </div>
+            </div>
+
+            {credit.balanceTopUpPending ? (
+              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[0.72rem] text-emerald-500 font-semibold">
+                ✓ Remaining balance payment (+₱{credit.balanceTopUpAmount.toFixed(2)}{credit.balanceTopUpRef ? ` • Ref: ${credit.balanceTopUpRef}` : ''}) has been submitted and is awaiting staff verification.
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2 pt-1 border-t border-amber-500/20">
+                <span className="text-[0.7rem] font-bold text-text-main">
+                  Complete Remaining Balance (₱{credit.outstandingBalance.toFixed(2)}) via GCash (0928 810 3928):
+                </span>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <input
+                    type="text"
+                    placeholder="Enter GCash Reference # for remaining balance"
+                    value={balanceRef}
+                    onChange={(e) => setBalanceRef(e.target.value)}
+                    className="flex-1 bg-bg-surface border border-border-glass rounded-lg px-3 py-1.5 text-xs font-mono text-text-main outline-none focus:border-primary"
+                  />
+                  <label className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass text-xs font-bold text-text-main cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
+                    <input type="file" accept="image/*" className="hidden" onChange={handleUploadBalanceReceipt} />
+                    <span>{isUploadingTopUp ? 'Uploading...' : topUpReceiptUrl ? '✓ Screenshot Attached' : 'Upload Screenshot'}</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleSubmitRemainingBalance}
+                    disabled={isSubmittingBalance}
+                    className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer border-none shrink-0 disabled:opacity-50"
+                  >
+                    {isSubmittingBalance ? 'Submitting...' : `Pay ₱${credit.outstandingBalance.toFixed(2)}`}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 

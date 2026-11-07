@@ -30,7 +30,7 @@ async function recalculateQueuePriorities(io) {
         const activeOrders = await prisma.order.findMany({
             where: {
                 status: {
-                    in: ['Pending Payment', 'In Queue', 'Preparing Order']
+                    in: ['Pending Payment', 'Awaiting Payment', 'Insufficient Payment', 'In Queue', 'Preparing Order']
                 }
             }
         });
@@ -132,8 +132,14 @@ async function recalculateQueuePriorities(io) {
             const tierScore = Math.min(10, completedCount);
             score += tierScore;
 
-            // Strict 0-100 cap
-            const finalScore = Math.min(100, score);
+            // Strict 0-100 cap (or lowest priority score -10 for Insufficient Payment / Outstanding Balance orders)
+            const pers = (order.personalization && typeof order.personalization === 'object') ? order.personalization : {};
+            const hasOutstandingBalance =
+                order.status === 'Insufficient Payment' ||
+                order.paymentStatus === 'partial' ||
+                Boolean(pers.insufficientPayment) ||
+                (Number(pers.outstandingBalance) || 0) > 0;
+            const finalScore = hasOutstandingBalance ? -10 : Math.min(100, score);
 
             // Update database row
             return prisma.order.update({

@@ -2549,6 +2549,7 @@ exports.verifyOrderPayment = async (req, res) => {
         const targetId = req.params.id;
         const verifiedBy = req.user?.username || 'Admin';
         const now = new Date();
+        const { action, amountReceived, referenceNumber, targetStatus } = req.body || {};
 
         const order = await prisma.order.findFirst({
             where: {
@@ -2557,7 +2558,7 @@ exports.verifyOrderPayment = async (req, res) => {
                     { orderId: targetId }
                 ]
             },
-            include: { receipt: true, transaction: true }
+            include: { receipt: true, transaction: true, user: true }
         });
 
         if (!order) {
@@ -2569,16 +2570,13 @@ exports.verifyOrderPayment = async (req, res) => {
             : {};
 
         const resolvedRef = String(
-            req.body?.referenceNumber ||
+            referenceNumber ||
             order.receipt?.referenceId ||
             currentPers.referenceNumber ||
             order.transaction?.transactionID ||
             ''
         ).trim();
 
-        currentPers.smsVerified = true;
-        currentPers.smsVerifiedBy = verifiedBy;
-        currentPers.smsVerifiedAt = now.toISOString();
         if (resolvedRef) {
             currentPers.referenceNumber = resolvedRef;
         }
@@ -2592,10 +2590,143 @@ exports.verifyOrderPayment = async (req, res) => {
             )
         );
 
-        const nextStatus = (order.status === 'Awaiting Payment' || order.paymentStatus !== 'paid')
+        const parsedAmount = amountReceived !== undefined && amountReceived !== null && amountReceived !== ''
+            ? parseFloat(amountReceived)
+            : null;
+
+        // MODE 1: Option 3 — Convert Difference Into Customer Credit (Insufficient Payment Sent)
+        if (action === 'record_partial' || (parsedAmount !== null && !isNaN(parsedAmount) && parsedAmount >= 0 && parsedAmount < order.totalAmount - 0.04)) {
+            const creditAmount = Math.max(0, Math.round((parsedAmount ?? 0) * 100) / 100);
+            const balanceDue = Math.max(0, Math.round((order.totalAmount - creditAmount) * 100) / 100);
+
+            currentPers.accountCredit = creditAmount;
+            currentPers.outstandingBalance = balanceDue;
+            currentPers.requiredAmount = order.totalAmount;
+            currentPers.insufficientPayment = true;
+            currentPers.employeeApprovedPartial = false;
+            currentPers.insufficientPaymentRecordedBy = verifiedBy;
+            currentPers.insufficientPaymentRecordedAt = now.toISOString();
+            currentPers.insufficientPaymentNote = `What you sent (₱${creditAmount.toFixed(2)}) was not enough. Required: ₱${order.totalAmount.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}. Please pay the remaining balance for your order to be processed.`;
+
+            const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+            history.push({
+                status: 'Insufficient Payment',
+                timestamp: now.toISOString(),
+                actor: verifiedBy,
+                hub: 'Eds Towels Pacific Mall Lucena Hub',
+                note: `Insufficient payment recorded. Required: ₱${order.totalAmount.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}.`
+            });
+            currentPers.statusHistory = history;
+
+            const updatedOrder = await prisma.order.update({
+                where: { id: order.id },
+                data: {
+                    paymentStatus: 'partial',
+                    status: 'Insufficient Payment',
+                    priorityScore: -10,
+                    progress: 5,
+                    personalization: currentPers
+                },
+                include: { receipt: true, transaction: true }
+            });
+
+            if (order.receipt) {
+                await prisma.receipt.update({
+                    where: { id: order.receipt.id },
+                    data: {
+                        status: 'Manual Review',
+                        aiVerificationStatus: 'flagged',
+                        flaggedReason: `Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}`,
+                        ...(resolvedRef ? { referenceId: resolvedRef } : {})
+                    }
+                });
+            }
+
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id, order: updatedOrder });
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+            }
+
+            return res.json({
+                success: true,
+                message: `Recorded Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)} for Order #${updatedOrder.orderId}. Customer has been notified.`,
+                order: updatedOrder
+            });
+        }
+
+        // MODE 2: Employee / Admin Discretion to Process Order Anyway while Balance is Outstanding
+        if (action === 'process_anyway') {
+            const creditAmount = Number(currentPers.accountCredit) || 0;
+            const balanceDue = Number(currentPers.outstandingBalance) || Math.max(0, Math.round((order.totalAmount - creditAmount) * 100) / 100);
+            const chosenNextStatus = targetStatus || (needsStitching ? 'In Queue' : 'Preparing Order');
+            const chosenProgress = chosenNextStatus === 'Preparing Order' ? 30 : 10;
+
+            currentPers.employeeApprovedPartial = true;
+            currentPers.approvedPartialBy = verifiedBy;
+            currentPers.approvedPartialAt = now.toISOString();
+            currentPers.insufficientPayment = balanceDue > 0;
+
+            const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+            history.push({
+                status: chosenNextStatus,
+                timestamp: now.toISOString(),
+                actor: verifiedBy,
+                hub: 'Eds Towels Pacific Mall Lucena Hub',
+                note: `Approved for processing by ${verifiedBy} with Account Credit: ₱${creditAmount.toFixed(2)} and Outstanding Balance: ₱${balanceDue.toFixed(2)} to be settled.`
+            });
+            currentPers.statusHistory = history;
+
+            const updatedOrder = await prisma.order.update({
+                where: { id: order.id },
+                data: {
+                    paymentStatus: balanceDue > 0 ? 'partial' : 'paid',
+                    status: chosenNextStatus,
+                    priorityScore: -10,
+                    progress: chosenProgress,
+                    personalization: currentPers
+                },
+                include: { receipt: true, transaction: true }
+            });
+
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id, order: updatedOrder });
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+            }
+
+            return res.json({
+                success: true,
+                message: `Order #${updatedOrder.orderId} moved to ${chosenNextStatus} (Lowest Priority • Remaining Balance: ₱${balanceDue.toFixed(2)}).`,
+                order: updatedOrder
+            });
+        }
+
+        // MODE 3: Full Payment Verification or Remaining Balance Settlement
+        currentPers.smsVerified = true;
+        currentPers.smsVerifiedBy = verifiedBy;
+        currentPers.smsVerifiedAt = now.toISOString();
+        currentPers.accountCredit = order.totalAmount;
+        currentPers.outstandingBalance = 0;
+        currentPers.insufficientPayment = false;
+        currentPers.balanceTopUpPending = false;
+        currentPers.balanceSettledAt = now.toISOString();
+        currentPers.balanceSettledBy = verifiedBy;
+
+        const nextStatus = (order.status === 'Awaiting Payment' || order.status === 'Insufficient Payment' || order.paymentStatus !== 'paid')
             ? (needsStitching ? 'In Queue' : 'Ready For Pick Up')
             : order.status;
-        const nextProgress = nextStatus === 'Ready For Pick Up' ? 90 : Math.max(order.progress || 5, 5);
+        const nextProgress = nextStatus === 'Ready For Pick Up' ? 90 : Math.max(order.progress || 10, 10);
+
+        const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+        history.push({
+            status: nextStatus,
+            timestamp: now.toISOString(),
+            actor: verifiedBy,
+            hub: 'Eds Towels Pacific Mall Lucena Hub',
+            note: `Full payment (₱${order.totalAmount.toFixed(2)}) confirmed by ${verifiedBy}.`
+        });
+        currentPers.statusHistory = history;
 
         const updatedOrder = await prisma.order.update({
             where: { id: order.id },
@@ -2615,6 +2746,7 @@ exports.verifyOrderPayment = async (req, res) => {
                     status: 'Verified',
                     aiVerificationStatus: 'verified',
                     flaggedReason: null,
+                    amount: order.totalAmount,
                     ...(resolvedRef ? { referenceId: resolvedRef } : {})
                 }
             });
@@ -2623,19 +2755,23 @@ exports.verifyOrderPayment = async (req, res) => {
         if (order.transaction) {
             await prisma.transaction.update({
                 where: { id: order.transaction.id },
-                data: { status: 'completed' }
+                data: { status: 'completed', amount: order.totalAmount }
             });
         }
 
         const io = req.app.get('io');
         if (io) {
-            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id });
+            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id, order: updatedOrder });
             socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+            const { recalculateQueuePriorities } = require('../../utils/aiScheduler');
+            setImmediate(() => {
+                recalculateQueuePriorities(io).catch(() => {});
+            });
         }
 
         return res.json({
             success: true,
-            message: `GCash Reference ${resolvedRef ? '(...' + resolvedRef.slice(-4) + ')' : ''} confirmed! Order #${updatedOrder.orderId} is verified.`,
+            message: `GCash Reference ${resolvedRef ? '(...' + resolvedRef.slice(-4) + ')' : ''} confirmed! Order #${updatedOrder.orderId} is fully paid and verified.`,
             order: updatedOrder
         });
     } catch (err) {

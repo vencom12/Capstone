@@ -7,6 +7,7 @@ import { CardSkeleton } from '@/components/ui/Skeletons';
 import {
   getOrderStage,
   getOrderTitle,
+  getOrderCreditSummary,
   TOTAL_STEPS,
   TONE_CLASSES,
 } from '@/lib/orderStatus';
@@ -27,6 +28,7 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
   onReorder: (o: Order) => void;
 }) {
   const stage = getOrderStage(order);
+  const credit = getOrderCreditSummary(order);
   const title = getOrderTitle(order);
   const thumb = order.items?.[0]?.imageUrl;
   const percent = stage.step === 0 ? 0 : Math.round((stage.step / TOTAL_STEPS) * 100);
@@ -60,6 +62,32 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
           {stage.label}
         </span>
       </div>
+
+      {credit.isInsufficientPayment && (
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col gap-2">
+          <div className="flex items-start justify-between gap-2">
+            <span className="text-[0.72rem] font-bold text-amber-500 leading-snug">
+              {credit.balanceTopUpPending
+                ? `Remaining balance payment (+₱${credit.balanceTopUpAmount.toFixed(2)}) submitted — awaiting staff confirmation.`
+                : `What you sent (₱${credit.accountCredit.toFixed(2)}) was not enough. Please pay the remaining balance for your order to be processed.`}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface/90 border border-border-glass text-[0.68rem] font-mono">
+            <div>
+              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Required</span>
+              <span className="font-bold text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Account Credit</span>
+              <span className="font-bold text-emerald-500">₱{credit.accountCredit.toFixed(2)}</span>
+            </div>
+            <div>
+              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Outstanding Balance</span>
+              <span className="font-bold text-amber-500">₱{credit.outstandingBalance.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {stage.isActive && (
         <div className="flex flex-col gap-1.5">
@@ -105,9 +133,17 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
             <button
               type="button"
               onClick={() => onTrack(order)}
-              className="px-3.5 py-1.5 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5 active:scale-[0.98]"
+              className={`px-3.5 py-1.5 rounded-lg text-white text-xs font-bold transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5 active:scale-[0.98] ${
+                credit.isInsufficientPayment && !credit.balanceTopUpPending
+                  ? 'bg-amber-600 hover:bg-amber-500'
+                  : 'bg-primary hover:bg-primary/90'
+              }`}
             >
-              <span>Track &amp; Details</span>
+              <span>
+                {credit.isInsufficientPayment && !credit.balanceTopUpPending
+                  ? `Pay Balance (₱${credit.outstandingBalance.toFixed(2)})`
+                  : 'Track & Details'}
+              </span>
               <span>→</span>
             </button>
           </div>

@@ -628,12 +628,43 @@ exports.submitOrder = async (req, res) => {
             orderPersonalization.requiresEmbroidery = requiresEmbroidery;
             orderPersonalization.packagingPriority = !requiresEmbroidery ? 2 : undefined;
 
+            const rawPaidInput = req.body.paidAmount ?? req.body.accountCredit ?? personalization?.accountCredit;
+            const parsedPaidAmount = (rawPaidInput !== undefined && rawPaidInput !== null && rawPaidInput !== '')
+                ? parseFloat(rawPaidInput)
+                : null;
+            const isInsufficientPaymentOrder = Boolean(
+                !isInstantApproved &&
+                parsedPaidAmount !== null &&
+                !isNaN(parsedPaidAmount) &&
+                parsedPaidAmount > 0 &&
+                parsedPaidAmount < numTotal - 0.04
+            );
+
+            if (isInsufficientPaymentOrder) {
+                const creditAmount = Math.max(0, Math.round(parsedPaidAmount * 100) / 100);
+                const balanceDue = Math.max(0, Math.round((numTotal - creditAmount) * 100) / 100);
+                orderPersonalization.accountCredit = creditAmount;
+                orderPersonalization.outstandingBalance = balanceDue;
+                orderPersonalization.requiredAmount = numTotal;
+                orderPersonalization.insufficientPayment = true;
+                orderPersonalization.insufficientPaymentNote = `What you sent (₱${creditAmount.toFixed(2)}) was not enough. Required: ₱${numTotal.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}. Please pay the remaining balance for your order to be processed.`;
+                orderPersonalization.statusHistory = [
+                    {
+                        status: 'Insufficient Payment',
+                        timestamp: new Date().toISOString(),
+                        actor: 'Customer Checkout',
+                        hub: 'Eds Towels Pacific Mall Lucena Hub',
+                        note: `Partial payment received. Required: ₱${numTotal.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}.`
+                    }
+                ];
+            }
+
             const initialOnlineStatus = isInstantApproved 
                 ? 'In Queue' 
-                : 'Awaiting Payment';
+                : (isInsufficientPaymentOrder ? 'Insufficient Payment' : 'Awaiting Payment');
             const initialOnlineProgress = isInstantApproved 
                 ? (requiresEmbroidery ? 5 : 10) 
-                : 0;
+                : (isInsufficientPaymentOrder ? 5 : 0);
 
             const order = await tx.order.create({
                 data: {
@@ -644,8 +675,9 @@ exports.submitOrder = async (req, res) => {
                     items: sanitizedItems, // JSON field
                     totalAmount: numTotal,
                     paymentMethod,
-                    paymentStatus: isInstantApproved ? 'paid' : 'unpaid',
+                    paymentStatus: isInstantApproved ? 'paid' : (isInsufficientPaymentOrder ? 'partial' : 'unpaid'),
                     status: initialOnlineStatus,
+                    priorityScore: isInsufficientPaymentOrder ? -10 : 0,
                     address,
                     deliveryTime: finalClaimSchedule,
                     notes: notes || (!requiresEmbroidery ? 'Plain items — packaging only (2-5 mins)' : null),
@@ -2053,5 +2085,126 @@ exports.deleteAccount = async (req, res) => {
     } catch (err) {
         console.error('customer deleteAccount error:', err);
         res.status(500).json({ message: err.message || 'Server error processing account closure' });
+    }
+};
+
+/**
+ * Option 3: Customer Self-Service Remaining Balance Completion
+ * Allows a customer to pay their remaining Outstanding Balance via GCash (receipt/reference) or Store Wallet.
+ */
+exports.payRemainingBalance = async (req, res) => {
+    try {
+        const userId = req.user.id;
+        const targetId = req.params.id;
+        const { referenceNumber, receiptUrl, amountPaid, paymentMethod = 'gcash' } = req.body || {};
+
+        const order = await prisma.order.findFirst({
+            where: {
+                userId,
+                OR: [
+                    { id: targetId },
+                    { orderId: targetId }
+                ]
+            },
+            include: { receipt: true, transaction: true }
+        });
+
+        if (!order) {
+            return res.status(404).json({ message: 'Order not found.' });
+        }
+
+        const currentPers = (order.personalization && typeof order.personalization === 'object')
+            ? { ...order.personalization }
+            : {};
+
+        const currentCredit = Number(currentPers.accountCredit) || 0;
+        const currentBalance = Number(currentPers.outstandingBalance) || Math.max(0, Math.round((order.totalAmount - currentCredit) * 100) / 100);
+
+        if (currentBalance <= 0 && order.paymentStatus === 'paid') {
+            return res.status(400).json({ message: 'This order is already paid in full.' });
+        }
+
+        const cleanRef = String(referenceNumber || '').trim();
+        if (paymentMethod === 'gcash' && !cleanRef && !receiptUrl) {
+            return res.status(400).json({ message: 'Please provide your GCash reference number or upload your receipt screenshot for the remaining balance.' });
+        }
+
+        const topUpAmount = amountPaid !== undefined && !isNaN(parseFloat(amountPaid)) && parseFloat(amountPaid) > 0
+            ? Math.round(parseFloat(amountPaid) * 100) / 100
+            : currentBalance;
+
+        const now = new Date();
+        const paymentHistory = Array.isArray(currentPers.paymentHistory) ? [...currentPers.paymentHistory] : [];
+        if (paymentHistory.length === 0 && currentCredit > 0) {
+            paymentHistory.push({
+                amount: currentCredit,
+                referenceNumber: currentPers.referenceNumber || order.receipt?.referenceId || null,
+                timestamp: order.createdAt ? new Date(order.createdAt).toISOString() : now.toISOString(),
+                note: 'Initial Account Credit'
+            });
+        }
+        paymentHistory.push({
+            amount: topUpAmount,
+            referenceNumber: cleanRef || null,
+            receiptUrl: receiptUrl || null,
+            timestamp: now.toISOString(),
+            note: 'Remaining balance payment submitted by customer'
+        });
+
+        currentPers.paymentHistory = paymentHistory;
+        currentPers.balanceTopUpPending = true;
+        currentPers.balanceTopUpAmount = topUpAmount;
+        currentPers.balanceTopUpRef = cleanRef || null;
+        currentPers.balanceTopUpReceiptUrl = receiptUrl || null;
+        currentPers.balanceTopUpSubmittedAt = now.toISOString();
+        if (cleanRef) {
+            currentPers.referenceNumber = currentPers.referenceNumber
+                ? `${currentPers.referenceNumber} / +${cleanRef}`
+                : cleanRef;
+        }
+
+        const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+        history.push({
+            status: order.status,
+            timestamp: now.toISOString(),
+            actor: 'Customer',
+            hub: 'Eds Towels Pacific Mall Lucena Hub',
+            note: `Customer submitted remaining balance payment of ₱${topUpAmount.toFixed(2)}${cleanRef ? ` (Ref: ${cleanRef})` : ''}. Awaiting staff confirmation.`
+        });
+        currentPers.statusHistory = history;
+
+        const updatedOrder = await prisma.order.update({
+            where: { id: order.id },
+            data: {
+                personalization: currentPers
+            },
+            include: { receipt: true, transaction: true }
+        });
+
+        if (order.receipt) {
+            await prisma.receipt.update({
+                where: { id: order.receipt.id },
+                data: {
+                    status: 'Manual Review',
+                    flaggedReason: `Balance Top-Up Submitted: +₱${topUpAmount.toFixed(2)} (Initial Credit: ₱${currentCredit.toFixed(2)}, Remaining: ₱${currentBalance.toFixed(2)})`,
+                    ...(receiptUrl ? { imageUrl: receiptUrl } : {})
+                }
+            });
+        }
+
+        const io = req.app.get('io');
+        if (io) {
+            io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id, order: updatedOrder });
+            socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+        }
+
+        return res.json({
+            success: true,
+            message: `Remaining balance payment (₱${topUpAmount.toFixed(2)}) submitted! Our staff will confirm it shortly.`,
+            order: updatedOrder
+        });
+    } catch (err) {
+        console.error('payRemainingBalance error:', err);
+        return res.status(500).json({ message: err.message || 'Failed to submit remaining balance payment.' });
     }
 };

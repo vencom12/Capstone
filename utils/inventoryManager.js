@@ -2,7 +2,7 @@ const prisma = require('./prisma');
 const socketUtil = require('./socketUtil');
 const { ACTIONS, ENTITIES } = require('./apiConstants');
 
-const RESERVED_STATES = ['In Queue', 'Awaiting Payment', 'Pending Payment', 'On Hold - Awaiting Materials'];
+const RESERVED_STATES = ['In Queue', 'Awaiting Payment', 'Pending Payment', 'Insufficient Payment', 'On Hold - Awaiting Materials'];
 const PROCESSED_STATES = ['Preparing Order', 'In Transit', 'Ready For Pick Up', 'Ready For Pick-Up', 'Ready for Pickup', 'Out for Delivery', 'Order Delivered', 'Completed'];
 
 /**
@@ -248,6 +248,7 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
 
     // Perform the actual order status update in database
     const progressMap = {
+        'Insufficient Payment': 5,
         'In Queue': 10,
         'Preparing Order': 30,
         'In Transit': 70,
@@ -399,7 +400,7 @@ async function autoExpireUnpaidOrders(tx = prisma) {
         await tx.order.updateMany({
             where: {
                 status: { in: ['Awaiting Payment', 'Pending Payment'] },
-                paymentStatus: { not: 'paid' },
+                paymentStatus: { notIn: ['paid', 'partial'] },
                 createdAt: { lt: expirationCutoff }
             },
             data: {
@@ -460,6 +461,7 @@ async function enrichProductsWithStock(products, tx = prisma) {
                 {
                     status: { in: [
                         'In Queue',
+                        'Insufficient Payment',
                         'On Hold - Awaiting Materials',
                         'Processing',
                         'Stitching',

@@ -430,6 +430,9 @@ export default function CheckoutModal({
         needsManualRef?: boolean;
         imageHash?: string | null;
         flaggedReason?: string;
+        isInsufficientPayment?: boolean;
+        accountCredit?: number;
+        outstandingBalance?: number;
         aiResult?: { isValidReceipt?: boolean; extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
       }>('/api/ai/verify-receipt', {
         receiptUrl: uploadData.url,
@@ -445,6 +448,8 @@ export default function CheckoutModal({
           orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
             items: itemsWithPreOrder,
             totalAmount: finalTotal,
+            paidAmount: verifyRes.isInsufficientPayment ? verifyRes.accountCredit : undefined,
+            accountCredit: verifyRes.isInsufficientPayment ? verifyRes.accountCredit : undefined,
             address: currentAddress,
             deliveryTime: resolvedDeliveryLabel,
             dueDate: resolvedDueDate,
@@ -485,8 +490,14 @@ export default function CheckoutModal({
         }
 
         setPaymentVerified(true);
-        setAiVerificationResult('Being processed by management — awaiting payment confirmation.');
-        showToast('Order placed! It is now being processed by management.', 'success');
+        if (verifyRes.isInsufficientPayment && verifyRes.accountCredit !== undefined && verifyRes.outstandingBalance !== undefined) {
+          const msg = `Account Credit: ₱${Number(verifyRes.accountCredit).toFixed(2)} | Outstanding Balance: ₱${Number(verifyRes.outstandingBalance).toFixed(2)}. What you sent was not enough — please pay the remaining balance for your order to be processed.`;
+          setAiVerificationResult(msg);
+          showToast(msg, 'warning');
+        } else {
+          setAiVerificationResult('Being processed by management — awaiting payment confirmation.');
+          showToast('Order placed! It is now being processed by management.', 'success');
+        }
         try {
           await refreshUser();
           await fetchDashboardState();

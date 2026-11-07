@@ -1831,17 +1831,19 @@ Output ONLY a JSON object:
         // === STEP 1 RESULT: Visual Classification ===
         if (!aiResult.isValidReceipt) {
             console.log(`[AI Vision] REJECTED: Not a valid receipt (confidence: ${confidence})`);
-            await prisma.receipt.update({
-                where: { id: receipt.id },
-                data: {
-                    imageHash,
-                    ocrData: aiResult,
-                    confidenceScore: confidence,
-                    aiVerificationStatus: 'rejected',
-                    flaggedReason: 'Invalid document: The uploaded image is not a recognized payment receipt.',
-                    status: 'Rejected'
-                }
-            });
+            if (receipt?.id) {
+                await prisma.receipt.update({
+                    where: { id: receipt.id },
+                    data: {
+                        imageHash,
+                        ocrData: aiResult,
+                        confidenceScore: confidence,
+                        aiVerificationStatus: 'rejected',
+                        flaggedReason: 'Invalid document: The uploaded image is not a recognized payment receipt.',
+                        status: 'Rejected'
+                    }
+                });
+            }
             return res.json({
                 success: false,
                 message: "Please upload an authentic, clear GCash transaction confirmation screenshot for this order showing the exact amount and reference number.",
@@ -1851,24 +1853,28 @@ Output ONLY a JSON object:
         }
 
         // === STEP 3: Multi-Layered Database Reconciliation & Fraud Audit Checks ===
-        console.log(`[AI Vision] Step 3: Running comprehensive audit checks for Order ${orderId}...`);
+        console.log(`[AI Vision] Step 3: Running comprehensive audit checks for Order ${orderId || 'pre-checkout'}...`);
         const auditFailures = [];
         const gcashService = require('../../services/payments/gcashService');
 
         // Audit Check 1: Platform & Recipient Identity Verification (Anti-Friend Transfer Spoofing)
-        if (receipt.paymentMethod === 'gcash') {
+        if (!receipt || receipt.paymentMethod === 'gcash') {
             const platformCheck = gcashService.validateReceiptData(aiResult, aiSettings);
             if (!platformCheck.isValid) {
                 auditFailures.push(platformCheck.error);
             }
         }
 
-        // Audit Check 2: Strict Numeric Equality (Anti-Underpayment Bypass)
+        // Audit Check 2: Numeric Equality & Option 3 (Convert Difference Into Customer Credit)
         // Never trust client boolean; compute deterministically in backend
         const extractedAmount = parseFloat(aiResult.extractedAmount) || 0;
         const isAmountMatch = Math.abs(extractedAmount - numOrderTotal) < 0.05 || extractedAmount >= numOrderTotal;
-        if (!isAmountMatch) {
-            auditFailures.push(`The amount on your receipt (₱${extractedAmount.toFixed(2)}) is less than the order total (₱${numOrderTotal.toFixed(2)}). Please upload the complete payment receipt.`);
+        const isInsufficientPayment = extractedAmount > 0 && extractedAmount < numOrderTotal - 0.05;
+        const accountCredit = isInsufficientPayment ? Math.round(extractedAmount * 100) / 100 : (isAmountMatch ? numOrderTotal : 0);
+        const outstandingBalance = isInsufficientPayment ? Math.round((numOrderTotal - accountCredit) * 100) / 100 : 0;
+
+        if (extractedAmount <= 0) {
+            auditFailures.push(`We could not read a valid payment amount on your receipt. Please upload a clear GCash receipt screenshot.`);
         }
 
         // Audit Check 3: Duplicate Reference ID & Concurrency Lock (Defense 2 & Race-Condition Defense)
@@ -1969,7 +1975,7 @@ Output ONLY a JSON object:
         const isHighValue = numOrderTotal >= HIGH_VALUE_CIRCUIT_BREAKER_PHP;
 
         // === STEP 4: Automated Verdict Determination ===
-        const allChecksPassed = auditFailures.length === 0 && isAmountMatch && isPassedGate;
+        const allChecksPassed = auditFailures.length === 0 && (isAmountMatch || isInsufficientPayment) && isPassedGate;
         // AI is a pre-screener only: it extracts and flags, but NEVER approves payment.
         // Staff confirm every GCash order against the store's real GCash inbox before it enters the queue.
         const willAutoApproveToQueue = false;
@@ -1979,6 +1985,8 @@ Output ONLY a JSON object:
             flaggedReason = auditFailures[0];
         } else if (!isPassedGate) {
             flaggedReason = "We couldn't clearly read your payment receipt. Please upload a clear, full screenshot of your GCash payment confirmation.";
+        } else if (isInsufficientPayment && allChecksPassed) {
+            flaggedReason = `Insufficient payment detected: Required ₱${numOrderTotal.toFixed(2)}, Sent ₱${accountCredit.toFixed(2)}. System recorded Account Credit: ₱${accountCredit.toFixed(2)} | Outstanding Balance: ₱${outstandingBalance.toFixed(2)}. Please pay the remaining balance for your order to be processed.`;
         } else if (allChecksPassed) {
             flaggedReason = "Receipt received! Your order is now being processed by management.";
         } else if (isHighValue) {
@@ -2038,7 +2046,9 @@ Output ONLY a JSON object:
             }
         }
 
-        const customerMessage = allChecksPassed
+        const customerMessage = (isInsufficientPayment && allChecksPassed)
+            ? flaggedReason
+            : allChecksPassed
             ? "Receipt received! Your order is now being processed by management."
             : (isHighValue && allChecksPassed
                 ? `Receipt received! Since this is a larger custom order (₱${numOrderTotal.toFixed(2)}), your order is now being processed by management.`
@@ -2047,6 +2057,10 @@ Output ONLY a JSON object:
         res.json({
             success: allChecksPassed,
             message: customerMessage,
+            isInsufficientPayment: Boolean(isInsufficientPayment && allChecksPassed),
+            accountCredit: isInsufficientPayment ? accountCredit : (allChecksPassed ? numOrderTotal : 0),
+            outstandingBalance: isInsufficientPayment ? outstandingBalance : 0,
+            requiredAmount: numOrderTotal,
             aiResult: {
                 isValidReceipt: aiResult.isValidReceipt,
                 extractedAmount,
@@ -2055,6 +2069,9 @@ Output ONLY a JSON object:
                 paymentPlatform: aiResult.paymentPlatform,
                 confidence,
                 isAmountMatch: aiResult.isAmountMatch,
+                isInsufficientPayment,
+                accountCredit,
+                outstandingBalance,
                 engine: extractionEngine
             },
             verificationStatus,

@@ -70,6 +70,7 @@ router.patch('/settings', auth(), customerController.updateSettings);
 router.delete('/account', auth(), customerController.deleteAccount);
 router.patch('/orders/:id/location', customerController.updateOrderLocation);
 router.post('/orders/:id/cancel', auth(), customerController.cancelOrder);
+router.post('/orders/:id/pay-balance', auth(), customerController.payRemainingBalance);
 
 const forecastingController = require('../../controllers/postgres/forecastingController');
 router.post('/products/:id/track-view', forecastingController.trackProductView);

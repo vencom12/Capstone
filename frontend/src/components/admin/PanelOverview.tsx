@@ -9,6 +9,7 @@ import ClaimStubModal from '@/components/admin/ClaimStubModal';
 import EmergencyDelayNoticeModal from '@/components/admin/EmergencyDelayNoticeModal';
 import { api } from '@/lib/api';
 import { getOrderScheduleInfo } from '@/lib/orderSchedule';
+import { getOrderCreditSummary } from '@/lib/orderStatus';
 import { showToast } from '@/components/ui/Toast';
 import { TableSkeleton, CardSkeleton } from '@/components/ui/Skeletons';
 import Pagination from '@/components/ui/Pagination';
@@ -92,7 +93,15 @@ export default function PanelOverview({
 
   const [claimStubOrder, setClaimStubOrder] = useState<any>(null);
   const [verifyingSmsIds, setVerifyingSmsIds] = useState<Record<string, boolean>>({});
+  const [partialModalOrder, setPartialModalOrder] = useState<any>(null);
+  const [partialAmountInput, setPartialAmountInput] = useState<string>('');
+  const [isRecordingPartial, setIsRecordingPartial] = useState(false);
   const isOrderPickup = (_o?: any) => true;
+  const isInsufficientOrder = (o: any): boolean => {
+    if (!o) return false;
+    const credit = getOrderCreditSummary(o);
+    return credit.isInsufficientPayment || o.status === 'Insufficient Payment';
+  };
 
   const getOrderGcashRef = (o: any): string => {
     if (!o) return '';
@@ -147,6 +156,58 @@ export default function PanelOverview({
     } catch (err: any) {
       showToast(err.message || 'Failed to confirm payment reference', 'error');
       refreshData().catch(() => {});
+    } finally {
+      setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: false }));
+    }
+  };
+
+  const handleOpenPartialModal = (o: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const credit = getOrderCreditSummary(o);
+    setPartialModalOrder(o);
+    setPartialAmountInput(credit.accountCredit > 0 ? String(credit.accountCredit) : '');
+  };
+
+  const handleRecordPartialPayment = async () => {
+    if (!partialModalOrder) return;
+    const targetId = partialModalOrder.id || partialModalOrder._id || partialModalOrder.orderId;
+    const reqTotal = Number(partialModalOrder.totalAmount || partialModalOrder.amount || 0);
+    const sentAmt = parseFloat(partialAmountInput);
+    if (isNaN(sentAmt) || sentAmt <= 0 || sentAmt >= reqTotal) {
+      showToast(`Please enter an amount greater than ₱0 and less than the required ₱${reqTotal.toFixed(2)}.`, 'warning');
+      return;
+    }
+    setIsRecordingPartial(true);
+    try {
+      const res = await api.post<any>(`/api/admin/orders/${targetId}/verify-payment`, {
+        action: 'record_partial',
+        amountReceived: sentAmt,
+        referenceNumber: getOrderGcashRef(partialModalOrder) || undefined,
+      });
+      showToast(res?.message || 'Insufficient payment recorded as Customer Account Credit.', 'success');
+      setPartialModalOrder(null);
+      setPartialAmountInput('');
+      refreshData().catch(() => {});
+    } catch (err: any) {
+      showToast(err.message || 'Failed to record partial payment', 'error');
+    } finally {
+      setIsRecordingPartial(false);
+    }
+  };
+
+  const handleProcessAnywayPartial = async (o: any, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const targetId = o.id || o._id || o.orderId;
+    if (!targetId || verifyingSmsIds[targetId]) return;
+    setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: true }));
+    try {
+      const res = await api.post<any>(`/api/admin/orders/${targetId}/verify-payment`, {
+        action: 'process_anyway',
+      });
+      showToast(res?.message || `Order #${o.orderId} approved for processing (Lowest Priority).`, 'success');
+      refreshData().catch(() => {});
+    } catch (err: any) {
+      showToast(err.message || 'Failed to approve order for processing', 'error');
     } finally {
       setVerifyingSmsIds((prev) => ({ ...prev, [targetId]: false }));
     }
@@ -290,8 +351,10 @@ export default function PanelOverview({
 
       const matchesTab = queueTab === 'all'
         ? true
+        : queueTab === 'insufficient_payment'
+        ? isInsufficientOrder(o)
         : queueTab === 'awaiting_management'
-        ? (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
+        ? ((o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') && !isInsufficientOrder(o))
         : queueTab === 'In Queue'
         ? (o.status === 'In Queue' && o.paymentStatus !== 'unpaid')
         : o.status === queueTab;
@@ -299,9 +362,15 @@ export default function PanelOverview({
       return matchesSearch && matchesDate && matchesTab;
     })
     .sort((a, b) => {
+      // Insufficient payment / outstanding balance orders ALWAYS get the lowest priority score
+      const isInsuffA = isInsufficientOrder(a);
+      const isInsuffB = isInsufficientOrder(b);
+      if (isInsuffA !== isInsuffB) {
+        return isInsuffA ? 1 : -1;
+      }
       // Prioritize Rush orders and high priority scores first, followed by FIFO order creation
-      const scoreA = (a.priorityScore || 0) + (a.isRush ? 100 : 0);
-      const scoreB = (b.priorityScore || 0) + (b.isRush ? 100 : 0);
+      const scoreA = (a.priorityScore ?? 0) + (a.isRush ? 100 : 0);
+      const scoreB = (b.priorityScore ?? 0) + (b.isRush ? 100 : 0);
       if (scoreB !== scoreA) {
         return scoreB - scoreA;
       }
@@ -562,7 +631,8 @@ export default function PanelOverview({
         {/* Status Tab Navigation */}
         {(() => {
           const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
-          const unverifiedOrders = allActiveOrders.filter(o => o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid');
+          const insufficientOrders = allActiveOrders.filter(o => isInsufficientOrder(o));
+          const unverifiedOrders = allActiveOrders.filter(o => (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') && !isInsufficientOrder(o));
           const queuedOrders = allActiveOrders.filter(o => o.status === 'In Queue' && o.paymentStatus !== 'unpaid');
           const preparingOrders = allActiveOrders.filter(o => o.status === 'Preparing Order');
           const inTransitOrders = allActiveOrders.filter(o => o.status === 'In Transit');
@@ -574,6 +644,12 @@ export default function PanelOverview({
               key: 'awaiting_management', 
               label: 'Being Processed by Management', 
               count: unverifiedOrders.length,
+              isSpecial: true
+            },
+            {
+              key: 'insufficient_payment',
+              label: 'Insufficient / Balance Due',
+              count: insufficientOrders.length,
               isSpecial: true
             },
             { key: 'In Queue', label: 'In Queue', count: queuedOrders.length },
@@ -782,10 +858,48 @@ export default function PanelOverview({
                         <td className="glass-td text-left font-mono font-bold text-sm text-primary">
                           <div>₱{parseFloat(o.totalAmount || o.amount || 0).toFixed(2)}</div>
                           {(() => {
+                            const credit = getOrderCreditSummary(o);
                             const ref = getOrderGcashRef(o);
                             const smsVerified = isOrderSmsVerified(o) || (o.paymentStatus === 'paid' && o.status !== 'Awaiting Payment');
                             const isUnpaid = o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid';
                             const isCashOrCounter = String(o.orderId || '').startsWith('WI-') || o.paymentMethod === 'cash';
+
+                            if (credit.isInsufficientPayment) {
+                              return (
+                                <div className="mt-1 flex flex-col gap-1 font-sans" onClick={(e) => e.stopPropagation()}>
+                                  <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px] leading-tight">
+                                    <div className="text-emerald-500 font-bold">Account Credit: ₱{credit.accountCredit.toFixed(2)}</div>
+                                    <div className="text-amber-500 font-bold">Outstanding Balance: ₱{credit.outstandingBalance.toFixed(2)}</div>
+                                    {credit.balanceTopUpPending && (
+                                      <div className="text-primary font-bold mt-0.5">+₱{credit.balanceTopUpAmount.toFixed(2)} Top-Up Sent!</div>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleVerifySmsMatch(o, e)}
+                                      disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                                      className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold cursor-pointer border-none"
+                                      title="Mark remaining balance as paid in full"
+                                    >
+                                      Settle ₱{credit.outstandingBalance.toFixed(0)}
+                                    </button>
+                                    {o.status === 'Insufficient Payment' && (
+                                      <button
+                                        type="button"
+                                        onClick={(e) => handleProcessAnywayPartial(o, e)}
+                                        disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                                        className="px-2 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-500 text-[10px] font-bold cursor-pointer"
+                                        title="Approve & process order anyway while customer completes remaining balance later"
+                                      >
+                                        Process Anyway
+                                      </button>
+                                    )}
+                                  </div>
+                                </div>
+                              );
+                            }
+
                             if (isCashOrCounter && !ref) {
                               return (
                                 <span className="inline-block mt-1 text-[10px] font-sans font-semibold px-1.5 py-0.5 rounded bg-white/5 text-text-dim border border-white/10">
@@ -808,40 +922,63 @@ export default function PanelOverview({
                                     {last4 ? `Verified ${last4}` : 'Verified'}
                                   </span>
                                 ) : (
-                                  <button
-                                    type="button"
-                                    onClick={(e) => handleVerifySmsMatch(o, e)}
-                                    disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
-                                    title={ref ? `Full GCash Ref: ${ref} — Tap to verify payment` : 'Tap to verify payment'}
-                                  >
-                                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                      <polyline points="20 6 9 17 4 12" />
-                                    </svg>
-                                    <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (last4 ? `Verify ${last4}` : 'Verify')}</span>
-                                  </button>
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleVerifySmsMatch(o, e)}
+                                      disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-bg-surface hover:bg-white/10 border border-border-glass text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
+                                      title={ref ? `Full GCash Ref: ${ref} — Tap to verify payment` : 'Tap to verify payment'}
+                                    >
+                                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <polyline points="20 6 9 17 4 12" />
+                                      </svg>
+                                      <span>{verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (last4 ? `Verify ${last4}` : 'Verify')}</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => handleOpenPartialModal(o, e)}
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-500 text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                      title="Customer sent insufficient money? Convert amount sent into Account Credit & record Outstanding Balance"
+                                    >
+                                      Partial / Credit
+                                    </button>
+                                  </div>
                                 )}
                               </div>
                             );
                           })()}
                         </td>
                         <td className="glass-td text-left">
-                          <span
-                            className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
-                              ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
-                                ? 'bg-white/10 text-text-main border border-border-glass'
-                                : o.status === 'Preparing Order'
-                                  ? 'bg-primary/20 text-primary border border-primary/30'
-                                  : o.status === 'In Transit'
-                                    ? 'bg-white/5 text-text-dim border border-border-glass'
-                                    : o.status === 'Ready For Pick Up'
-                                      ? 'bg-success/20 text-success border border-success/30'
-                                      : 'bg-white/10 text-text-dim border border-white/20'
-                              }
-                            `}
-                          >
-                            {(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : o.status}
-                          </span>
+                          <div className="flex flex-col gap-1 items-start">
+                            <span
+                              className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider
+                                ${o.status === 'Insufficient Payment'
+                                  ? 'bg-amber-500/20 text-amber-500 border border-amber-500/40'
+                                  : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
+                                    ? 'bg-white/10 text-text-main border border-border-glass'
+                                    : o.status === 'Preparing Order'
+                                      ? 'bg-primary/20 text-primary border border-primary/30'
+                                      : o.status === 'In Transit'
+                                        ? 'bg-white/5 text-text-dim border border-border-glass'
+                                        : o.status === 'Ready For Pick Up'
+                                          ? 'bg-success/20 text-success border border-success/30'
+                                          : 'bg-white/10 text-text-dim border border-white/20'
+                                }
+                              `}
+                            >
+                              {o.status === 'Insufficient Payment'
+                                ? 'Insufficient / Balance Due'
+                                : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
+                                  ? 'Being Processed by Management'
+                                  : o.status}
+                            </span>
+                            {isInsufficientOrder(o) && (
+                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30">
+                                Lowest Priority
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="glass-td text-right" onClick={(e) => e.stopPropagation()}>
                           <div className="flex gap-2 justify-end">
@@ -1094,6 +1231,76 @@ export default function PanelOverview({
         user={receiptDetails?.user || selectedReceipt?.customer}
         transactionId={receiptDetails?.transactionID || selectedReceipt?.orderId}
       />
+
+      {/* Option 3: Convert Insufficient Payment Into Customer Account Credit Modal */}
+      <GlassModal
+        isOpen={!!partialModalOrder}
+        onClose={() => setPartialModalOrder(null)}
+        title="Option 3: Convert Difference Into Customer Credit"
+        maxWidth="max-w-[460px]"
+      >
+        {partialModalOrder && (() => {
+          const reqTotal = Number(partialModalOrder.totalAmount || partialModalOrder.amount || 0);
+          const sentNum = Math.max(0, parseFloat(partialAmountInput) || 0);
+          const outBal = Math.max(0, Math.round((reqTotal - sentNum) * 100) / 100);
+          return (
+            <div className="flex flex-col gap-3.5 text-left">
+              <p className="text-xs text-text-dim m-0 leading-relaxed">
+                When a customer sends insufficient money for Order <strong className="font-mono text-text-main">#{partialModalOrder.orderId}</strong>, record the amount sent as <strong>Account Credit</strong> and flag the remaining <strong>Outstanding Balance</strong> (lowest queue priority).
+              </p>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold text-text-main">
+                  Amount Sent by Customer (₱) — Required: ₱{reqTotal.toFixed(2)}
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  min="1"
+                  max={reqTotal - 0.01}
+                  placeholder={`e.g. ${Math.max(1, Math.round(reqTotal * 0.8))}`}
+                  value={partialAmountInput}
+                  onChange={(e) => setPartialAmountInput(e.target.value)}
+                  className="w-full bg-bg-surface border border-border-glass rounded-xl px-3.5 py-2 text-sm font-mono font-bold text-text-main outline-none focus:border-primary"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 font-mono text-xs flex flex-col gap-1.5">
+                <div className="flex justify-between">
+                  <span className="text-text-dim font-sans">Required Total:</span>
+                  <span className="font-bold text-text-main">₱{reqTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-text-dim font-sans">Account Credit:</span>
+                  <span className="font-bold text-emerald-500">₱{sentNum.toFixed(2)}</span>
+                </div>
+                <div className="flex justify-between border-t border-amber-500/20 pt-1.5">
+                  <span className="text-amber-500 font-sans font-bold">Outstanding Balance:</span>
+                  <span className="font-black text-amber-500">₱{outBal.toFixed(2)}</span>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-border-glass">
+                <button
+                  type="button"
+                  onClick={() => setPartialModalOrder(null)}
+                  className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-border-glass text-xs font-bold text-text-main cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRecordPartialPayment}
+                  disabled={isRecordingPartial}
+                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer border-none disabled:opacity-50"
+                >
+                  {isRecordingPartial ? 'Recording...' : 'Record Account Credit & Balance'}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
+      </GlassModal>
 
 
 
