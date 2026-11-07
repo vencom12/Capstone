@@ -62,6 +62,15 @@ export default function PanelStaffing({
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'disabled'>('all');
   const [viewingProfileUser, setViewingProfileUser] = useState<any>(null);
   const [isSendingReset, setIsSendingReset] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCooldown]);
 
   // Form Fields
   const [username, setUsername] = useState('');
@@ -343,18 +352,24 @@ export default function PanelStaffing({
   };
 
   const handleSendResetEmail = async (userId: string, userEmail: string) => {
-    if (isSendingReset) return;
+    if (isSendingReset || resendCooldown > 0) return;
     setIsSendingReset(true);
     try {
-      const res = await api.post<{ message: string; simulated?: boolean; resetUrl?: string }>(`/api/admin/users/${userId}/reset-password`, { email: userEmail });
+      const res = await api.post<{ message: string; simulated?: boolean; resetUrl?: string; cooldownSeconds?: number }>(`/api/admin/users/${userId}/reset-password`, { email: userEmail });
       if (editingStaff && (editingStaff.id === userId || editingStaff._id === userId) && userEmail && userEmail.trim().toLowerCase() !== (editingStaff.email || '').toLowerCase()) {
         setEditingStaff({ ...editingStaff, email: userEmail.trim().toLowerCase(), isEmailVerified: false });
       }
+      setResendCooldown(res?.cooldownSeconds || 60);
       showToast(res?.message || `Verification & activation email sent to ${userEmail}!`, 'success');
       refreshData().catch(() => {});
     } catch (err: any) {
       console.error(err);
-      showToast(err?.message || 'Failed to resend verification email', 'error');
+      const errMsg = err?.message || 'Failed to resend verification email';
+      const match = errMsg.match(/wait\s+(\d+)\s+second/i);
+      if (match) {
+        setResendCooldown(parseInt(match[1], 10));
+      }
+      showToast(errMsg, 'error');
     } finally {
       setIsSendingReset(false);
     }
@@ -937,20 +952,26 @@ export default function PanelStaffing({
                   </label>
                   <button
                     type="button"
-                    disabled={isSendingReset}
+                    disabled={isSendingReset || resendCooldown > 0}
                     onClick={() =>
                       handleSendResetEmail(
                         editingStaff.id || editingStaff._id,
                         email.trim() || editingStaff.email
                       )
                     }
-                    className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold p-3 rounded-xl text-xs outline-none w-full transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 font-sans"
+                    className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold p-3 rounded-xl text-xs outline-none w-full transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed font-sans"
                   >
                     <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
-                    <span>{isSendingReset ? 'Sending Verification...' : 'Resend Verification'}</span>
+                    <span>
+                      {isSendingReset
+                        ? 'Sending Verification...'
+                        : resendCooldown > 0
+                        ? `Resend in ${resendCooldown}s`
+                        : 'Resend Verification'}
+                    </span>
                   </button>
                 </div>
               )}

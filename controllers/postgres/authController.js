@@ -49,6 +49,23 @@ exports.sendRegistrationOtp = async (req, res) => {
             return res.status(400).json({ message: 'An account with this email already exists. Please log in or use another email.' });
         }
 
+        // Enforce 60-second cooldown between OTP sends
+        const recentOtp = await prisma.emailVerification.findFirst({
+            where: { email: cleanEmail },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (recentOtp) {
+            const elapsed = Math.floor((Date.now() - new Date(recentOtp.createdAt).getTime()) / 1000);
+            if (elapsed < 60) {
+                const remaining = 60 - elapsed;
+                return res.status(429).json({
+                    success: false,
+                    message: `Please wait ${remaining} seconds before requesting another verification code.`,
+                    cooldownRemaining: remaining
+                });
+            }
+        }
+
         // Generate 6-digit numeric OTP code
         const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
         const expiresAt = new Date(Date.now() + 3 * 60 * 1000); // 10 minutes
@@ -257,6 +274,23 @@ exports.sendLinkOtp = async (req, res) => {
         });
         if (existing) {
             return res.status(400).json({ message: 'This email is already in use by another account.' });
+        }
+
+        // Enforce 60-second cooldown between link OTP sends
+        const recentLinkOtp = await prisma.emailVerification.findFirst({
+            where: { email: cleanEmail },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (recentLinkOtp) {
+            const elapsed = Math.floor((Date.now() - new Date(recentLinkOtp.createdAt).getTime()) / 1000);
+            if (elapsed < 60) {
+                const remaining = 60 - elapsed;
+                return res.status(429).json({
+                    success: false,
+                    message: `Please wait ${remaining} seconds before requesting another verification code.`,
+                    cooldownRemaining: remaining
+                });
+            }
         }
 
         const user = await prisma.user.findUnique({ where: { id: userId } });

@@ -473,6 +473,23 @@ exports.sendUserPasswordReset = async (req, res) => {
             });
         }
 
+        // Enforce 60-second cooldown between resending verification emails
+        const recentVerification = await prisma.emailVerification.findFirst({
+            where: { userId: targetUser.id },
+            orderBy: { createdAt: 'desc' }
+        });
+        if (recentVerification) {
+            const elapsed = Math.floor((Date.now() - new Date(recentVerification.createdAt).getTime()) / 1000);
+            if (elapsed < 60) {
+                const remaining = 60 - elapsed;
+                return res.status(429).json({
+                    success: false,
+                    message: `Please wait ${remaining} seconds before resending another verification email.`,
+                    cooldownRemaining: remaining
+                });
+            }
+        }
+
         const { generateVerificationToken } = require('../../utils/emailService');
         await prisma.emailVerification.deleteMany({ where: { userId: targetUser.id } });
         const rawToken = 'rst_' + generateVerificationToken();
@@ -490,12 +507,14 @@ exports.sendUserPasswordReset = async (req, res) => {
         if (emailResult?.provider) {
             res.json({ 
                 success: true,
+                cooldownSeconds: 60,
                 message: `Verification & activation email sent to ${targetUser.email}!`
             });
         } else {
             res.json({ 
                 success: true,
                 simulated: true,
+                cooldownSeconds: 60,
                 message: `Verification link generated for ${targetUser.email} (Email service in local simulation mode).`
             });
         }
