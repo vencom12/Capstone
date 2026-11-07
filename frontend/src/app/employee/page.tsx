@@ -423,6 +423,30 @@ export default function EmployeePage() {
   }, [activeTab, isHydrated]);
 
   // Trigger fast server-indexed order history query when history tab is active
+  const [excelPeriod, setExcelPeriod] = useState<'1day' | 'week' | 'month'>('1day');
+  const [isExportingExcel, setIsExportingExcel] = useState(false);
+
+  const handleExportOrderHistoryExcel = async () => {
+    setIsExportingExcel(true);
+    try {
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const slug = excelPeriod === 'week' ? '1_WEEK' : excelPeriod === 'month' ? '1_MONTH' : '1_DAY';
+      const params = new URLSearchParams({ period: excelPeriod });
+      if (historySearchQuery && historySearchQuery.trim()) {
+        params.append('search', historySearchQuery.trim());
+      }
+      await api.download(
+        `/api/admin/orders/history/excel?${params.toString()}`,
+        `ORDER_HISTORY_FINANCIAL_${slug}_${dateStr}.xlsx`
+      );
+      showToast(`Excel Financial & Order History (${excelPeriod === '1day' ? '1 Day' : excelPeriod === 'week' ? '1 Week' : '1 Month'}) exported!`, 'success');
+    } catch (err: any) {
+      console.error('Excel export failed:', err);
+      showToast(err?.message || 'Failed to export Excel report', 'error');
+    } finally {
+      setIsExportingExcel(false);
+    }
+  };
   useEffect(() => {
     if (!isHydrated || !isAuthenticated || (!checkAccess('employee') && !checkAccess('admin'))) return;
     if (activeTab === 'history') {
@@ -1670,6 +1694,45 @@ export default function EmployeePage() {
                   Clear Filters
                 </button>
               )}
+
+              {/* Print / Export Excel Financial Report Control (1 Day, 1 Week, 1 Month) */}
+              <div className="ml-auto flex items-center flex-wrap gap-2 bg-bg-surface/90 border border-border-glass p-1.5 rounded-xl">
+                <div className="flex items-center bg-white/[0.04] rounded-lg p-0.5 border border-border-glass/60">
+                  {([
+                    { id: '1day', label: '1 Day' },
+                    { id: 'week', label: '1 Week' },
+                    { id: 'month', label: '1 Month' }
+                  ] as const).map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setExcelPeriod(opt.id)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-bold transition-all cursor-pointer ${
+                        excelPeriod === opt.id
+                          ? 'bg-primary text-white shadow-sm'
+                          : 'text-text-dim hover:text-text-main'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={handleExportOrderHistoryExcel}
+                  disabled={isExportingExcel}
+                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  title="Download print-ready Microsoft Excel (.xlsx) report with Revenue, Money Sent, Overhead, Profit & ROI"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="8" y1="13" x2="16" y2="13" />
+                    <line x1="8" y1="17" x2="16" y2="17" />
+                  </svg>
+                  <span>{isExportingExcel ? 'Generating Excel...' : 'Print / Export Excel (.xlsx)'}</span>
+                </button>
+              </div>
             </div>
 
             {isLoadingArchived ? (

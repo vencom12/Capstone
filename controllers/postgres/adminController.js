@@ -1950,6 +1950,84 @@ exports.getOrderHistory = async (req, res) => {
     }
 };
 
+exports.downloadOrderHistoryExcel = async (req, res) => {
+    try {
+        const { period = '1day', search } = req.query;
+        const normalizedPeriod = String(period || '1day').toLowerCase();
+        let periodDays = 1;
+        if (normalizedPeriod === 'week' || normalizedPeriod === '1week' || normalizedPeriod === '7days') {
+            periodDays = 7;
+        } else if (normalizedPeriod === 'month' || normalizedPeriod === '1month' || normalizedPeriod === '30days') {
+            periodDays = 30;
+        }
+
+        const now = new Date();
+        const phtOffsetMs = 8 * 60 * 60 * 1000;
+        const phtNow = new Date(now.getTime() + phtOffsetMs);
+        const startOfTodayUtc = new Date(Date.UTC(
+            phtNow.getUTCFullYear(),
+            phtNow.getUTCMonth(),
+            phtNow.getUTCDate(),
+            0, 0, 0
+        ) - phtOffsetMs);
+        const startDate = new Date(startOfTodayUtc.getTime() - (periodDays - 1) * 24 * 60 * 60 * 1000);
+
+        const where = {
+            AND: [
+                {
+                    OR: [
+                        { date: { gte: startDate, lte: now } },
+                        { createdAt: { gte: startDate, lte: now } }
+                    ]
+                }
+            ]
+        };
+
+        if (search && search.trim() && search.trim() !== 'undefined' && search.trim() !== 'null') {
+            const q = search.trim();
+            where.AND.push({
+                OR: [
+                    { orderId: { contains: q, mode: 'insensitive' } },
+                    { client: { contains: q, mode: 'insensitive' } },
+                    { status: { contains: q, mode: 'insensitive' } }
+                ]
+            });
+        }
+
+        const [orders, products, inventory, settings] = await Promise.all([
+            prisma.order.findMany({
+                where,
+                include: { transaction: true, receipt: true },
+                orderBy: [{ date: 'desc' }, { createdAt: 'desc' }]
+            }),
+            prisma.product.findMany({
+                select: { id: true, name: true, price: true, recipe: true, variants: true }
+            }),
+            prisma.inventory.findMany({
+                select: { id: true, item: true, supplierUnitCost: true }
+            }),
+            prisma.systemSettings.findUnique({ where: { id: 'global' } })
+        ]);
+
+        const { generateOrderHistoryExcelWorkbook } = require('../../utils/excelReportGenerator');
+        const { buffer, filename } = await generateOrderHistoryExcelWorkbook({
+            period: normalizedPeriod,
+            orders,
+            products,
+            inventory,
+            settings
+        });
+
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        res.setHeader('Content-Length', buffer.length);
+        return res.send(buffer);
+    } catch (err) {
+        console.error('downloadOrderHistoryExcel error:', err);
+        return res.status(500).json({ message: 'Failed to generate Excel financial report', error: err.message });
+    }
+};
+
 /**
  * Creates a walk-in counter order with instant local AI queue wait estimation,
  * ticket generation, and Cash or GCash settlement.

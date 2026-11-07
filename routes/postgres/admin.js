@@ -68,6 +68,7 @@ router.put('/purchase-orders/:id/approve', adminAuth(), forecastingController.ap
 // Operational stockpile tracking, order processing, and read access
 router.get('/settings', staffAuth(), adminController.getSettings);
 router.get('/orders/history', staffAuth(), adminController.getOrderHistory);
+router.get('/orders/history/excel', staffAuth(), adminController.downloadOrderHistoryExcel);
 router.post('/orders/batch-status', staffAuth(), validate(schemas.statusUpdate), auditLogger('Order', 'BATCH_UPDATE_STATUS'), adminController.updateOrdersStatus);
 router.get('/inventory', staffAuth(), adminController.getInventory);
 router.get('/inventory/logs', staffAuth(), adminController.getInventoryLogs);
