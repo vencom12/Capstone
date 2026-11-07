@@ -27,7 +27,7 @@ async function parseReceiptWithLocalOCR(imageSource) {
             }
         }
         let extractedAmount = null;
-        const totalAmountMatch = text.match(/(?:total\s*amount\s*sent|amount(?:\s*sent)?)[^\d\n]*([\d,]+\.\d{2})/i);
+        const totalAmountMatch = text.match(/(?:total\s*amount\s*sent|amount(?:\s*sent)?)[^\d\n]*([\d,]+(?:\.\d{2})?)/i);
         if (totalAmountMatch && totalAmountMatch[1]) {
             const cleanNumber = totalAmountMatch[1].replace(/[^\d.]/g, '');
             const parsed = parseFloat(cleanNumber);
@@ -36,9 +36,10 @@ async function parseReceiptWithLocalOCR(imageSource) {
             }
         }
         if (extractedAmount === null) {
-            const amountMatches = text.match(/\b\d+\.\d{2}\b/g);
+            const amountMatches = text.match(/\b[\d,]+\.\d{2}\b/g);
             if (amountMatches && amountMatches.length > 0) {
-                extractedAmount = parseFloat(amountMatches[amountMatches.length - 1]);
+                const cleanLast = amountMatches[amountMatches.length - 1].replace(/[^\d.]/g, '');
+                extractedAmount = parseFloat(cleanLast);
             }
         }
         let recipientName = null;

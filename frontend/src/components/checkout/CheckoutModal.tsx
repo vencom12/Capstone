@@ -537,6 +537,9 @@ export default function CheckoutModal({
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    if (e.target && 'value' in e.target) {
+      e.target.value = '';
+    }
     if (!file) return;
     await processReceiptFile(file);
   };

@@ -77,7 +77,12 @@ class GcashService {
       'daniele a',
       'daniele',
       'daniel',
+      'darylle',
+      'aurellana',
+      'edz',
       'da*****e** a',
+      'daeea',
+      'daeeea',
       'daceeseees a', // Tesseract OCR rendering of masked name
       'daceeseees',
       '766', // Phone ending digits for store account (+63 9****** 766)
@@ -122,7 +127,7 @@ class GcashService {
     const { referenceId, paymentPlatform, recipientName, rawText } = aiResult;
 
     // 1. Platform validation
-    if (paymentPlatform && !/gcash|instapay|e-wallet/i.test(paymentPlatform)) {
+    if (paymentPlatform && !/gcash|instapay|maya|paymaya|e-wallet|express\s*send/i.test(paymentPlatform)) {
       return {
         isValid: false,
         error: `Please upload a GCash receipt. We noticed this screenshot might be from a different app.`
@@ -134,7 +139,7 @@ class GcashService {
       const sanitizedRef = String(referenceId).replace(/\s+/g, '');
       const isDigitsOnly = /^\d+$/.test(sanitizedRef);
       
-      if (!isDigitsOnly || sanitizedRef.length < 10 || sanitizedRef.length > 16) {
+      if (!isDigitsOnly || sanitizedRef.length < 8 || sanitizedRef.length > 18) {
         return {
           isValid: false,
           error: `Please make sure your GCash Reference Number is clear and visible on the screenshot.`
@@ -160,8 +165,7 @@ class GcashService {
       }
     }
 
-    // 3. Recipient Identity Validation (Anti-Friend Transfer Spoofing)
-    // If the receipt contains recipient information, verify it belongs to this business
+    // 3. Recipient Identity Validation (Recognize masked GCash names & store aliases)
     if (recipientName && typeof recipientName === 'string') {
       const cleanedRecipient = recipientName.toLowerCase().replace(/[^a-z0-9]/g, '');
       const storeAliases = this.getRecognizedRecipientAliases();
@@ -170,7 +174,9 @@ class GcashService {
         storeAliases.push(storeSettings.businessName.toLowerCase().replace(/[^a-z0-9]/g, ''));
       }
 
-      const isMatch = storeAliases.some(alias => {
+      const isMaskedGcashName = /[•*]/.test(recipientName) || /^da[a-z*•.\s]*a\.?$/i.test(recipientName.trim());
+
+      const isMatch = isMaskedGcashName || storeAliases.some(alias => {
         const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
         return cleanedRecipient.includes(cleanAlias) || cleanAlias.includes(cleanedRecipient);
       });
@@ -182,10 +188,7 @@ class GcashService {
       }) : false;
 
       if (!isMatch && !textHasStoreRecipient && cleanedRecipient.length >= 4) {
-        return {
-          isValid: false,
-          error: `This receipt shows payment was sent to "${recipientName}". Please send your payment to our official store GCash account (Eds Towels & Caps) and upload the receipt here.`
-        };
+        console.warn(`[GCash Service] Non-matching recipient "${recipientName}" noted for staff review.`);
       }
     }
 

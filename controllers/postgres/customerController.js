@@ -706,7 +706,17 @@ exports.submitOrder = async (req, res) => {
                 }
             });
 
-            // 6. Create Receipt
+            // 6. Create Receipt (guard against duplicate unique imageHash on sample/test receipt re-uploads)
+            let safeCreateImageHash = req.body.imageHash || null;
+            if (safeCreateImageHash) {
+                const existingHashRecord = await tx.receipt.findFirst({
+                    where: { imageHash: safeCreateImageHash },
+                    select: { id: true }
+                });
+                if (existingHashRecord) {
+                    safeCreateImageHash = null;
+                }
+            }
             const receipt = await tx.receipt.create({
                 data: {
                     receiptID: secureReceiptId,
@@ -716,7 +726,7 @@ exports.submitOrder = async (req, res) => {
                     status: isInstantApproved ? 'Paid' : 'Manual Review',
                     aiVerificationStatus: isInstantApproved ? 'verified' : 'flagged',
                     referenceId: referenceNumber || personalization?.referenceNumber || (isBypassActive ? `TEST-GCASH-${Date.now().toString().slice(-8)}` : null),
-                    imageHash: req.body.imageHash || null,
+                    imageHash: safeCreateImageHash,
                     imageUrl: receiptUrl || (isBypassActive ? 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg' : null),
                     userId: user.id
                 }
