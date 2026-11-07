@@ -27,32 +27,24 @@ export type TimeRange = 'today' | 'week' | 'month' | '6months' | '1year' | 'all'
 
 interface BiMetricData {
   totalVisits: number;
+  totalOrders?: number;
+  totalRevenue?: number;
   avgOrderValue: number;
   conversionRate: number;
+  lowStockCount?: number;
+  activeQueueCount?: number;
 }
 
 interface BiSuggestion {
   id: string;
   title: string;
-  category: 'Pricing' | 'Inventory' | 'Operations' | 'Demand' | string;
+  category: 'Pricing' | 'Inventory' | 'Operations' | string;
   severity: 'critical' | 'warning' | 'info' | 'success' | string;
   description: string;
   actionText: string;
   action: {
     type: string;
     payload: any;
-  };
-}
-
-interface BiProjectionData {
-  labels: string[];
-  visits: number[];
-  orders: number[];
-  revenue: number[];
-  forecast: {
-    visits: number[];
-    orders: number[];
-    revenue: number[];
   };
 }
 
@@ -66,10 +58,9 @@ export default function PanelAnalytics({
   const [timeRange, setTimeRange] = useState<TimeRange>('today');
   const [showOverheadSettings, setShowOverheadSettings] = useState(false);
 
-  // Continuous AI Operational Learning State
+  // Descriptive AI Summary State
   const [biData, setBiData] = useState<{
     metrics: BiMetricData | null;
-    projections: BiProjectionData | null;
     suggestions: BiSuggestion[];
   } | null>(null);
   const [isLoadingBi, setIsLoadingBi] = useState(false);
@@ -121,7 +112,7 @@ export default function PanelAnalytics({
       .catch(() => {});
   }, []);
 
-  // Fetch continuous operational learning insights & AI forecasts
+  // Fetch descriptive AI operational summary & recorded alerts
   const fetchBiData = useCallback(async (force = false) => {
     setIsLoadingBi(true);
     try {
@@ -129,12 +120,11 @@ export default function PanelAnalytics({
       if (res) {
         setBiData({
           metrics: res.metrics || null,
-          projections: res.projections || null,
           suggestions: Array.isArray(res.suggestions) ? res.suggestions : []
         });
       }
     } catch (err) {
-      console.warn('Failed to load AI BI suggestions:', err);
+      console.warn('Failed to load descriptive AI summary:', err);
     } finally {
       setIsLoadingBi(false);
     }
@@ -152,7 +142,7 @@ export default function PanelAnalytics({
         actionType: sug.action.type,
         payload: sug.action.payload
       });
-      showToast(res.message || `Strategy "${sug.title}" applied successfully!`, 'success');
+      showToast(res.message || `Action "${sug.title}" applied successfully!`, 'success');
       setBiData((prev) => prev ? {
         ...prev,
         suggestions: prev.suggestions.filter((s) => s.id !== sug.id)
@@ -160,7 +150,7 @@ export default function PanelAnalytics({
       if (refreshData) await refreshData();
       fetchBiData(true);
     } catch (err: any) {
-      showToast(err.message || 'Failed to apply strategy', 'error');
+      showToast(err.message || 'Failed to apply action', 'error');
     } finally {
       setExecutingSugs((prev) => ({ ...prev, [sug.id]: false }));
     }
@@ -168,14 +158,14 @@ export default function PanelAnalytics({
 
   const handleDeclineSuggestion = async (sugId: string) => {
     try {
-      await api.post('/api/admin/intelligence/decline', { sugId });
-      showToast('Recommendation dismissed', 'info');
+      await api.post('/api/admin/intelligence/decline', { suggestionId: sugId, sugId });
+      showToast('Alert dismissed', 'info');
       setBiData((prev) => prev ? {
         ...prev,
         suggestions: prev.suggestions.filter((s) => s.id !== sugId)
       } : null);
     } catch (err: any) {
-      console.warn('Failed to decline recommendation:', err);
+      console.warn('Failed to dismiss alert:', err);
     }
   };
 
@@ -568,10 +558,28 @@ export default function PanelAnalytics({
     return categoryPerformance.slice(start, start + categoryPageSize);
   }, [categoryPerformance, categoryPage, categoryPageSize]);
 
-  const totalForecastRevenue = useMemo(() => {
-    const revs = biData?.projections?.forecast?.revenue || [];
-    return revs.reduce((a, b) => a + b, 0);
-  }, [biData]);
+  const averageOrderValue = useMemo(() => {
+    if (filteredOrders.length > 0) {
+      return totalRevenue / filteredOrders.length;
+    }
+    return biData?.metrics?.avgOrderValue || 0;
+  }, [filteredOrders, totalRevenue, biData]);
+
+  const lowStockMaterialsCount = useMemo(() => {
+    if (Array.isArray(inventory) && inventory.length > 0) {
+      return inventory.filter((inv) => Number(inv.count || 0) <= Number(inv.minThreshold || 0)).length;
+    }
+    return biData?.metrics?.lowStockCount || 0;
+  }, [inventory, biData]);
+
+  const activeWorkshopOrdersCount = useMemo(() => {
+    if (Array.isArray(orders) && orders.length > 0) {
+      return orders.filter(
+        (o) => !['Completed', 'Order Delivered', 'Order Canceled', 'Cancelled'].includes(o.status || '')
+      ).length;
+    }
+    return biData?.metrics?.activeQueueCount || 0;
+  }, [orders, biData]);
 
   return (
     <section className="animate-fade flex flex-col min-h-full text-left w-full space-y-4 pb-12">
@@ -743,15 +751,14 @@ export default function PanelAnalytics({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="text-sm font-bold text-text-main">
-                  AI Operational Intelligence &amp; Continuous Learning
+                  Descriptive Store Insights &amp; Operational Alerts
                 </h3>
                 <span className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-success/10 text-success border border-success/20">
-                  
-                  365-Day Model Active
+                  Real-Time Data
                 </span>
               </div>
               <p className="text-xs text-text-dim mt-0.5">
-                Continuously monitors supplier raw material costs, demand velocity, and inventory safety buffers to protect store margins.
+                Descriptive summary of recorded sales, raw material stock levels, and active workshop queue status.
               </p>
             </div>
           </div>
@@ -780,30 +787,30 @@ export default function PanelAnalytics({
           </button>
         </div>
 
-        {/* 3 Key Operational Learned Signals */}
+        {/* 3 Key Operational Metrics */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
           <div className="p-3 rounded-lg bg-white/5 border border-border-glass">
-            <span className="text-[11px] text-text-dim block mb-0.5">Learned Customer AOV</span>
+            <span className="text-[11px] text-text-dim block mb-0.5">Average Order Value (AOV)</span>
             <span className="text-sm font-bold font-mono text-text-main">
-              ₱{(biData?.metrics?.avgOrderValue || 0).toFixed(2)}
+              ₱{averageOrderValue.toFixed(2)}
             </span>
-            <span className="text-[10px] text-text-dim block mt-0.5">Average ticket per customer</span>
+            <span className="text-[10px] text-text-dim block mt-0.5">Recorded sales per order</span>
           </div>
 
           <div className="p-3 rounded-lg bg-white/5 border border-border-glass">
-            <span className="text-[11px] text-text-dim block mb-0.5">7-Day ML Revenue Forecast</span>
-            <span className="text-sm font-bold font-mono text-primary">
-              +₱{totalForecastRevenue.toFixed(2)}
+            <span className="text-[11px] text-text-dim block mb-0.5">Low-Stock Materials Alert</span>
+            <span className={`text-sm font-bold font-mono ${lowStockMaterialsCount > 0 ? 'text-warning' : 'text-text-main'}`}>
+              {lowStockMaterialsCount} item{lowStockMaterialsCount === 1 ? '' : 's'}
             </span>
-            <span className="text-[10px] text-text-dim block mt-0.5">Linear projection from velocity</span>
+            <span className="text-[10px] text-text-dim block mt-0.5">Supplies below safety threshold</span>
           </div>
 
           <div className="p-3 rounded-lg bg-white/5 border border-border-glass">
-            <span className="text-[11px] text-text-dim block mb-0.5">Operational Training Set</span>
+            <span className="text-[11px] text-text-dim block mb-0.5">Active Workshop Orders</span>
             <span className="text-sm font-bold font-mono text-text-main">
-              {orders.length} orders
+              {activeWorkshopOrdersCount} order{activeWorkshopOrdersCount === 1 ? '' : 's'}
             </span>
-            <span className="text-[10px] text-text-dim block mt-0.5">Continuous learning dataset</span>
+            <span className="text-[10px] text-text-dim block mt-0.5">Live orders in production queue</span>
           </div>
         </div>
 

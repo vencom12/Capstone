@@ -1311,9 +1311,9 @@ exports.chat = async (req, res) => {
             return `${p.name} (ONLY ${inStock.join(', ')} in stock; ${oos.join(', ')} OUT OF STOCK)`;
         }).join('; ')}\n` : ''}${outOfStockProducts.length > 0 ? `        - Completely Out-of-Stock Catalog Products: ${outOfStockProducts.map(p => p.name).join(', ')}\n` : ''}        - Product Catalog Items (with real-time variant stock): ${productCatalogBrief || 'None'}
         
-        ${dbUser.role === 'admin' ? `REAL-TIME BI & FORECAST METRICS:
+        ${dbUser.role === 'admin' ? `RECORDED OPERATIONAL METRICS:
         - Storefront Conversion Rate: ${(conversionRate * 100).toFixed(1)}% (based on ${totalVisits365D} visits and ${totalOrders365D} orders in the past 365 days)
-        - Material Depletion Forecasts: ${biForecastSummary.filter(f => f.risk === 'Critical' || f.risk === 'Warning').map(f => `${f.item} (${f.daysRemaining} days remaining, risk: ${f.risk})`).join('; ') || 'All materials stable (>14 days buffer)'}` : ''}
+        - Low-Stock Raw Materials: ${biForecastSummary.filter(f => f.isLowStock).map(f => `${f.item} (${f.count} remaining, min: ${f.minThreshold})`).join('; ') || 'All materials above minimum safety threshold'}` : ''}
         
         ${suggestionsContext}
         ${userPromptContext}

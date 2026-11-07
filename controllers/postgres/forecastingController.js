@@ -5,144 +5,52 @@ const { ACTIONS, ENTITIES } = require('../../utils/apiConstants');
 const { logAiChange } = require('../../utils/aiLogger');
 const { fetchGroqChatWithFallback } = require('../../utils/groqClient');
 
-// Simple global in-memory cache for BI suggestions
+// Simple global in-memory cache for descriptive analytics summary
 let biCache = null;
 let cacheTime = null;
 let lastForceRefresh = null;
-
-// Helper to perform linear regression projections
-function calculateLinearProjections(dataPoints, forecastDays = 7) {
-    const n = dataPoints.length;
-    if (n < 2) {
-        const val = n === 1 ? dataPoints[0] : 0;
-        return Array.from({ length: forecastDays }, () => val);
-    }
-
-    let sumX = 0;
-    let sumY = 0;
-    let sumXY = 0;
-    let sumXX = 0;
-
-    for (let i = 0; i < n; i++) {
-        sumX += i;
-        sumY += dataPoints[i];
-        sumXY += i * dataPoints[i];
-        sumXX += i * i;
-    }
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-
-    const projections = [];
-    for (let j = 0; j < forecastDays; j++) {
-        const nextX = n + j;
-        const projectedVal = Math.max(0, slope * nextX + intercept);
-        projections.push(projectedVal);
-    }
-    return projections;
-}
 
 async function getActiveSuggestionsInternal(force = false) {
     const now = new Date();
 
     if (force) {
-        // Throttling: limit force refresh to once every 5 minutes
-        if (lastForceRefresh && (now - lastForceRefresh < 5 * 60 * 1000)) {
-            console.log('[BI Cache] Throttling active, serving from cache.');
-        } else {
-            console.log('[BI Cache] Force refresh triggered. Invalidating cache.');
-            lastForceRefresh = now;
-            biCache = null;
-        }
+        console.log('[Descriptive AI] Refresh triggered. Updating summary from live records.');
+        lastForceRefresh = now;
+        biCache = null;
     }
 
-    // Cache hit (1 hour duration)
-    if (biCache && cacheTime && (now - cacheTime < 60 * 60 * 1000)) {
-        console.log('[BI Cache] Cache hit. Serving cached recommendations.');
+    // Cache hit (15 minutes duration)
+    if (biCache && cacheTime && (now - cacheTime < 15 * 60 * 1000)) {
         return biCache;
     }
 
-    const date14dAgo = new Date(new Date().setDate(now.getDate() - 14));
-    const date365dAgo = new Date(new Date().setDate(now.getDate() - 365));
-
-    console.log('[BI Engine] Querying 365-day database aggregates...');
-
-    // 2. High-performance DB-level aggregations
+    // Query recorded database totals & current operational status (purely descriptive — no predictive regression)
     const [
-        trafficRollups,
-        orderRollups,
+        totalVisitsCount,
+        validOrderAgg,
         inventory,
         products,
-        totalOrders
+        activeQueueCount
     ] = await Promise.all([
-        // Aggregate daily site traffic visits (365 days)
-        prisma.$queryRaw`
-            SELECT 
-                TO_CHAR(timestamp, 'YYYY-MM-DD') AS day,
-                COUNT(*)::int AS count
-            FROM "SiteTraffic"
-            WHERE timestamp >= ${date365dAgo}
-            GROUP BY TO_CHAR(timestamp, 'YYYY-MM-DD')
-        `,
-        // Aggregate daily orders count and revenue (365 days)
-        prisma.$queryRaw`
-            SELECT 
-                TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD') AS day,
-                COUNT(*)::int AS count,
-                SUM("totalAmount")::float AS revenue
-            FROM "Order"
-            WHERE COALESCE(date, "createdAt") >= ${date365dAgo} AND status != 'Order Canceled'
-            GROUP BY TO_CHAR(COALESCE(date, "createdAt"), 'YYYY-MM-DD')
-        `,
+        prisma.siteTraffic.count(),
+        prisma.order.aggregate({
+            where: { NOT: { status: { in: ['Order Canceled', 'Cancelled'] } } },
+            _count: { id: true },
+            _sum: { totalAmount: true }
+        }),
         prisma.inventory.findMany(),
         prisma.product.findMany(),
-        prisma.order.count()
+        prisma.order.count({
+            where: { status: { in: ['Pending Payment', 'Insufficient Payment', 'In Queue', 'Preparing Order'] } }
+        })
     ]);
 
-    // Process rollups into maps for fast O(1) lookups
-    const trafficMap = {};
-    let totalVisits365D = 0;
-    trafficRollups.forEach(r => {
-        trafficMap[r.day] = r.count;
-        totalVisits365D += r.count;
-    });
+    const totalVisitsRecorded = Number(totalVisitsCount) || 0;
+    const totalValidOrders = Number(validOrderAgg?._count?.id) || 0;
+    const totalRecordedRevenue = Number(validOrderAgg?._sum?.totalAmount) || 0;
+    const lowStockCount = inventory.filter(inv => inv.count <= (inv.minThreshold || 0)).length;
 
-    const orderMap = {};
-    let totalOrders365D = 0;
-    let totalRevenue365D = 0;
-    orderRollups.forEach(r => {
-        orderMap[r.day] = { count: r.count, revenue: r.revenue };
-        totalOrders365D += r.count;
-        totalRevenue365D += r.revenue;
-    });
-
-    // 3. Perform Mathematical Projections (Daily trends for last 14 days to project next 7 days)
-    const dailyVisits = Array(14).fill(0);
-    const dailyOrders = Array(14).fill(0);
-    const dailyRevenue = Array(14).fill(0);
-    const dateLabels = [];
-
-    // Generate past 14 days date filters
-    for (let i = 13; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(now.getDate() - i);
-        const dateStr = d.toISOString().split('T')[0];
-        dateLabels.push(dateStr);
-    }
-
-    dateLabels.forEach((dateStr, idx) => {
-        dailyVisits[idx] = trafficMap[dateStr] || 0;
-        const oStats = orderMap[dateStr] || { count: 0, revenue: 0 };
-        dailyOrders[idx] = oStats.count;
-        dailyRevenue[idx] = oStats.revenue;
-    });
-
-    // Forecast the next 7 days using linear regression
-    const projectedVisits = calculateLinearProjections(dailyVisits, 7);
-    const projectedOrders = calculateLinearProjections(dailyOrders, 7);
-    const projectedRevenue = calculateLinearProjections(dailyRevenue, 7);
-
-    // 4. Low Stock Inventory Alerts (Simple direct threshold check)
+    // 1. Low Stock Inventory Alerts (Direct threshold check on current stock)
     const fallbackSuggestions = [];
     for (const inv of inventory) {
         if (inv.count <= inv.minThreshold) {
@@ -263,76 +171,68 @@ async function getActiveSuggestionsInternal(force = false) {
         }
     });
 
-    // 6. Try Groq AI Suggestion Engine (with fallback)
+    // 4. Optional Descriptive AI Summary (strictly descriptive over recorded facts — no forecasting or ML)
     let suggestions = [...fallbackSuggestions];
     const apiKey = process.env.GROQ_API_KEY;
 
-    if (apiKey) {
+    if (apiKey && fallbackSuggestions.length > 0) {
         try {
             let settings = await prisma.systemSettings.findUnique({ where: { id: 'global' } });
             const GROQ_API_URL = settings?.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions';
             const MODEL = settings?.aiChatModel || 'llama-3.3-70b-versatile';
 
-            const systemPrompt = `You are StitchMaster AI, the strategic Business Intelligence advisor for Stitch-Opt.
-You are analyzing historical traffic, sales orders, and raw inventory levels to recommend actions.
+            const systemPrompt = `You are a Descriptive AI operational summary assistant for ${settings?.businessName || 'Edz Towels & Caps'}.
+Your role is STRICTLY DESCRIPTIVE: summarize only actual recorded database figures, current stock counts vs. safety limits, supplier unit costs vs. selling prices, and active orders waiting in queue.
 
-Here is the current business status:
-- Total traffic visits (last 365 days): ${totalVisits365D}
-- Total orders (last 365 days): ${totalOrders365D}
-- Total realized revenue (last 365 days): ₱${totalRevenue365D.toFixed(2)}
-- Inventory stock status: ${JSON.stringify(inventory.map(inv => ({ item: inv.item, count: inv.count, minThreshold: inv.minThreshold, isLow: inv.count <= inv.minThreshold })))}
-- Product price lists: ${JSON.stringify(products.map(p => ({ id: p.id, name: p.name, price: p.price, stock: p.count })))}
+Recorded store status:
+- Recorded storefront visits: ${totalVisitsRecorded}
+- Recorded valid orders: ${totalValidOrders}
+- Recorded total sales: ₱${totalRecordedRevenue.toFixed(2)}
+- Current low-stock items: ${lowStockCount}
+- Active orders in queue: ${activeQueueCount}
 
-We have generated these automated baseline suggestions:
+Recorded operational alerts:
 ${JSON.stringify(fallbackSuggestions, null, 2)}
 
-MANDATORY STORE BUSINESS POLICIES & CONSTRAINTS:
-1. ZERO DISCOUNTS: The store NEVER gives discounts, coupons, markdowns, or clearance sales under any circumstances. NEVER propose discounts, promotions, or price cuts.
-2. CONSERVATIVE PRICING: The store does NOT raise prices easily. NEVER suggest raising prices based on popularity, high sales velocity, seasonal demand, or A/B testing elasticity.
-3. SUPPLIER-COST-DRIVEN PRICING ONLY: The store ONLY raises a product's price if the supplier's raw material acquisition cost increases, threatening the business profit margin. If supplier costs are stable, prices MUST remain unchanged.
-4. INVENTORY PROCUREMENT: Focus recommendations on proactive procurement of depleted inventory items and blanks before safety limits run out, and prioritizing pending orders in queue.
+STRICT CONSTRAINTS:
+1. DESCRIPTIVE ONLY: Never predict future demand, never claim machine learning, linear regression, velocity projections, or depletion forecasts. State only current facts and recorded counts.
+2. ZERO DISCOUNTS: Never propose discounts, markdowns, coupons, or clearance sales.
+3. SUPPLIER-COST PRICING ONLY: Only keep price updates that already exist in the alerts above due to recorded supplier raw material costs. Never invent new price changes.
+4. Preserve the exact "id" and "action" object of each alert so action buttons work accurately.
 
-Your task is to review these baseline suggestions, consolidate them, or refine their strategic reasoning to make them feel highly professional and descriptive while strictly obeying the business policies above.
-Format your output as a raw JSON array of objects. Do not include markdown code block formatting (like \`\`\`json).
-Each object in the array must contain:
-- id: String (unique suggestion ID)
-- title: String (compelling, short strategic title)
-- category: "Inventory" | "Pricing" | "Operations" | "Demand"
+Format your output as a raw JSON array of objects (no markdown code fences). Each object must contain:
+- id: String (preserve exact ID)
+- title: String (clear, plain-English descriptive title)
+- category: "Inventory" | "Pricing" | "Operations"
 - severity: "info" | "warning" | "critical"
-- description: String (concise strategic reasoning in 1-2 sentences referencing specific numbers, e.g. visits, stock count, depletion rate, or pending hours)
-- actionText: String (label for the implementation action button)
-- action: Object (the execution details: restock, updatePrice, prioritizeOrder)
+- description: String (1-2 clear descriptive sentences citing exact current stock, supplier cost, or waiting hours)
+- actionText: String (plain button label)
+- action: Object (preserve exact action type & payload)
 
-Return ONLY the valid JSON array of objects.`;
+Return ONLY the valid JSON array.`;
 
             const data = await fetchGroqChatWithFallback(apiKey, GROQ_API_URL, MODEL, {
                 messages: [{ role: 'user', content: systemPrompt }],
                 temperature: 0.1,
-                max_tokens: 600
+                max_tokens: 1200
             });
 
-            if (data) {
-                if (data.choices && data.choices[0] && data.choices[0].message?.content) {
-                    const contentText = data.choices[0].message.content.trim();
-                    const cleanJson = contentText.replace(/^```json/, '').replace(/```$/, '').trim();
-                    const parsed = JSON.parse(cleanJson);
-                    if (Array.isArray(parsed)) {
-                        suggestions = parsed;
-                    }
+            if (data?.choices?.[0]?.message?.content) {
+                const contentText = data.choices[0].message.content.trim();
+                const cleanJson = contentText.replace(/^```json/i, '').replace(/```$/i, '').trim();
+                const parsed = JSON.parse(cleanJson);
+                if (Array.isArray(parsed)) {
+                    suggestions = parsed;
                 }
             }
         } catch (err) {
-            console.warn('[BI Advisor Warning] LLM Suggestion failed, utilizing baseline heuristics:', err.message);
+            console.warn('[Descriptive AI] Using direct recorded alerts:', err.message);
         }
     }
 
-    // Strict policy enforcement filter: ensure no discounts or arbitrary price tests ever leak through
+    // Strict policy enforcement filter
     suggestions = suggestions.filter(s => {
-        const titleLower = (s.title || '').toLowerCase();
-        const descLower = (s.description || '').toLowerCase();
-        const actLower = (s.actionText || '').toLowerCase();
-        const text = `${titleLower} ${descLower} ${actLower}`;
-
+        const text = `${s.title || ''} ${s.description || ''} ${s.actionText || ''}`.toLowerCase();
         if (text.includes('discount') || text.includes('markdown') || text.includes('clearance') || text.includes('sale price')) {
             return false;
         }
@@ -343,26 +243,17 @@ Return ONLY the valid JSON array of objects.`;
     });
 
     const metrics = {
-        totalVisits: totalVisits365D,
-        avgOrderValue: totalOrders365D > 0 ? (totalRevenue365D / totalOrders365D) : 0,
-        conversionRate: totalVisits365D > 0 ? (totalOrders365D / totalVisits365D) : 0,
+        totalVisits: totalVisitsRecorded,
+        totalOrders: totalValidOrders,
+        totalRevenue: totalRecordedRevenue,
+        avgOrderValue: totalValidOrders > 0 ? (totalRecordedRevenue / totalValidOrders) : 0,
+        conversionRate: totalVisitsRecorded > 0 ? (totalValidOrders / totalVisitsRecorded) : 0,
+        lowStockCount,
+        activeQueueCount
     };
 
-    const projections = {
-        labels: dateLabels,
-        visits: dailyVisits,
-        orders: dailyOrders,
-        revenue: dailyRevenue,
-        forecast: {
-            visits: projectedVisits,
-            orders: projectedOrders,
-            revenue: projectedRevenue
-        }
-    };
-
-    // Filter out declined suggestions
+    // Filter out dismissed alerts
     try {
-        // Prune recommendations older than 7 days
         const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
         await prisma.declinedRecommendation.deleteMany({
             where: { declinedAt: { lt: sevenDaysAgo } }
@@ -374,10 +265,10 @@ Return ONLY the valid JSON array of objects.`;
         const declinedIds = new Set(declinedRecs.map(d => d.sugId));
         suggestions = suggestions.filter(s => !declinedIds.has(s.id));
     } catch (dbErr) {
-        console.error('[BI Engine] Failed to fetch declined recommendations:', dbErr.message);
+        console.error('[Descriptive AI] Failed to fetch dismissed alerts:', dbErr.message);
     }
 
-    biCache = { metrics, projections, suggestions };
+    biCache = { metrics, suggestions };
     cacheTime = now;
 
     return biCache;
@@ -391,15 +282,15 @@ exports.getSuggestions = async (req, res) => {
         const biData = await getActiveSuggestionsInternal(force);
         res.json(biData);
     } catch (err) {
-        console.error('getSuggestions BI Error:', err);
-        res.status(500).json({ message: 'Error compiling business intelligence metrics' });
+        console.error('getSuggestions Error:', err);
+        res.status(500).json({ message: 'Error compiling descriptive store summary' });
     }
 };
 
 exports.executeSuggestionAction = async (req, res) => {
     try {
         const { actionType, payload } = req.body;
-        const username = req.user?.username || 'Admin (BI)';
+        const username = req.user?.username || 'Admin';
 
         if (!actionType || !payload) {
             return res.status(400).json({ message: 'Missing actionType or payload' });
@@ -436,10 +327,7 @@ exports.executeSuggestionAction = async (req, res) => {
             actionDetails = `Restocked item "${updated.item}" (+${amount} units). New total: ${updated.count}`;
             logAiChange(username, 'Restock Item', actionDetails);
 
-            // Invalidate BI Cache so suggestions reflect restock immediately
             biCache = null;
-
-            // Broadcast changes
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.INVENTORY, await prisma.inventory.findMany());
         }
         else if (actionType === 'updatePrice') {
@@ -453,35 +341,6 @@ exports.executeSuggestionAction = async (req, res) => {
             entityId = updated.id;
             actionDetails = `Adjusted price for "${updated.name}" to ₱${price}`;
             logAiChange(username, 'Adjust Product Price', actionDetails);
-
-            // Invalidate BI Cache so suggestions reflect pricing adjustments
-            biCache = null;
-
-            // Broadcast changes
-            const { enrichProductsWithStock } = require('../../utils/inventoryManager');
-            const productsList = await prisma.product.findMany();
-            const enriched = await enrichProductsWithStock(productsList);
-            socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.PRODUCT, enriched);
-        }
-        else if (actionType === 'startAbTest') {
-            const { productId, variantAPrice, variantBPrice } = payload;
-            const updated = await prisma.product.update({
-                where: { id: productId },
-                data: {
-                    isAbTesting: true,
-                    variantAPrice: parseFloat(variantAPrice),
-                    variantBPrice: parseFloat(variantBPrice),
-                    variantAViews: 0,
-                    variantBViews: 0,
-                    variantAOrders: 0,
-                    variantBOrders: 0
-                }
-            });
-
-            entity = ENTITIES.PRODUCT;
-            entityId = updated.id;
-            actionDetails = `Started A/B price test for "${updated.name}" (₱${variantAPrice} vs ₱${variantBPrice})`;
-            logAiChange(username, 'Start A/B Test', actionDetails);
 
             biCache = null;
 
@@ -505,24 +364,20 @@ exports.executeSuggestionAction = async (req, res) => {
             actionDetails = `Set order ${updated.orderId} to Rush priority (Score: ${priorityScore})`;
             logAiChange(username, 'Prioritize Order', actionDetails);
 
-            // Invalidate BI Cache
             biCache = null;
-
-            // Broadcast changes
             socketUtil.emitDataChanged(req.app.get('io'), ACTIONS.UPDATE, ENTITIES.ORDER, updated);
         }
         else if (['acknowledge', 'monitorSupplierCost', 'initiateMarketing', 'reviewProcess'].includes(actionType)) {
             entity = ENTITIES.SYSTEM;
             entityId = payload?.productId || payload?.inventoryId || 'global';
-            actionDetails = `Confirmed strategy implementation: ${payload?.note || actionType}`;
-            logAiChange(username, 'Implement Strategy', actionDetails);
+            actionDetails = `Confirmed operational action: ${payload?.note || actionType}`;
+            logAiChange(username, 'Confirm Operational Action', actionDetails);
             biCache = null;
         }
         else {
-            return res.status(400).json({ message: `Unknown BI action type: ${actionType}` });
+            return res.status(400).json({ message: `Unknown action type: ${actionType}` });
         }
 
-        // Add to global audit log
         await prisma.globalAuditLog.create({
             data: {
                 userId: req.user?.id || 'system',
@@ -539,13 +394,13 @@ exports.executeSuggestionAction = async (req, res) => {
 
     } catch (err) {
         console.error('executeSuggestionAction Error:', err);
-        res.status(500).json({ message: `Failed to execute BI action: ${err.message}` });
+        res.status(500).json({ message: `Failed to execute action: ${err.message}` });
     }
 };
 
 exports.declineSuggestionAction = async (req, res) => {
     try {
-        const { suggestionId } = req.body;
+        const suggestionId = req.body?.suggestionId || req.body?.sugId;
         if (!suggestionId) {
             return res.status(400).json({ message: 'Missing suggestionId' });
         }
@@ -556,13 +411,12 @@ exports.declineSuggestionAction = async (req, res) => {
             create: { sugId: suggestionId }
         });
 
-        // Invalidate BI Cache so declined suggestions disappear
         biCache = null;
 
-        res.json({ success: true, message: `Recommendation ${suggestionId} declined successfully.` });
+        res.json({ success: true, message: `Alert ${suggestionId} dismissed.` });
     } catch (err) {
         console.error('declineSuggestionAction Error:', err);
-        res.status(500).json({ message: `Failed to decline recommendation: ${err.message}` });
+        res.status(500).json({ message: `Failed to dismiss alert: ${err.message}` });
     }
 };
 
