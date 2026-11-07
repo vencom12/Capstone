@@ -744,10 +744,26 @@ export default function AuthModal() {
         });
         handleClose();
       } else {
-        setForgotPassError(res.message || 'Failed to update password.');
+        const errMsg = res.message || 'Failed to update password.';
+        setForgotPassError(errMsg);
+        setFormShaking(true);
+        setTimeout(() => setFormShaking(false), 450);
+        showToast({
+          title: 'Choose a Different Password',
+          message: errMsg,
+          type: 'warning',
+        });
       }
     } catch (err: any) {
-      setForgotPassError(err.message || 'Failed to update password.');
+      const errMsg = err.message || 'Failed to update password.';
+      setForgotPassError(errMsg);
+      setFormShaking(true);
+      setTimeout(() => setFormShaking(false), 450);
+      showToast({
+        title: 'Choose a Different Password',
+        message: errMsg,
+        type: 'warning',
+      });
     } finally {
       setIsSavingNewPassword(false);
     }

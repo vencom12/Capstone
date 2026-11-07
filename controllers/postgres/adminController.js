@@ -323,6 +323,12 @@ exports.updateUser = async (req, res) => {
                 return res.status(400).json({ message: 'Password must be at least 8 characters and include an uppercase letter, a lowercase letter, and a number.' });
             }
             const bcrypt = require('bcryptjs');
+            if (currentUser.password) {
+                const isSamePassword = await bcrypt.compare(cleanPass, currentUser.password);
+                if (isSamePassword) {
+                    return res.status(400).json({ message: 'You cannot reuse a password that was previously used on this account. Please choose a different password.' });
+                }
+            }
             updateData.password = await bcrypt.hash(cleanPass, 10);
         }
 

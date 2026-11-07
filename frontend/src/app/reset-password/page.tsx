@@ -217,18 +217,55 @@ function ResetPasswordContent() {
         }
       } else {
         const errMsg = res.message || 'Could not set password.';
-        if (
-          errMsg.toLowerCase().includes('already been used') ||
-          errMsg.toLowerCase().includes('expired') ||
-          errMsg.toLowerCase().includes('invalid')
-        ) {
+        const lowerErr = errMsg.toLowerCase();
+        const isTokenInvalidErr =
+          lowerErr.includes('already been used') ||
+          lowerErr.includes('expired') ||
+          lowerErr.includes('invalid') ||
+          lowerErr.includes('not found');
+
+        if (isTokenInvalidErr) {
           setStatus('error');
+          setMessage(errMsg);
+        } else {
+          // Keep the form open (e.g., when user enters a previously used password)
+          setFieldErrors((prev) => ({ ...prev, password: 'You cannot reuse a password you have used before.' }));
+          setMessage(errMsg);
+          setFormShaking(true);
+          setTimeout(() => setFormShaking(false), 450);
+          showToast({
+            title: 'Previously Used Password',
+            message: errMsg,
+            type: 'warning',
+          });
         }
-        setMessage(errMsg);
       }
     } catch (err: any) {
-      setStatus('error');
-      setMessage(err.message || 'This link has already been used or has expired.');
+      const errMsg = err?.message || 'Could not update your password. Please try again.';
+      const lowerErr = errMsg.toLowerCase();
+      const isTokenInvalidErr =
+        lowerErr.includes('already been used') ||
+        lowerErr.includes('expired') ||
+        lowerErr.includes('invalid') ||
+        lowerErr.includes('not found');
+
+      if (isTokenInvalidErr) {
+        setStatus('error');
+        setMessage(errMsg);
+      } else {
+        // Keep the user inside the password creation form and notify them inline + via toast
+        if (lowerErr.includes('same') || lowerErr.includes('previous') || lowerErr.includes('current password')) {
+          setFieldErrors((prev) => ({ ...prev, password: 'You cannot reuse a password you have used before.' }));
+        }
+        setMessage(errMsg);
+        setFormShaking(true);
+        setTimeout(() => setFormShaking(false), 450);
+        showToast({
+          title: 'Choose a Different Password',
+          message: errMsg,
+          type: 'warning',
+        });
+      }
     } finally {
       setSubmitting(false);
     }

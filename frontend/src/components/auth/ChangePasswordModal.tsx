@@ -128,10 +128,34 @@ export default function ChangePasswordModal({ isOpen, onClose }: ChangePasswordM
           handleClose();
         }, 1500);
       } else {
-        setErrorMessage(res.message || 'Failed to update password.');
+        const errMsg = res.message || 'Failed to update password.';
+        setErrorMessage(errMsg);
+        if (errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous')) {
+          setFieldErrors((prev) => ({ ...prev, newPassword: 'You cannot reuse a password you have used before.' }));
+        }
+        setFormShaking(true);
+        setTimeout(() => setFormShaking(false), 450);
+        showToast({
+          title: 'Choose a Different Password',
+          message: errMsg,
+          type: 'warning',
+        });
       }
     } catch (err: any) {
-      setErrorMessage(err.message || 'Current password is incorrect or could not be verified.');
+      const errMsg = err.message || 'Current password is incorrect or could not be verified.';
+      setErrorMessage(errMsg);
+      if (errMsg.toLowerCase().includes('same') || errMsg.toLowerCase().includes('previous')) {
+        setFieldErrors((prev) => ({ ...prev, newPassword: 'You cannot reuse a password you have used before.' }));
+      } else if (errMsg.toLowerCase().includes('current password is incorrect')) {
+        setFieldErrors((prev) => ({ ...prev, currentPassword: 'Incorrect current password.' }));
+      }
+      setFormShaking(true);
+      setTimeout(() => setFormShaking(false), 450);
+      showToast({
+        title: 'Password Update Notice',
+        message: errMsg,
+        type: 'warning',
+      });
     } finally {
       setIsSubmitting(false);
     }

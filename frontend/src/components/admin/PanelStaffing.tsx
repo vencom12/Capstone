@@ -251,20 +251,6 @@ export default function PanelStaffing({
     const prevUsers = [...users];
     const tempId = `temp_user_${Date.now()}`;
 
-    // Optimistically update users in state immediately (0ms UI latency)
-    if (setUsers) {
-      if (isEdit) {
-        const targetId = editingStaff.id || editingStaff._id;
-        setUsers((prev) =>
-          prev.map((u) => ((u.id || u._id) === targetId ? { ...u, ...optimisticUser } : u))
-        );
-      } else {
-        setUsers((prev) => [{ ...optimisticUser, id: tempId, _id: tempId }, ...prev]);
-      }
-    }
-
-    setIsOpen(false);
-
     try {
       const path = isEdit ? `/api/admin/users/${editingStaff.id || editingStaff._id}` : '/api/admin/users';
 
@@ -272,21 +258,38 @@ export default function PanelStaffing({
         ? await api.put(path, payload)
         : await api.post(path, payload);
 
-      showToast(res?.message || (isEdit ? (emailChanged ? `Staff updated! A new verification email has been sent to ${email.trim()}.` : 'Staff updated successfully') : 'Staff invitation sent! Ask them to check their email to activate.'), 'success');
-
-      if (!isEdit && res?.user && setUsers) {
-        setUsers((prev) =>
-          prev.map((u) => (u.id === tempId || u._id === tempId ? { ...u, ...res.user } : u))
-        );
+      // Update users in state and close modal ONLY after successful validation & save
+      if (setUsers) {
+        if (isEdit) {
+          const targetId = editingStaff.id || editingStaff._id;
+          setUsers((prev) =>
+            prev.map((u) => ((u.id || u._id) === targetId ? { ...u, ...optimisticUser, ...(res?.user || {}) } : u))
+          );
+        } else {
+          setUsers((prev) => [{ ...optimisticUser, id: tempId, _id: tempId, ...(res?.user || {}) }, ...prev]);
+        }
       }
+
+      setIsOpen(false);
+      showToast(res?.message || (isEdit ? (emailChanged ? `Staff updated! A new verification email has been sent to ${email.trim()}.` : 'Staff updated successfully') : 'Staff invitation sent! Ask them to check their email to activate.'), 'success');
 
       refreshData().catch(() => {});
     } catch (err: any) {
       console.warn('Personnel submit notice:', err?.message || err);
-      if (setUsers) {
-        setUsers(prevUsers);
+      const errMsg = err?.message || 'Failed to save staff';
+      // Keep the modal open so the admin is not kicked out of the form!
+      setShakeKey((k) => k + 1);
+      if (errMsg.toLowerCase().includes('password') || errMsg.toLowerCase().includes('previously used') || errMsg.toLowerCase().includes('same')) {
+        setTouched((prev) => ({ ...prev, password: true }));
+        setErrors((prev) => ({ ...prev, password: errMsg }));
+      } else if (errMsg.toLowerCase().includes('email')) {
+        setTouched((prev) => ({ ...prev, email: true }));
+        setErrors((prev) => ({ ...prev, email: errMsg }));
+      } else if (errMsg.toLowerCase().includes('username')) {
+        setTouched((prev) => ({ ...prev, username: true }));
+        setErrors((prev) => ({ ...prev, username: errMsg }));
       }
-      showToast(err?.message || 'Failed to save staff', 'error');
+      showToast(errMsg, 'error');
     }
   };
 
