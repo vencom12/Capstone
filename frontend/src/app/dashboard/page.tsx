@@ -1245,15 +1245,23 @@ export default function DashboardPage() {
             </ul>
           </div>
 
-          <div className="flex flex-col gap-2 mt-1">
-            <label className="text-xs font-semibold text-text-main">
-              To confirm, please type your account name <span className="font-mono text-primary font-bold">"{user?.username}"</span>:
+          <div className="flex flex-col gap-2 mt-1 select-none" onCopy={(e) => e.preventDefault()}>
+            <label className="text-xs font-semibold text-text-main select-none">
+              To confirm, please type your account name <span className="font-mono text-primary font-bold select-none">"{user?.username}"</span>:
             </label>
             <input
               type="text"
               maxLength={50}
+              autoComplete="off"
               value={deleteConfirmName}
               onChange={(e) => setDeleteConfirmName(e.target.value)}
+              onPaste={(e) => {
+                e.preventDefault();
+                showToast('Please type your account name manually to confirm deletion.', 'error');
+              }}
+              onCopy={(e) => e.preventDefault()}
+              onCut={(e) => e.preventDefault()}
+              onDrop={(e) => e.preventDefault()}
               placeholder={user?.username || 'Enter your account name'}
               className="w-full bg-bg-surface border border-border-glass p-3 rounded-xl text-text-main text-sm outline-none focus:border-danger transition-all font-mono"
               autoFocus
