@@ -33,7 +33,7 @@ interface AuthState {
   forgotPassword: (emailOrUsername: string) => Promise<{ success: boolean; message: string; cooldownSeconds?: number; maskedEmail?: string; email?: string }>;
   verifyResetOtp: (emailOrUsername: string, otpCode: string) => Promise<{ success: boolean; message: string; email?: string }>;
   resetPasswordWithOtp: (emailOrUsername: string, otpCode: string, password: string) => Promise<{ success: boolean; message: string; user?: any }>;
-  validateResetToken: (token: string) => Promise<{ valid: boolean; maskedEmail?: string; username?: string; message?: string }>;
+  validateResetToken: (token: string) => Promise<{ valid: boolean; submissionToken?: string; maskedEmail?: string; username?: string; message?: string }>;
   resetPassword: (token: string, password: string) => Promise<{ success: boolean; message: string; user?: any }>;
   changePassword: (currentPassword: string, newPassword: string, confirmPassword?: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
@@ -256,7 +256,7 @@ export const useAuthStore = create<AuthState>()(
 
       validateResetToken: async (token) => {
         try {
-          return await api.get<{ valid: boolean; maskedEmail?: string; username?: string; message?: string }>(
+          return await api.get<{ valid: boolean; submissionToken?: string; maskedEmail?: string; username?: string; message?: string }>(
             `/api/auth/password/validate-token?token=${encodeURIComponent(token)}`
           );
         } catch (err: any) {

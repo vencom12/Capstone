@@ -57,6 +57,16 @@ function ResetPasswordContent() {
     validateResetToken(rawToken)
       .then((res) => {
         if (res.valid) {
+          if (res.submissionToken) {
+            setToken(res.submissionToken);
+          }
+          // Remove the one-time token from the browser URL bar immediately after first validation
+          if (typeof window !== 'undefined') {
+            const cleanUrl = isStaffActivation
+              ? `${window.location.pathname}?type=staff_activation`
+              : window.location.pathname;
+            window.history.replaceState({}, document.title, cleanUrl);
+          }
           setStatus('form');
           setTokenInfo({
             maskedEmail: res.maskedEmail,

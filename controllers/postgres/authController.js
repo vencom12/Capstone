@@ -1391,8 +1391,23 @@ exports.validateResetToken = async (req, res) => {
             return `${u[0]}${'*'.repeat(Math.min(u.length - 2, 5))}${u[u.length - 1]}@${d}`;
         };
 
+        // Strict One-Use-On-Click Guarantee:
+        // Immediately consume the Gmail link token (rst_...) by rotating it to an in-memory
+        // submission token (rst_sub_...) so clicking the email button/link a second time immediately fails.
+        const submissionToken = 'rst_sub_' + generateVerificationToken();
+        const hashedSubmissionToken = crypto.createHash('sha256').update(submissionToken).digest('hex');
+
+        await prisma.emailVerification.update({
+            where: { id: record.id },
+            data: {
+                token: hashedSubmissionToken,
+                expiresAt: new Date(Math.min(new Date(record.expiresAt).getTime(), Date.now() + 15 * 60 * 1000))
+            }
+        });
+
         return res.json({
             valid: true,
+            submissionToken,
             maskedEmail: maskEmail(user.email),
             username: user.username,
             expiresAt: record.expiresAt
