@@ -457,7 +457,13 @@ exports.login = async (req, res) => {
             }
         }).catch((e) => console.warn('Failed to update tokenVersion/lastLoginAt:', e?.message));
 
-        const token = jwt.sign({ id: user.id, role: user.role, tenantId: user.tenantId, tokenVersion: nextTokenVersion }, process.env.JWT_SECRET, { expiresIn });
+        const token = jwt.sign({ 
+            id: user.id, 
+            username: user.username,
+            role: user.role, 
+            tenantId: user.tenantId, 
+            tokenVersion: nextTokenVersion 
+        }, process.env.JWT_SECRET, { expiresIn });
 
         const cookieOptions = {
             httpOnly: true,

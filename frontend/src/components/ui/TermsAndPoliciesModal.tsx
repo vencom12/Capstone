@@ -25,7 +25,6 @@ const STUDIO_BUSINESS_SAFEGUARDS = {
   storeFulfillment: 'In-Store Counter Pickup (Pacific Mall Lucena)',
   governingLaws: {
     consumerAct: 'Republic Act No. 7394 (Consumer Act of the Philippines)',
-    dataPrivacy: 'Republic Act No. 10173 (Data Privacy Act of 2012)',
     ipCode: 'Republic Act No. 8293 (Intellectual Property Code of the Philippines)',
   },
 };
@@ -33,7 +32,7 @@ const STUDIO_BUSINESS_SAFEGUARDS = {
 interface TermsAndPoliciesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  initialTab?: 'refunds' | 'pickup' | 'copyright' | 'colors' | 'privacy';
+  initialTab?: 'refunds' | 'pickup' | 'copyright' | 'colors';
   zIndex?: string;
 }
 
@@ -140,21 +139,31 @@ export default function TermsAndPoliciesModal({
           <p className="text-text-main font-semibold">
             Guidelines regarding logos, emblems, school seals, and commercial trademarks:
           </p>
-          <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
-              Customer Representation & Warranty
+
+          <div className="p-3 bg-white/[0.03] border border-amber-500/30 rounded-xl flex flex-col gap-1.5 bg-amber-500/[0.03]">
+            <span className="font-bold text-amber-400 text-xs uppercase tracking-wide flex items-center gap-1.5">
+              <span>⚠️</span> Strict Anti-Counterfeiting &amp; Commercial Brand Policy
             </span>
-            <p className="m-0 text-xs">
-              By uploading artwork, brand marks, or text to Stitch-Opt, you confirm that you own the rights to the design or are authorized by the trademark holder (company, sports club, or educational institution) to commission embroidery reproductions.
+            <p className="m-0 text-xs text-text-dim">
+              In strict accordance with the Intellectual Property Code of the Philippines (Republic Act No. 8293), Eds Towels &amp; Caps <strong>strictly prohibits the replication or embroidery of counterfeit goods, unauthorized copies, or bootlegs of registered commercial brands</strong> (e.g., Bench, Nike, Adidas, or luxury retail labels) as well as official government and law enforcement insignias. Any order attempting to replicate protected commercial trademarks without verifiable authorization will be immediately rejected.
             </p>
           </div>
 
           <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
             <span className="font-bold text-text-main text-xs uppercase tracking-wide">
-              Right to Decline Prohibited Content
+              Customer Representation &amp; Warranty
             </span>
             <p className="m-0 text-xs">
-              Eds Towels & Caps reserves the right to decline embroidery requests containing defamatory, hate-speech, or unauthorized commercial trademark infringements that violate Philippine intellectual property laws.
+              By uploading artwork, brand marks, or text to Stitch-Opt, you confirm that you own the rights to the design or are officially authorized by the trademark holder (company, sports club, or educational institution) to commission custom embroidery reproductions.
+            </p>
+          </div>
+
+          <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
+            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
+              Right to Decline &amp; Customer Indemnification
+            </span>
+            <p className="m-0 text-xs">
+              Eds Towels &amp; Caps reserves the right to decline any embroidery request suspected of intellectual property infringement, defamation, or inappropriate content. The customer agrees to hold harmless and indemnify Eds Towels &amp; Caps and Stitch-Opt from any claims, damages, or liabilities arising from the reproduction of customer-submitted artwork.
             </p>
           </div>
         </div>
@@ -183,34 +192,6 @@ export default function TermsAndPoliciesModal({
             </span>
             <p className="m-0 text-xs">
               Embroidery results naturally vary based on garment pile (e.g. 550 GSM terry cotton towels utilize water-soluble topping stabilizers, while structured chino twill caps utilize high-density buckram).
-            </p>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'privacy',
-      title: 'Data Privacy & Information Security',
-      badge: 'RA 10173 Compliance',
-      content: (
-        <div className="flex flex-col gap-3 text-xs sm:text-sm text-text-dim leading-relaxed">
-          <p className="text-text-main font-semibold">
-            Commitment to customer privacy under the Philippine Data Privacy Act of 2012:
-          </p>
-          <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
-              Purpose-Bound Data Collection
-            </span>
-            <p className="m-0 text-xs">
-              We collect customer mobile numbers and payment receipt screenshots solely for order manufacturing, counter pick-up verification at Pacific Mall Lucena, and GCash transaction verification.
-            </p>
-          </div>
-          <div className="p-3 bg-white/[0.03] border border-border-glass rounded-xl flex flex-col gap-1.5">
-            <span className="font-bold text-text-main text-xs uppercase tracking-wide">
-              No Third-Party Advertising
-            </span>
-            <p className="m-0 text-xs">
-              Your contact numbers and personal records are never rented, sold, or shared with third-party advertisers. All payment images are stored on secure encrypted servers and accessible only by authorized workshop administrators.
             </p>
           </div>
         </div>

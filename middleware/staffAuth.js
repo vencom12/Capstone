@@ -35,7 +35,7 @@ const staffAuth = () => {
 
                 const user = await prisma.user.findUnique({
                     where: { id: decoded.id },
-                    select: { tokenVersion: true, isActive: true }
+                    select: { tokenVersion: true, isActive: true, username: true, email: true, role: true }
                 });
 
                 if (!user || user.tokenVersion !== decoded.tokenVersion) {
@@ -54,7 +54,12 @@ const staffAuth = () => {
                     continue;
                 }
 
-                req.user = decoded;
+                req.user = {
+                    ...decoded,
+                    username: user.username || decoded.username,
+                    email: user.email || decoded.email,
+                    role: user.role || decoded.role
+                };
                 return next();
             } catch (err) {
                 lastError = { status: 401, body: { message: 'Token is not valid' } };

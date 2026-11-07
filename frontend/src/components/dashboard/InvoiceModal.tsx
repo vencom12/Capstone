@@ -300,10 +300,24 @@ export default function InvoiceModal({
                     </tr>
                   )}
                   {(() => {
-                    const rawStaff = order?.processedBy || order?.garmentsReceivedBy || (order?.personalization as any)?.statusHistory?.[0]?.actor || fetchedData?.processedBy || '';
+                    const pers = (order?.personalization || fetchedData?.order?.personalization) as any;
+                    const history = Array.isArray(pers?.statusHistory) ? pers.statusHistory : [];
+                    const staffFromHistory = [...history].reverse().find((h: any) => h?.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
+
+                    const rawStaff = order?.processedBy 
+                      || fetchedData?.order?.processedBy
+                      || fetchedData?.processedBy
+                      || pers?.smsVerifiedBy
+                      || pers?.approvedPartialBy
+                      || pers?.insufficientPaymentRecordedBy
+                      || staffFromHistory
+                      || order?.garmentsReceivedBy 
+                      || (history.length > 0 ? history[0]?.actor : '')
+                      || '';
+
                     if (!rawStaff) return null;
                     const isSystemOrCustomer = /customer\s*checkout|system|self-service/i.test(rawStaff);
-                    const label = isSystemOrCustomer ? 'ORDER CHANNEL:' : 'SERVED BY:';
+                    const label = isSystemOrCustomer ? 'ORDER CHANNEL:' : 'PROCESSED BY:';
                     const displayStaff = isSystemOrCustomer ? 'Online Web Store' : rawStaff;
 
                     return (

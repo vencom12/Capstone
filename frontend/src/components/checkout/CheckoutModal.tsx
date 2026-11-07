@@ -77,7 +77,7 @@ export default function CheckoutModal({
   const [fulfillmentType] = useState<'pickup'>('pickup');
   const [pickupNote, setPickupNote] = useState('');
   const [isTermsModalOpen, setIsTermsModalOpen] = useState(false);
-  const [termsInitialTab, setTermsInitialTab] = useState<'refunds' | 'pickup' | 'copyright' | 'colors' | 'privacy'>('refunds');
+  const [termsInitialTab, setTermsInitialTab] = useState<'refunds' | 'pickup' | 'copyright' | 'colors'>('refunds');
 
   const [emergencyNotice, setEmergencyNotice] = useState<{
     active: boolean;

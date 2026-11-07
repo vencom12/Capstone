@@ -16,7 +16,7 @@ const adminAuth = () => {
             // Token Versioning Check
             const user = await prisma.user.findUnique({ 
                 where: { id: decoded.id }, 
-                select: { tokenVersion: true } 
+                select: { tokenVersion: true, isActive: true, username: true, email: true, role: true } 
             });
             
             if (!user || user.tokenVersion !== decoded.tokenVersion) {
@@ -26,10 +26,15 @@ const adminAuth = () => {
                 });
             }
 
-            if (decoded.role !== 'admin') {
+            if (decoded.role !== 'admin' && user.role !== 'admin') {
                 return res.status(403).json({ message: 'Access denied: Admin only' });
             }
-            req.user = decoded;
+            req.user = {
+                ...decoded,
+                username: user.username || decoded.username,
+                email: user.email || decoded.email,
+                role: user.role || decoded.role
+            };
             next();
         } catch (err) {
             res.status(401).json({ message: 'Token is not valid' });

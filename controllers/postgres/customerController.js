@@ -962,6 +962,15 @@ exports.getReceipt = async (req, res) => {
 
         const clientName = tx?.user?.username || cleanOrder?.user?.username || cleanOrder?.client || 'Customer';
 
+        const history = Array.isArray(cleanOrder?.personalization?.statusHistory) ? cleanOrder.personalization.statusHistory : [];
+        const staffFromHistory = [...history].reverse().find(h => h?.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
+        const resolvedStaff = cleanOrder?.processedBy 
+            || cleanOrder?.personalization?.smsVerifiedBy
+            || cleanOrder?.personalization?.approvedPartialBy
+            || staffFromHistory
+            || cleanOrder?.garmentsReceivedBy 
+            || null;
+
         res.json({
             transactionID: tx?.transactionID || cleanOrder?.transactionId || `TX-${cleanOrder?.orderId || cleanCode}`,
             orderID: tx?.orderID || cleanOrder?.orderId || cleanCode,
@@ -972,7 +981,8 @@ exports.getReceipt = async (req, res) => {
             paymentMethod: tx?.paymentMethod || cleanOrder?.paymentMethod || receiptData?.paymentMethod || 'GCash',
             items: cleanOrder?.items || [],
             order: cleanOrder,
-            client: clientName
+            client: clientName,
+            processedBy: resolvedStaff
         });
     } catch (err) {
         console.error('getReceipt error:', err);
@@ -1574,6 +1584,20 @@ exports.downloadReceipt = async (req, res) => {
             tx.order = tx.Order;
         }
 
+        if (!tx.order && tx.orderID) {
+            const directOrder = await prisma.order.findFirst({
+                where: {
+                    OR: [
+                        { orderId: tx.orderID },
+                        { id: tx.orderID }
+                    ]
+                }
+            });
+            if (directOrder) {
+                tx.order = directOrder;
+            }
+        }
+
         const date = new Date(tx.timestamp);
         const dateStr = date.toLocaleDateString();
         const timeStr = date.toLocaleTimeString();
@@ -1646,7 +1670,14 @@ exports.downloadReceipt = async (req, res) => {
         drawDetail('RECEIPT', id);
         drawDetail('DATE', dateStr);
         drawDetail('TIME', timeStr);
-        const cashierName = tx.order?.processedBy || tx.order?.garmentsReceivedBy || (tx.order?.personalization?.statusHistory?.[0]?.actor) || 'Shop Counter';
+        const historyList = Array.isArray(tx.order?.personalization?.statusHistory) ? tx.order.personalization.statusHistory : [];
+        const staffFromHistory = [...historyList].reverse().find(h => h.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
+        const cashierName = tx.order?.processedBy 
+            || tx.order?.personalization?.smsVerifiedBy
+            || tx.order?.personalization?.approvedPartialBy
+            || staffFromHistory
+            || tx.order?.garmentsReceivedBy 
+            || 'Shop Counter';
         drawDetail('CASHIER', cashierName);
         drawDetail('CUSTOMER', tx.user?.username || 'Valued Client');
 

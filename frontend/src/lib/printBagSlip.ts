@@ -225,7 +225,14 @@ export function printBagSlip(order: any): void {
             <span class="field-value">${claimCode}</span>
           </div>
           ${(() => {
-            const staffName = order.processedBy || order.garmentsReceivedBy || order.personalization?.statusHistory?.[0]?.actor || '';
+            const history = Array.isArray(order.personalization?.statusHistory) ? order.personalization.statusHistory : [];
+            const staffFromHistory = [...history].reverse().find((h: any) => h?.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
+            const staffName = order.processedBy 
+              || order.personalization?.smsVerifiedBy
+              || order.personalization?.approvedPartialBy
+              || staffFromHistory
+              || order.garmentsReceivedBy 
+              || '';
             return staffName ? `
           <div class="field-row">
             <span class="field-label">PROCESSED BY:</span>

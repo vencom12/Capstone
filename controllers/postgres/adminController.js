@@ -2719,6 +2719,7 @@ exports.verifyOrderPayment = async (req, res) => {
             const updatedOrder = await prisma.order.update({
                 where: { id: order.id },
                 data: {
+                    processedBy: verifiedBy,
                     paymentStatus: 'partial',
                     status: 'Insufficient Payment',
                     priorityScore: -10,
@@ -2778,6 +2779,7 @@ exports.verifyOrderPayment = async (req, res) => {
             const updatedOrder = await prisma.order.update({
                 where: { id: order.id },
                 data: {
+                    processedBy: verifiedBy,
                     paymentStatus: balanceDue > 0 ? 'partial' : 'paid',
                     status: chosenNextStatus,
                     priorityScore: -10,
@@ -2829,6 +2831,7 @@ exports.verifyOrderPayment = async (req, res) => {
         const updatedOrder = await prisma.order.update({
             where: { id: order.id },
             data: {
+                processedBy: verifiedBy,
                 paymentStatus: 'paid',
                 status: nextStatus,
                 progress: nextProgress,
