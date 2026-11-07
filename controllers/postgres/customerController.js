@@ -1363,6 +1363,8 @@ exports.getPublicSettings = async (req, res) => {
         let smallGarmentLetterRate = 7;
         let bigGarmentLetterRate = 10;
         let preOrderPrepDays = 3;
+        let gcashAccountName = settings?.businessName || '';
+        let gcashAccountNumber = settings?.businessContact || '';
         let metaStartDate = null;
         let isScheduled = false;
         let isCurrentlyClosed = false;
@@ -1373,6 +1375,12 @@ exports.getPublicSettings = async (req, res) => {
                 if (pricingMeta.smallGarmentLetterRate !== undefined) smallGarmentLetterRate = Number(pricingMeta.smallGarmentLetterRate) || 7;
                 if (pricingMeta.bigGarmentLetterRate !== undefined) bigGarmentLetterRate = Number(pricingMeta.bigGarmentLetterRate) || 10;
                 if (pricingMeta.preOrderPrepDays !== undefined) preOrderPrepDays = Number(pricingMeta.preOrderPrepDays) || 3;
+                if (typeof pricingMeta.gcashAccountName === 'string' && pricingMeta.gcashAccountName.trim()) {
+                    gcashAccountName = pricingMeta.gcashAccountName.trim();
+                }
+                if (typeof pricingMeta.gcashAccountNumber === 'string' && pricingMeta.gcashAccountNumber.trim()) {
+                    gcashAccountNumber = pricingMeta.gcashAccountNumber.trim();
+                }
             }
             const emergencyMeta = threadColors.find(c => c && c.id === '__emergency_meta__');
             if (emergencyMeta) {
@@ -1399,6 +1407,8 @@ exports.getPublicSettings = async (req, res) => {
             businessName: settings?.businessName || 'Edz Towels & Caps',
             businessAddress: settings?.businessAddress || 'Pacific Mall Lucena, Ground Floor, M.L. Tagarao St., Lucena City, Quezon 4301',
             businessContact: settings?.businessContact || '0928 810 3928',
+            gcashAccountName: gcashAccountName || settings?.businessName || 'Edz Towels & Caps',
+            gcashAccountNumber: gcashAccountNumber || settings?.businessContact || '0928 810 3928',
             receiptTagline: settings?.receiptTagline || 'Custom Embroidery & Apparel Workshop',
             businessLogoUrl: settings?.businessLogoUrl || null,
             gcashQrCodeUrl: settings?.gcashQrCodeUrl || null,

@@ -13,6 +13,8 @@ interface GCashPaymentProps {
   isVerified?: boolean;
   onFileSelect: (e: React.ChangeEvent<HTMLInputElement>) => void;
   qrCodeUrl?: string | null;
+  accountName?: string;
+  accountNumber?: string;
   finalTotal?: number;
   totalAmount?: number;
   manualRef: string;
@@ -34,6 +36,8 @@ export default function GCashPayment({
   isVerified,
   onFileSelect,
   qrCodeUrl,
+  accountName,
+  accountNumber,
   finalTotal,
   totalAmount,
   manualRef,
@@ -92,10 +96,10 @@ export default function GCashPayment({
     return () => window.removeEventListener('paste', handlePaste);
   }, [onFileSelect]);
 
-  const accountNo = "09288103928";
-  const displayAccountNo = "0928 810 3928";
-  const OFFICIAL_GCASH_QR = "https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg";
-  const activeQrCodeUrl = qrCodeUrl || OFFICIAL_GCASH_QR;
+  const displayAccountNo = accountNumber?.trim() || '—';
+  const accountNo = (accountNumber || '').replace(/\s+/g, '');
+  const displayAccountName = accountName?.trim() || 'Store GCash Account';
+  const activeQrCodeUrl = qrCodeUrl || null;
   const total = Number(finalTotal ?? totalAmount ?? 0);
   const analyzing = Boolean(aiAnalyzing ?? isAnalyzing);
   const verified = Boolean(paymentVerified ?? isVerified);
@@ -140,10 +144,11 @@ export default function GCashPayment({
   };
 
   const copyToClipboard = (text: string, type: 'number' | 'amount') => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     if (type === 'number') {
       setCopiedNumber(true);
-      showToast('GCash number (0928 810 3928) copied to clipboard!', 'success');
+      showToast(`GCash number (${displayAccountNo}) copied to clipboard!`, 'success');
       setTimeout(() => setCopiedNumber(false), 2000);
     } else {
       setCopiedAmount(true);
@@ -187,7 +192,7 @@ export default function GCashPayment({
             </div>
             <div className="border-t border-border-glass/40 pt-1">
               <span className="text-[0.62rem] text-text-dim block uppercase tracking-wider font-semibold">Account Name</span>
-              <span className="text-text-main font-semibold text-[0.72rem] truncate block">Eds Towels &amp; Caps</span>
+              <span className="text-text-main font-semibold text-[0.72rem] truncate block">{displayAccountName}</span>
             </div>
           </div>
 

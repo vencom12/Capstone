@@ -358,7 +358,7 @@ export default function OrderDetailsModal({
             ) : (
               <div className="flex flex-col gap-2 pt-1 border-t border-amber-500/20">
                 <span className="text-[0.7rem] font-bold text-text-main">
-                  Complete Remaining Balance (₱{credit.outstandingBalance.toFixed(2)}) via GCash (0928 810 3928):
+                  Complete Remaining Balance (₱{credit.outstandingBalance.toFixed(2)}) via GCash:
                 </span>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input

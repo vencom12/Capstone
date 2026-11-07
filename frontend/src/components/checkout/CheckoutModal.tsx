@@ -60,8 +60,9 @@ export default function CheckoutModal({
   const [latestCreatedOrder, setLatestCreatedOrder] = useState<any | null>(null);
   const [isBypassing, setIsBypassing] = useState(false);
 
-  const OFFICIAL_GCASH_QR = 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg';
-  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(OFFICIAL_GCASH_QR);
+  const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(null);
+  const [gcashAccountName, setGcashAccountName] = useState<string>('');
+  const [gcashAccountNumber, setGcashAccountNumber] = useState<string>('');
   const [estimatedMinutes, setEstimatedMinutes] = useState<number | null>(null);
   const [readyLabel, setReadyLabel] = useState<string | null>(null);
   const [estimatedReadyDate, setEstimatedReadyDate] = useState<string | null>(null);
@@ -115,10 +116,12 @@ export default function CheckoutModal({
 
   useEffect(() => {
     if (isOpen) {
-      api.get<{ gcashQrCodeUrl: string; emergencyNotice?: any; preOrderPrepDays?: number; maxBulkPiecesPerDay?: number; batchThrottlePeriod?: string }>('/api/customer/settings')
+      api.get<{ gcashQrCodeUrl: string; gcashAccountName?: string; gcashAccountNumber?: string; businessName?: string; businessContact?: string; emergencyNotice?: any; preOrderPrepDays?: number; maxBulkPiecesPerDay?: number; batchThrottlePeriod?: string }>('/api/customer/settings')
         .then(res => {
           if (res) {
-            setGcashQrCodeUrl(res.gcashQrCodeUrl);
+            setGcashQrCodeUrl(res.gcashQrCodeUrl || null);
+            setGcashAccountName(res.gcashAccountName || res.businessName || '');
+            setGcashAccountNumber(res.gcashAccountNumber || res.businessContact || '');
             if (res.preOrderPrepDays !== undefined) setPreOrderPrepDays(Number(res.preOrderPrepDays));
             if (res.maxBulkPiecesPerDay !== undefined) setMaxBulkPiecesPerPeriod(Number(res.maxBulkPiecesPerDay));
             if (res.batchThrottlePeriod) setBatchThrottlePeriod(res.batchThrottlePeriod);
@@ -1125,6 +1128,8 @@ export default function CheckoutModal({
               finalTotal={finalTotal}
               totalAmount={finalTotal}
               qrCodeUrl={gcashQrCodeUrl}
+              accountName={gcashAccountName}
+              accountNumber={gcashAccountNumber}
               receiptFile={receiptFile}
               onFileSelect={handleFileSelect}
               aiAnalyzing={aiAnalyzing}

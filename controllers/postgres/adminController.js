@@ -1215,6 +1215,8 @@ exports.getSettings = async (req, res) => {
         let smallGarmentLetterRate = 7;
         let bigGarmentLetterRate = 10;
         let preOrderPrepDays = 3;
+        let gcashAccountName = settings.businessName || '';
+        let gcashAccountNumber = settings.businessContact || '';
         let cleanColors = rawColors;
         if (Array.isArray(rawColors)) {
             const metaEntry = rawColors.find(c => c && c.id === '__pricing_meta__');
@@ -1222,6 +1224,12 @@ exports.getSettings = async (req, res) => {
                 if (metaEntry.smallGarmentLetterRate !== undefined) smallGarmentLetterRate = Number(metaEntry.smallGarmentLetterRate) || 7;
                 if (metaEntry.bigGarmentLetterRate !== undefined) bigGarmentLetterRate = Number(metaEntry.bigGarmentLetterRate) || 10;
                 if (metaEntry.preOrderPrepDays !== undefined) preOrderPrepDays = Number(metaEntry.preOrderPrepDays) || 3;
+                if (typeof metaEntry.gcashAccountName === 'string' && metaEntry.gcashAccountName.trim()) {
+                    gcashAccountName = metaEntry.gcashAccountName.trim();
+                }
+                if (typeof metaEntry.gcashAccountNumber === 'string' && metaEntry.gcashAccountNumber.trim()) {
+                    gcashAccountNumber = metaEntry.gcashAccountNumber.trim();
+                }
             }
             cleanColors = rawColors.filter(c => !c || c.id !== '__pricing_meta__');
         }
@@ -1234,7 +1242,9 @@ exports.getSettings = async (req, res) => {
             availableThreadColors: cleanColors,
             smallGarmentLetterRate,
             bigGarmentLetterRate,
-            preOrderPrepDays
+            preOrderPrepDays,
+            gcashAccountName,
+            gcashAccountNumber
         });
     } catch (err) {
         res.status(500).json({ message: 'Error fetching settings' });
@@ -1250,9 +1260,13 @@ exports.updateSettings = async (req, res) => {
         const incomingSmallRate = updateData.smallGarmentLetterRate !== undefined ? Math.min(100, Math.max(1, parseFloat(updateData.smallGarmentLetterRate) || 7)) : undefined;
         const incomingBigRate = updateData.bigGarmentLetterRate !== undefined ? Math.min(200, Math.max(1, parseFloat(updateData.bigGarmentLetterRate) || 10)) : undefined;
         const incomingPrepDays = updateData.preOrderPrepDays !== undefined ? Math.min(30, Math.max(0, parseInt(updateData.preOrderPrepDays, 10) || 3)) : undefined;
+        const incomingGcashName = updateData.gcashAccountName !== undefined ? String(updateData.gcashAccountName || '').trim() : undefined;
+        const incomingGcashNumber = updateData.gcashAccountNumber !== undefined ? String(updateData.gcashAccountNumber || '').trim() : undefined;
         delete updateData.smallGarmentLetterRate;
         delete updateData.bigGarmentLetterRate;
         delete updateData.preOrderPrepDays;
+        delete updateData.gcashAccountName;
+        delete updateData.gcashAccountNumber;
 
         if (updateData.maxBulkPiecesPerDay !== undefined) {
             const val = parseInt(updateData.maxBulkPiecesPerDay, 10) || 50;
@@ -1304,7 +1318,9 @@ exports.updateSettings = async (req, res) => {
             isAvailable: false,
             smallGarmentLetterRate: incomingSmallRate !== undefined ? incomingSmallRate : (prevMeta.smallGarmentLetterRate ?? 7),
             bigGarmentLetterRate: incomingBigRate !== undefined ? incomingBigRate : (prevMeta.bigGarmentLetterRate ?? 10),
-            preOrderPrepDays: incomingPrepDays !== undefined ? incomingPrepDays : (prevMeta.preOrderPrepDays ?? 3)
+            preOrderPrepDays: incomingPrepDays !== undefined ? incomingPrepDays : (prevMeta.preOrderPrepDays ?? 3),
+            gcashAccountName: incomingGcashName !== undefined ? incomingGcashName : (prevMeta.gcashAccountName ?? existingSettings?.businessName ?? ''),
+            gcashAccountNumber: incomingGcashNumber !== undefined ? incomingGcashNumber : (prevMeta.gcashAccountNumber ?? existingSettings?.businessContact ?? '')
         };
         const cleanPalette = baseColors.filter(c => !c || c.id !== '__pricing_meta__');
         updateData.availableThreadColors = [...cleanPalette, mergedMeta];
@@ -1327,6 +1343,8 @@ exports.updateSettings = async (req, res) => {
                 smallGarmentLetterRate: mergedMeta.smallGarmentLetterRate,
                 bigGarmentLetterRate: mergedMeta.bigGarmentLetterRate,
                 preOrderPrepDays: mergedMeta.preOrderPrepDays,
+                gcashAccountName: mergedMeta.gcashAccountName,
+                gcashAccountNumber: mergedMeta.gcashAccountNumber,
                 maxBulkPiecesPerDay: settings.maxBulkPiecesPerDay,
                 batchThrottlePeriod: settings.batchThrottlePeriod
             });
@@ -1341,7 +1359,9 @@ exports.updateSettings = async (req, res) => {
             availableThreadColors: cleanPalette,
             smallGarmentLetterRate: mergedMeta.smallGarmentLetterRate,
             bigGarmentLetterRate: mergedMeta.bigGarmentLetterRate,
-            preOrderPrepDays: mergedMeta.preOrderPrepDays
+            preOrderPrepDays: mergedMeta.preOrderPrepDays,
+            gcashAccountName: mergedMeta.gcashAccountName,
+            gcashAccountNumber: mergedMeta.gcashAccountNumber
         });
     } catch (err) {
         console.error('Update settings error:', err);

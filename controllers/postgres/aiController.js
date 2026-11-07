@@ -18,13 +18,32 @@ const getAISettings = async () => {
         if (!settings) {
             settings = await prisma.systemSettings.create({ data: { id: 'global' } });
         }
+        let rawColors = settings.availableThreadColors;
+        if (typeof rawColors === 'string') {
+            try { rawColors = JSON.parse(rawColors); } catch (e) {}
+        }
+        let gcashAccountName = settings.businessName || '';
+        let gcashAccountNumber = settings.businessContact || '';
+        if (Array.isArray(rawColors)) {
+            const metaEntry = rawColors.find(c => c && c.id === '__pricing_meta__');
+            if (metaEntry) {
+                if (typeof metaEntry.gcashAccountName === 'string' && metaEntry.gcashAccountName.trim()) {
+                    gcashAccountName = metaEntry.gcashAccountName.trim();
+                }
+                if (typeof metaEntry.gcashAccountNumber === 'string' && metaEntry.gcashAccountNumber.trim()) {
+                    gcashAccountNumber = metaEntry.gcashAccountNumber.trim();
+                }
+            }
+        }
         return {
             aiChatModel: settings.aiChatModel || 'openai/gpt-oss-120b',
             aiVisionModel: settings.aiVisionModel || 'qwen/qwen3.8-27b',
             aiProviderUrl: settings.aiProviderUrl || 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: settings.minConfidenceScore !== undefined ? settings.minConfidenceScore : 0.70,
-            businessName: settings.businessName || 'Edz Towels & Caps',
-            businessContact: settings.businessContact || '0928 810 3928'
+            businessName: settings.businessName || '',
+            businessContact: settings.businessContact || '',
+            gcashAccountName,
+            gcashAccountNumber
         };
     } catch (e) {
         console.error('Failed to fetch dynamic AI settings, using defaults:', e);
@@ -33,8 +52,10 @@ const getAISettings = async () => {
             aiVisionModel: 'qwen/qwen3.8-27b',
             aiProviderUrl: 'https://api.groq.com/openai/v1/chat/completions',
             minConfidenceScore: 0.70,
-            businessName: 'Edz Towels & Caps',
-            businessContact: '0928 810 3928'
+            businessName: '',
+            businessContact: '',
+            gcashAccountName: '',
+            gcashAccountNumber: ''
         };
     }
 };

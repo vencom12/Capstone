@@ -46,6 +46,8 @@ export default function PanelSettings({
   const [businessWebsite, setBusinessWebsite] = useState('www.stitch-opt.com');
   const [businessLogoUrl, setBusinessLogoUrl] = useState('');
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState('');
+  const [gcashAccountName, setGcashAccountName] = useState('');
+  const [gcashAccountNumber, setGcashAccountNumber] = useState('');
 
   // Artisan Workshop & Capacity Calibration (Eds Towels & Caps)
   const [artisanSecondsPerLetter, setArtisanSecondsPerLetter] = useState<number>(4.0);
@@ -137,6 +139,10 @@ export default function PanelSettings({
         if (res.businessWebsite) setBusinessWebsite(res.businessWebsite);
         if (res.businessLogoUrl) setBusinessLogoUrl(res.businessLogoUrl);
         if (res.gcashQrCodeUrl) setGcashQrCodeUrl(res.gcashQrCodeUrl);
+        if (res.gcashAccountName !== undefined) setGcashAccountName(res.gcashAccountName);
+        else if (res.businessName) setGcashAccountName(res.businessName);
+        if (res.gcashAccountNumber !== undefined) setGcashAccountNumber(res.gcashAccountNumber);
+        else if (res.businessContact) setGcashAccountNumber(res.businessContact);
         if (res.autoReplyReviews !== undefined) setAutoReplyReviews(!!res.autoReplyReviews);
         if (res.artisanSecondsPerLetter !== undefined) setArtisanSecondsPerLetter(res.artisanSecondsPerLetter);
         if (res.artisanHandlingMinutes !== undefined) setArtisanHandlingMinutes(res.artisanHandlingMinutes);
@@ -203,7 +209,10 @@ export default function PanelSettings({
         businessContact: businessContact.trim(),
         businessEmail: businessEmail.trim(),
         businessWebsite: businessWebsite.trim(),
-        businessLogoUrl: businessLogoUrl || null
+        businessLogoUrl: businessLogoUrl || null,
+        gcashQrCodeUrl: gcashQrCodeUrl || null,
+        gcashAccountName: gcashAccountName.trim(),
+        gcashAccountNumber: gcashAccountNumber.trim()
       });
       showToast('Store profile saved', 'success');
     } catch (e: any) {
@@ -620,15 +629,14 @@ export default function PanelSettings({
                   </div>
                 </div>
 
-                {/* Row 4: GCash QR Upload Card */}
+                {/* Row 4: GCash Payment Account & QR Settings */}
                 <div className="grid grid-cols-1 gap-4 mt-2">
-                  {/* GCash QR Code Card */}
                   <div className="bg-white/5 border border-border-glass p-4 rounded-xl flex flex-col justify-between gap-4">
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <span className="font-bold text-xs text-text-main block">GCash Payment QR Code</span>
+                        <span className="font-bold text-xs text-text-main block">GCash Payment Settings &amp; QR Code</span>
                         <span className="text-[11px] text-text-dim block mt-0.5">
-                          Displayed to customers during GCash checkout.
+                          Used dynamically at customer checkout and during receipt verification.
                         </span>
                       </div>
                       {gcashQrCodeUrl ? (
@@ -653,6 +661,37 @@ export default function PanelSettings({
                           </svg>
                         </div>
                       )}
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-bold text-[11px] text-text-main flex items-center justify-between">
+                          <span>GCash Account Name</span>
+                          <span className="text-[10px] text-text-dim font-normal">Recipient name</span>
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={100}
+                          value={gcashAccountName}
+                          onChange={(e) => setGcashAccountName(e.target.value)}
+                          className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                          placeholder="e.g. Store or Registered Owner Name"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        <label className="font-bold text-[11px] text-text-main flex items-center justify-between">
+                          <span>GCash Mobile Number</span>
+                          <span className="text-[10px] text-text-dim font-normal">11-digit number</span>
+                        </label>
+                        <input
+                          type="text"
+                          maxLength={25}
+                          value={gcashAccountNumber}
+                          onChange={(e) => setGcashAccountNumber(e.target.value)}
+                          className="bg-bg-surface border border-border-glass rounded-lg py-2 px-3 text-text-main text-sm outline-none focus:border-primary transition-all font-sans"
+                          placeholder="e.g. 09XX XXX XXXX"
+                        />
+                      </div>
                     </div>
 
                     <div className="flex items-center gap-2">

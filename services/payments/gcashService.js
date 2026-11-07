@@ -61,33 +61,69 @@ class GcashService {
   }
 
   /**
-   * Recognized store recipient aliases for Eds Towels & Caps / Stitch-Opt.
-   * Matches full names, store names, GCash masked formats (e.g., DA*****E** A.), and phone suffixes.
+   * Dynamically derives expected recipient tokens, GCash masked-name patterns,
+   * and phone number suffixes strictly from Admin-configured SystemSettings.
+   * Zero hardcoded names or phone numbers.
+   * @param {Object|null} storeSettings
+   * @returns {{ tokens: string[], maskedRegexes: RegExp[] }}
    */
-  getRecognizedRecipientAliases() {
-    return [
-      'eds towels',
-      'eds towels & caps',
-      'eds towels and caps',
-      'eds towels and caps embroidery',
-      'eds embroidery',
-      'stitch-opt',
-      'stitch opt',
-      'stitch opt designs',
-      'daniele a',
-      'daniele',
-      'daniel',
-      'darylle',
-      'aurellana',
-      'edz',
-      'da*****e** a',
-      'daeea',
-      'daeeea',
-      'daceeseees a', // Tesseract OCR rendering of masked name
-      'daceeseees',
-      '766', // Phone ending digits for store account (+63 9****** 766)
-      '3928'
-    ];
+  buildDynamicRecipientMatchers(storeSettings = null) {
+    const tokens = new Set();
+    const maskedRegexes = [];
+
+    if (!storeSettings || typeof storeSettings !== 'object') {
+      return { tokens: [], maskedRegexes: [] };
+    }
+
+    const candidateNames = [
+      storeSettings.gcashAccountName,
+      storeSettings.businessName
+    ].filter(v => typeof v === 'string' && v.trim().length > 0);
+
+    for (const rawName of candidateNames) {
+      const normalizedFull = rawName.toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (normalizedFull.length >= 3) {
+        tokens.add(normalizedFull);
+      }
+
+      const words = rawName
+        .trim()
+        .split(/\s+/)
+        .map(w => w.replace(/[^a-zA-Z0-9]/g, ''))
+        .filter(Boolean);
+
+      for (const w of words) {
+        if (w.length >= 4) {
+          tokens.add(w.toLowerCase());
+        }
+      }
+
+      // Derive GCash Express Send masked pattern dynamically from any configured full name
+      // e.g. "Juan Dela Cruz" -> starts with "ju", ends with initial "c" -> /^ju[a-z*•.\s]*c\.?$/i
+      if (words.length >= 2 && words[0].length >= 2) {
+        const firstTwo = words[0].slice(0, 2).toLowerCase();
+        const lastInitial = words[words.length - 1].slice(0, 1).toLowerCase();
+        maskedRegexes.push(new RegExp(`^${firstTwo}[a-z*•.\\s]*${lastInitial}\\.?$`, 'i'));
+      }
+    }
+
+    const candidatePhones = [
+      storeSettings.gcashAccountNumber,
+      storeSettings.businessContact
+    ].filter(v => typeof v === 'string' && v.trim().length > 0);
+
+    for (const rawPhone of candidatePhones) {
+      const digits = rawPhone.replace(/\D/g, '');
+      if (digits.length >= 4) {
+        tokens.add(digits.slice(-4));
+        tokens.add(digits.slice(-3));
+      }
+    }
+
+    return {
+      tokens: Array.from(tokens),
+      maskedRegexes
+    };
   }
 
   /**
@@ -165,30 +201,24 @@ class GcashService {
       }
     }
 
-    // 3. Recipient Identity Validation (Recognize masked GCash names & store aliases)
-    if (recipientName && typeof recipientName === 'string') {
+    // 3. Dynamic Recipient Identity Check (derived strictly from SystemSettings — no hardcoded aliases)
+    if (recipientName && typeof recipientName === 'string' && storeSettings) {
       const cleanedRecipient = recipientName.toLowerCase().replace(/[^a-z0-9]/g, '');
-      const storeAliases = this.getRecognizedRecipientAliases();
-      
-      if (storeSettings && storeSettings.businessName) {
-        storeAliases.push(storeSettings.businessName.toLowerCase().replace(/[^a-z0-9]/g, ''));
-      }
+      const { tokens, maskedRegexes } = this.buildDynamicRecipientMatchers(storeSettings);
 
-      const isMaskedGcashName = /[•*]/.test(recipientName) || /^da[a-z*•.\s]*a\.?$/i.test(recipientName.trim());
+      if (tokens.length > 0 || maskedRegexes.length > 0) {
+        const isMaskedFormat = /[•*]/.test(recipientName) || maskedRegexes.some(rx => rx.test(recipientName.trim()));
+        const isTokenMatch = tokens.some(token =>
+          cleanedRecipient.includes(token) || (cleanedRecipient.length >= 4 && token.includes(cleanedRecipient))
+        );
+        const cleanedRawText = rawText ? rawText.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+        const textHasRecipient = cleanedRawText
+          ? tokens.some(token => cleanedRawText.includes(token))
+          : false;
 
-      const isMatch = isMaskedGcashName || storeAliases.some(alias => {
-        const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return cleanedRecipient.includes(cleanAlias) || cleanAlias.includes(cleanedRecipient);
-      });
-
-      // Also check raw text if available for store phone ending or masked alias
-      const textHasStoreRecipient = rawText ? storeAliases.some(alias => {
-        const cleanAlias = alias.toLowerCase().replace(/[^a-z0-9]/g, '');
-        return rawText.toLowerCase().replace(/[^a-z0-9]/g, '').includes(cleanAlias);
-      }) : false;
-
-      if (!isMatch && !textHasStoreRecipient && cleanedRecipient.length >= 4) {
-        console.warn(`[GCash Service] Non-matching recipient "${recipientName}" noted for staff review.`);
+        if (!isMaskedFormat && !isTokenMatch && !textHasRecipient && cleanedRecipient.length >= 4) {
+          console.warn(`[GCash Service] Recipient "${recipientName}" differs from configured store settings; flagged for staff review.`);
+        }
       }
     }
 
