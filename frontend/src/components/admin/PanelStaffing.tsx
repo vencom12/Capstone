@@ -926,36 +926,34 @@ export default function PanelStaffing({
           </div>
 
           {editingStaff ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
-              <div className="modal-section">
-                <label className="modal-label flex items-center justify-between">
-                  <span>Email Verification</span>
-                  <span
-                    className={`text-[0.68rem] font-bold ${
-                      editingStaff.isEmailVerified ? 'text-success' : 'text-warning'
-                    }`}
+            <div className={`grid grid-cols-1 ${!editingStaff.isEmailVerified ? 'sm:grid-cols-2' : ''} gap-4 items-end`}>
+              {!editingStaff.isEmailVerified && (
+                <div className="modal-section">
+                  <label className="modal-label flex items-center justify-between">
+                    <span>Email Verification</span>
+                    <span className="text-[0.68rem] font-bold text-warning">
+                      ● Unverified
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    disabled={isSendingReset}
+                    onClick={() =>
+                      handleSendResetEmail(
+                        editingStaff.id || editingStaff._id,
+                        email.trim() || editingStaff.email
+                      )
+                    }
+                    className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold p-3 rounded-xl text-xs outline-none w-full transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 font-sans"
                   >
-                    {editingStaff.isEmailVerified ? '✓ Verified' : '● Unverified'}
-                  </span>
-                </label>
-                <button
-                  type="button"
-                  disabled={isSendingReset}
-                  onClick={() =>
-                    handleSendResetEmail(
-                      editingStaff.id || editingStaff._id,
-                      email.trim() || editingStaff.email
-                    )
-                  }
-                  className="bg-primary/10 hover:bg-primary/20 border border-primary/30 text-primary font-bold p-3 rounded-xl text-xs outline-none w-full transition-all cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50 font-sans"
-                >
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
-                    <polyline points="22,6 12,13 2,6" />
-                  </svg>
-                  <span>{isSendingReset ? 'Sending Verification...' : 'Resend Verification'}</span>
-                </button>
-              </div>
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                      <polyline points="22,6 12,13 2,6" />
+                    </svg>
+                    <span>{isSendingReset ? 'Sending Verification...' : 'Resend Verification'}</span>
+                  </button>
+                </div>
+              )}
               <div className="modal-section">
                 <label className="modal-label">Access Role designation</label>
                 {isCurrentAdmin(editingStaff) ? (
