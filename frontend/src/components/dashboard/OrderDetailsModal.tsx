@@ -56,8 +56,20 @@ export default function OrderDetailsModal({
   const [isSubmittingBalance, setIsSubmittingBalance] = useState(false);
   const [isUploadingTopUp, setIsUploadingTopUp] = useState(false);
   const [topUpReceiptUrl, setTopUpReceiptUrl] = useState('');
+  const [isAnalyzingReceipt, setIsAnalyzingReceipt] = useState(false);
+  const [receiptVerificationResult, setReceiptVerificationResult] = useState<string | null>(null);
+  const [receiptVerified, setReceiptVerified] = useState(false);
+  const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [storeGcashSettings, setStoreGcashSettings] = useState<{ gcashQrCodeUrl?: string; gcashAccountName?: string; gcashAccountNumber?: string } | null>(null);
   const { user, refreshUser } = useAuthStore();
+
+  // Cleanup object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (receiptPreviewUrl) URL.revokeObjectURL(receiptPreviewUrl);
+    };
+  }, [receiptPreviewUrl]);
 
   useEffect(() => {
     if (isOpen && !storeGcashSettings) {
@@ -132,29 +144,101 @@ export default function OrderDetailsModal({
     }
   };
 
-  const handleUploadBalanceReceipt = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setIsUploadingTopUp(true);
+  const processBalanceReceiptFile = async (file: File) => {
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('Please select a valid image screenshot (PNG, JPG, or WEBP).', 'warning');
+      return;
+    }
+    const localUrl = URL.createObjectURL(file);
+    setReceiptPreviewUrl(localUrl);
+    setIsAnalyzingReceipt(true);
+    setReceiptVerificationResult(null);
+    setReceiptVerified(false);
+
     try {
+      // Step 1: Upload receipt screenshot to Cloudinary
       const formData = new FormData();
       formData.append('receipt', file);
       const uploadData = await apiFetch<{ url?: string }>('/api/customer/upload-receipt', {
         method: 'POST',
         body: formData
       });
-      if (uploadData?.url) {
-        setTopUpReceiptUrl(uploadData.url);
-        showToast('Remaining balance receipt attached!', 'success');
-      } else {
-        showToast('Failed to upload receipt image.', 'error');
+
+      if (!uploadData?.url) {
+        showToast('We could not upload your receipt. Please try again with a clear screenshot.', 'error');
+        setReceiptPreviewUrl(null);
+        return;
+      }
+
+      setTopUpReceiptUrl(uploadData.url);
+
+      // Step 2: Run AI OCR receipt verification against outstanding balance
+      try {
+        const verifyRes = await api.post<{
+          success: boolean;
+          message: string;
+          verificationStatus?: string;
+          needsManualRef?: boolean;
+          extractedAmount?: number;
+          aiResult?: { isValidReceipt?: boolean; extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
+        }>('/api/ai/verify-receipt', {
+          receiptUrl: uploadData.url,
+          orderTotal: credit.outstandingBalance
+        });
+
+        if (verifyRes.aiResult?.referenceId) {
+          setBalanceRef(verifyRes.aiResult.referenceId);
+        }
+
+        if (verifyRes.success) {
+          setReceiptVerified(true);
+          const extAmt = verifyRes.aiResult?.extractedAmount ?? verifyRes.extractedAmount;
+          const refId = verifyRes.aiResult?.referenceId;
+          const msg = `✓ Receipt Verified: ₱${Number(extAmt || credit.outstandingBalance).toFixed(2)}${refId ? ` • Ref: ${refId}` : ''}`;
+          setReceiptVerificationResult(msg);
+          showToast(msg, 'success');
+        } else if (verifyRes.needsManualRef && verifyRes.aiResult?.referenceId) {
+          setReceiptVerified(true);
+          const msg = `Receipt detected with Ref: ${verifyRes.aiResult.referenceId}. Please confirm below.`;
+          setReceiptVerificationResult(msg);
+        } else {
+          setReceiptVerified(false);
+          const rawReason = verifyRes.message || 'Please ensure the receipt clearly shows the amount and reference number.';
+          setReceiptVerificationResult(rawReason);
+          showToast(rawReason, 'warning');
+        }
+      } catch (ocrErr: any) {
+        console.warn('[Balance OCR Check]:', ocrErr);
+        setReceiptVerificationResult('Receipt uploaded. You can confirm your GCash Reference Number below.');
       }
     } catch {
-      showToast('Could not upload receipt screenshot. You can still submit your GCash reference number.', 'warning');
+      showToast('Could not upload receipt screenshot. You can manually enter your GCash reference number.', 'warning');
+      setReceiptPreviewUrl(null);
     } finally {
-      setIsUploadingTopUp(false);
+      setIsAnalyzingReceipt(false);
     }
   };
+
+  // Clipboard paste listener for Ctrl+V
+  useEffect(() => {
+    if (!isOpen || !credit.isInsufficientPayment) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            showToast('Receipt screenshot pasted from clipboard!', 'success');
+            processBalanceReceiptFile(file);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isOpen, credit.isInsufficientPayment, credit.outstandingBalance]);
 
   const handleSubmitRemainingBalance = async () => {
     const cleanRef = balanceRef.trim();
@@ -482,23 +566,116 @@ export default function OrderDetailsModal({
                     Pay remaining balance via GCash:
                   </span>
                 )}
+                {/* Receipt Upload Dropbox with Drag & Drop & Paste */}
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <input
+                    id="balance-receipt-upload"
+                    type="file"
+                    className="hidden"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) processBalanceReceiptFile(file);
+                    }}
+                  />
+
+                  <div
+                    onClick={() => document.getElementById('balance-receipt-upload')?.click()}
+                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                    onDragLeave={() => setIsDragging(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      const file = e.dataTransfer.files?.[0];
+                      if (file && file.type.startsWith('image/')) {
+                        processBalanceReceiptFile(file);
+                      }
+                    }}
+                    className={`group border-2 border-dashed rounded-xl p-3 text-center transition-all cursor-pointer ${
+                      isDragging
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/40 scale-[1.01]'
+                        : 'border-border-glass hover:border-primary/50 bg-white/[0.015] hover:bg-primary/[0.04]'
+                    }`}
+                  >
+                    {receiptPreviewUrl ? (
+                      <div className="flex items-center gap-3 p-1">
+                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
+                          <img src={receiptPreviewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="flex flex-col text-left min-w-0 flex-1">
+                          {isAnalyzingReceipt ? (
+                            <div className="flex items-center gap-2">
+                              <svg className="w-3.5 h-3.5 animate-spin text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
+                                <path d="M12 2a10 10 0 0 1 10 10" />
+                              </svg>
+                              <span className="text-xs text-text-main font-bold">Verifying payment receipt with AI...</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-between gap-1">
+                              <span className="text-xs text-text-main font-bold truncate">
+                                {receiptVerified ? '✓ Receipt Verified' : 'Receipt Attached'}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setReceiptPreviewUrl(null);
+                                  setTopUpReceiptUrl('');
+                                  setReceiptVerificationResult(null);
+                                  setReceiptVerified(false);
+                                }}
+                                className="text-[0.65rem] text-primary hover:underline font-semibold bg-transparent border-none cursor-pointer"
+                              >
+                                Change
+                              </button>
+                            </div>
+                          )}
+                          {receiptVerificationResult && (
+                            <span className={`text-[0.68rem] leading-snug mt-0.5 ${receiptVerified ? 'text-primary font-semibold' : 'text-text-dim'}`}>
+                              {receiptVerificationResult}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center gap-1.5 py-1">
+                        <div className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
+                          isDragging
+                            ? 'bg-primary text-white border-primary scale-110 shadow-md'
+                            : 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/15'
+                        }`}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                          </svg>
+                        </div>
+                        <span className="text-xs text-text-main font-bold">
+                          {isDragging ? 'Drop receipt screenshot here!' : 'Drag & drop receipt screenshot here, or tap to browse'}
+                        </span>
+                        <span className="text-[0.65rem] text-text-dim">
+                          Supports image drop, photo upload, or <strong className="text-text-main font-mono">Ctrl + V</strong> paste
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Reference Input & Pay Button */}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
-                    placeholder="Enter GCash Reference #"
+                    placeholder="Enter GCash Reference # (or auto-filled by AI)"
                     value={balanceRef}
                     onChange={(e) => setBalanceRef(e.target.value)}
                     className="flex-1 bg-bg-surface border border-border-glass rounded-lg px-3 py-1.5 text-xs font-mono text-text-main outline-none focus:border-primary"
                   />
-                  <label className="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass text-xs font-bold text-text-main cursor-pointer flex items-center justify-center gap-1.5 shrink-0">
-                    <input type="file" accept="image/*" className="hidden" onChange={handleUploadBalanceReceipt} />
-                    <span>{isUploadingTopUp ? 'Uploading...' : topUpReceiptUrl ? '✓ Screenshot Attached' : 'Upload Screenshot'}</span>
-                  </label>
                   <button
                     type="button"
                     onClick={handleSubmitRemainingBalance}
-                    disabled={isSubmittingBalance}
-                    className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer border-none shrink-0 disabled:opacity-50 transition-all shadow-sm"
+                    disabled={isSubmittingBalance || isAnalyzingReceipt}
+                    className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer border-none shrink-0 disabled:opacity-50 transition-all shadow-sm active:scale-95"
                   >
                     {isSubmittingBalance ? 'Submitting...' : `Pay ₱${credit.outstandingBalance.toFixed(2)}`}
                   </button>
