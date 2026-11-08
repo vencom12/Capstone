@@ -459,12 +459,12 @@ export default function InvoiceModal({
                         <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontFamily: 'monospace' }}>₱{credit.requiredAmount.toFixed(2)}</td>
                       </tr>
                       <tr>
-                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#16a34a', fontSize: '9.5px', fontWeight: '600' }}>AMOUNT PAID / CREDIT:</td>
-                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#16a34a', fontFamily: 'monospace' }}>₱{credit.accountCredit.toFixed(2)}</td>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9.5px', fontWeight: '600' }}>AMOUNT PAID / CREDIT:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontFamily: 'monospace' }}>₱{credit.accountCredit.toFixed(2)}</td>
                       </tr>
                       <tr style={{ fontSize: '12px', fontWeight: '900' }}>
-                        <td style={{ textAlign: 'left', padding: '2.5px 0', color: '#dc2626' }}>OUTSTANDING BALANCE:</td>
-                        <td style={{ textAlign: 'right', padding: '2.5px 0', color: '#dc2626', fontSize: '13px', fontFamily: 'monospace' }}>₱{credit.outstandingBalance.toFixed(2)}</td>
+                        <td style={{ textAlign: 'left', padding: '2.5px 0', color: '#000000' }}>OUTSTANDING BALANCE:</td>
+                        <td style={{ textAlign: 'right', padding: '2.5px 0', color: '#000000', fontSize: '13px', fontFamily: 'monospace' }}>₱{credit.outstandingBalance.toFixed(2)}</td>
                       </tr>
                       <tr>
                         <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT METHOD:</td>
@@ -489,8 +489,8 @@ export default function InvoiceModal({
                         );
                       })()}
                       <tr>
-                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#dc2626', fontSize: '9px', fontWeight: '700' }}>PAYMENT STATUS:</td>
-                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#dc2626', fontSize: '9px' }}>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px', fontWeight: '700' }}>PAYMENT STATUS:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#000000', fontSize: '9px' }}>
                           PARTIAL (₱{credit.outstandingBalance.toFixed(2)} DUE)
                         </td>
                       </tr>
@@ -559,16 +559,17 @@ export default function InvoiceModal({
                 <div style={{
                   margin: '6px 0',
                   padding: '5px 7px',
-                  border: '1px solid #dc2626',
-                  backgroundColor: '#fef2f2',
-                  color: '#991b1b',
+                  border: '1px dashed #000000',
+                  backgroundColor: '#ffffff',
+                  color: '#000000',
                   fontSize: '8.5px',
-                  borderRadius: '3px',
+                  borderRadius: '2px',
                   textAlign: 'center',
-                  fontWeight: '700',
-                  lineHeight: '1.3'
+                  fontWeight: '800',
+                  lineHeight: '1.3',
+                  letterSpacing: '0.3px',
                 }}>
-                  ⚠️ PARTIAL PAYMENT NOTICE: ₱{credit.outstandingBalance.toFixed(2)} OUTSTANDING BALANCE DUE BEFORE COUNTER RELEASE
+                  *** NOTICE: ₱{credit.outstandingBalance.toFixed(2)} OUTSTANDING BALANCE DUE BEFORE COUNTER RELEASE ***
                 </div>
               )}
 
