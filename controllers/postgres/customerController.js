@@ -370,6 +370,27 @@ exports.submitOrder = async (req, res) => {
         const secureTransactionId = `TX-${crypto.randomBytes(6).toString('hex').toUpperCase()}`;
         const secureReceiptId = `RCP-${crypto.randomBytes(5).toString('hex').toUpperCase()}`;
 
+        // Payment validation & credit/overpayment resolution (scoped across transaction and success payload)
+        const rawPaidInput = req.body.paidAmount ?? req.body.accountCredit ?? personalization?.accountCredit;
+        const parsedPaidAmount = (rawPaidInput !== undefined && rawPaidInput !== null && rawPaidInput !== '')
+            ? parseFloat(rawPaidInput)
+            : null;
+        const isInsufficientPaymentOrder = Boolean(
+            !isInstantApproved &&
+            parsedPaidAmount !== null &&
+            !isNaN(parsedPaidAmount) &&
+            parsedPaidAmount > 0 &&
+            parsedPaidAmount < numTotal - 0.04
+        );
+        const isOverpaymentOrder = Boolean(
+            parsedPaidAmount !== null &&
+            !isNaN(parsedPaidAmount) &&
+            parsedPaidAmount > numTotal + 0.04
+        );
+        const overpaymentExcess = isOverpaymentOrder
+            ? Math.round((parsedPaidAmount - numTotal) * 100) / 100
+            : (parseFloat(req.body.overpaymentAmount) || 0);
+
         // Prisma Transaction for Atomic operation
         const result = await prisma.$transaction(async (tx) => {
             let hasPreOrderItems = false;
@@ -627,26 +648,6 @@ exports.submitOrder = async (req, res) => {
             orderPersonalization.isPlainOrder = !requiresEmbroidery;
             orderPersonalization.requiresEmbroidery = requiresEmbroidery;
             orderPersonalization.packagingPriority = !requiresEmbroidery ? 2 : undefined;
-
-            const rawPaidInput = req.body.paidAmount ?? req.body.accountCredit ?? personalization?.accountCredit;
-            const parsedPaidAmount = (rawPaidInput !== undefined && rawPaidInput !== null && rawPaidInput !== '')
-                ? parseFloat(rawPaidInput)
-                : null;
-            const isInsufficientPaymentOrder = Boolean(
-                !isInstantApproved &&
-                parsedPaidAmount !== null &&
-                !isNaN(parsedPaidAmount) &&
-                parsedPaidAmount > 0 &&
-                parsedPaidAmount < numTotal - 0.04
-            );
-            const isOverpaymentOrder = Boolean(
-                parsedPaidAmount !== null &&
-                !isNaN(parsedPaidAmount) &&
-                parsedPaidAmount > numTotal + 0.04
-            );
-            const overpaymentExcess = isOverpaymentOrder
-                ? Math.round((parsedPaidAmount - numTotal) * 100) / 100
-                : (parseFloat(req.body.overpaymentAmount) || 0);
 
             if (isInsufficientPaymentOrder) {
                 const creditAmount = Math.max(0, Math.round(parsedPaidAmount * 100) / 100);
