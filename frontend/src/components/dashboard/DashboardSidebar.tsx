@@ -202,6 +202,31 @@ export default function DashboardSidebar({
               </div>
             </button>
 
+            {/* Store Wallet Credit Badge */}
+            <div 
+              onClick={() => setActiveTab('settings')}
+              className="w-full flex items-center justify-between p-2 mt-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 cursor-pointer hover:bg-emerald-500/15 transition-all duration-200 max-[1100px]:justify-center"
+              title="Store Wallet Balance (Auto-credited from GCash overpayments or refunds)"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="4" width="20" height="16" rx="2" />
+                    <line x1="2" y1="10" x2="22" y2="10" />
+                  </svg>
+                </div>
+                <div className="flex flex-col text-left max-[1100px]:hidden min-w-0">
+                  <span className="text-[0.58rem] uppercase font-bold text-text-dim tracking-wider leading-none">Store Wallet</span>
+                  <span className="text-[0.82rem] font-black text-emerald-400 font-mono mt-0.5">
+                    ₱{Number(user?.walletBalance || 0).toFixed(2)}
+                  </span>
+                </div>
+              </div>
+              <span className="text-[0.58rem] font-bold px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 max-[1100px]:hidden shrink-0">
+                Credit
+              </span>
+            </div>
+
             <button
               onClick={() => setHelpOpen(true)}
               className="w-full flex items-center gap-3 px-3 py-2 mt-2 rounded-xl text-text-dim hover:text-text-main hover:bg-white/5 transition-all duration-200 cursor-pointer max-[1100px]:justify-center"

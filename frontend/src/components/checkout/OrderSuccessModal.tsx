@@ -49,6 +49,26 @@ export default function OrderSuccessModal({
   const items = Array.isArray(order?.items) ? order.items : [];
   const totalAmount = parseFloat(order?.totalAmount || 0).toFixed(2);
 
+  // Financial reconciliation state (Insufficient payment vs Overpayment)
+  const pers = (order?.personalization && typeof order.personalization === 'object') ? order.personalization : {};
+  const isInsufficient = Boolean(
+    order?.isInsufficientPayment ||
+    order?.status === 'Insufficient Payment' ||
+    order?.paymentStatus === 'partial' ||
+    pers?.insufficientPayment ||
+    pers?.isInsufficientPayment
+  );
+  const creditAmount = Number(pers?.accountCredit ?? (isInsufficient ? (Number(order?.totalAmount || 0) - Number(pers?.outstandingBalance || 0)) : Number(order?.totalAmount || 0)));
+  const balanceDue = Number(pers?.outstandingBalance ?? (isInsufficient ? Math.max(0, Number(order?.totalAmount || 0) - creditAmount) : 0));
+
+  const isOverpayment = Boolean(
+    order?.isOverpayment ||
+    pers?.isOverpayment ||
+    (pers?.overpaymentAmount && Number(pers.overpaymentAmount) > 0)
+  );
+  const overpaidAmount = Number(pers?.overpaymentAmount || order?.overpaymentAmount || 0);
+  const totalPaid = Number(order?.totalAmount || 0) + overpaidAmount;
+
   // Real-time socket sync for live status progression
   useEffect(() => {
     if (!isOpen || !order) return;
@@ -128,24 +148,99 @@ export default function OrderSuccessModal({
         {/* Header matching CheckoutModal style */}
         <div className="flex justify-between items-center pb-3 border-b border-border-glass/40 pr-8">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-text-main shrink-0">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="20 6 9 17 4 12" />
-              </svg>
+            <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
+              isInsufficient
+                ? 'bg-amber-500/15 border border-amber-500/30 text-amber-500'
+                : isOverpayment
+                ? 'bg-emerald-500/15 border border-emerald-500/30 text-emerald-500'
+                : 'bg-white/10 border border-white/20 text-text-main'
+            }`}>
+              {isInsufficient ? (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+              ) : (
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              )}
             </div>
             <div>
               <h2 className="text-base sm:text-lg font-bold m-0 text-text-main leading-tight">
-                Order Confirmed
+                {isInsufficient ? 'Order Placed (Payment Incomplete)' : isOverpayment ? 'Order Confirmed & Paid' : 'Order Confirmed'}
               </h2>
               <p className="text-[0.68rem] text-text-dim m-0">
-                Payment verified • Order #{orderId}
+                {isInsufficient
+                  ? `Remaining balance required • Order #${orderId}`
+                  : isOverpayment
+                  ? `₱${overpaidAmount.toFixed(2)} credited to wallet • Order #${orderId}`
+                  : `Payment verified • Order #${orderId}`}
               </p>
             </div>
           </div>
-          <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-full shrink-0">
-            Paid &amp; In Queue
-          </span>
+          {isInsufficient ? (
+            <span className="text-[0.62rem] font-bold text-amber-500 bg-amber-500/15 border border-amber-500/35 px-2.5 py-0.5 rounded-full shrink-0">
+              Insufficient Payment
+            </span>
+          ) : isOverpayment ? (
+            <span className="text-[0.62rem] font-bold text-emerald-500 bg-emerald-500/15 border border-emerald-500/35 px-2.5 py-0.5 rounded-full shrink-0">
+              Paid • ₱{overpaidAmount.toFixed(2)} Credited
+            </span>
+          ) : (
+            <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-full shrink-0">
+              Paid &amp; In Queue
+            </span>
+          )}
         </div>
+
+        {/* Overpayment or Insufficient Payment Alert Banner */}
+        {isInsufficient && (
+          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/35 flex flex-col gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-1.5 font-bold text-amber-500 text-xs">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                <span>INSUFFICIENT PAYMENT — BALANCE DUE</span>
+              </div>
+              <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-500 text-[0.6rem] font-bold uppercase shrink-0">
+                Lowest Priority
+              </span>
+            </div>
+            <p className="text-xs text-text-main m-0 leading-relaxed">
+              What you sent (<strong className="font-mono text-emerald-500 font-bold">₱{creditAmount.toFixed(2)}</strong>) was not enough for this <strong className="font-mono font-bold">₱{totalAmount}</strong> order.
+              We converted your payment into <strong>Account Credit</strong>.
+              Please pay the remaining balance (<strong className="font-mono text-amber-500 font-bold">₱{balanceDue.toFixed(2)}</strong>) online or at the Pacific Mall counter for your order to be processed.
+            </p>
+            <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface/90 border border-border-glass text-[0.68rem] font-mono text-center">
+              <div>
+                <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Total Required</span>
+                <span className="font-bold text-text-main">₱{totalAmount}</span>
+              </div>
+              <div>
+                <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Account Credit</span>
+                <span className="font-bold text-emerald-500">₱{creditAmount.toFixed(2)}</span>
+              </div>
+              <div>
+                <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Balance Due</span>
+                <span className="font-bold text-amber-500">₱{balanceDue.toFixed(2)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {isOverpayment && (
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/35 flex flex-col gap-1.5">
+            <div className="flex items-center gap-1.5 font-bold text-emerald-500 text-xs">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12" /></svg>
+              <span>OVERPAYMENT CREDITED TO STORE WALLET</span>
+            </div>
+            <p className="text-xs text-text-main m-0 leading-relaxed">
+              You sent <strong className="font-mono text-emerald-400 font-bold">₱{totalPaid.toFixed(2)}</strong> for this <strong className="font-mono font-bold">₱{totalAmount}</strong> order.
+              The excess <strong className="font-mono text-emerald-400 font-bold">₱{overpaidAmount.toFixed(2)}</strong> has been automatically credited to your <strong>Store Wallet Balance</strong>! You can view and use your wallet credit in your Customer Dashboard anytime.
+            </p>
+          </div>
+        )}
 
         {/* 3-Step Ordering Journey Progress Bar (100% Completed Milestones) */}
         <div className="pt-0.5 pb-2 border-b border-border-glass/40 -mt-1">
@@ -290,14 +385,56 @@ export default function OrderSuccessModal({
             </div>
           </div>
 
-          {/* Total Row */}
-          <div className="pt-2.5 border-t border-border-glass/50 flex items-center justify-between text-xs">
-            <span className="font-bold text-text-dim uppercase tracking-wider text-[0.68rem]">
-              Total Paid
-            </span>
-            <span className="font-mono font-extrabold text-sm sm:text-base text-text-main">
-              ₱{totalAmount}
-            </span>
+          {/* Financial Summary Breakdown */}
+          <div className="pt-2.5 border-t border-border-glass/50 flex flex-col gap-1.5 text-xs">
+            {isInsufficient ? (
+              <>
+                <div className="flex items-center justify-between text-text-dim text-[0.7rem]">
+                  <span>Total Order Required</span>
+                  <span className="font-mono text-text-main font-semibold">₱{totalAmount}</span>
+                </div>
+                <div className="flex items-center justify-between text-emerald-500 text-[0.7rem]">
+                  <span>Account Credit Applied</span>
+                  <span className="font-mono font-semibold">₱{creditAmount.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border-glass/40">
+                  <span className="font-bold text-amber-500 uppercase tracking-wider text-[0.68rem]">
+                    Outstanding Balance Due
+                  </span>
+                  <span className="font-mono font-black text-base text-amber-500">
+                    ₱{balanceDue.toFixed(2)}
+                  </span>
+                </div>
+              </>
+            ) : isOverpayment ? (
+              <>
+                <div className="flex items-center justify-between text-text-dim text-[0.7rem]">
+                  <span>Order Total</span>
+                  <span className="font-mono text-text-main font-semibold">₱{totalAmount}</span>
+                </div>
+                <div className="flex items-center justify-between text-text-dim text-[0.7rem]">
+                  <span>Total Amount Sent</span>
+                  <span className="font-mono text-text-main font-semibold">₱{totalPaid.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center justify-between pt-1 border-t border-border-glass/40">
+                  <span className="font-bold text-emerald-500 uppercase tracking-wider text-[0.68rem]">
+                    Credited to Store Wallet
+                  </span>
+                  <span className="font-mono font-black text-base text-emerald-400">
+                    +₱{overpaidAmount.toFixed(2)}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-text-dim uppercase tracking-wider text-[0.68rem]">
+                  Total Paid
+                </span>
+                <span className="font-mono font-extrabold text-sm sm:text-base text-text-main">
+                  ₱{totalAmount}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
@@ -316,9 +453,13 @@ export default function OrderSuccessModal({
               onClose();
               onViewOrders?.();
             }}
-            className="flex-1 py-2.5 px-3 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5"
+            className={`flex-1 py-2.5 px-3 rounded-xl text-white font-bold text-xs transition-all cursor-pointer shadow-md flex items-center justify-center gap-1.5 ${
+              isInsufficient
+                ? 'bg-amber-600 hover:bg-amber-500'
+                : 'bg-primary hover:bg-primary/90'
+            }`}
           >
-            <span>Track in My Orders</span>
+            <span>{isInsufficient ? `Pay Balance (₱${balanceDue.toFixed(2)}) in Orders` : 'Track in My Orders'}</span>
             <span>→</span>
           </button>
         </div>

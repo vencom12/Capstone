@@ -639,6 +639,14 @@ exports.submitOrder = async (req, res) => {
                 parsedPaidAmount > 0 &&
                 parsedPaidAmount < numTotal - 0.04
             );
+            const isOverpaymentOrder = Boolean(
+                parsedPaidAmount !== null &&
+                !isNaN(parsedPaidAmount) &&
+                parsedPaidAmount > numTotal + 0.04
+            );
+            const overpaymentExcess = isOverpaymentOrder
+                ? Math.round((parsedPaidAmount - numTotal) * 100) / 100
+                : (parseFloat(req.body.overpaymentAmount) || 0);
 
             if (isInsufficientPaymentOrder) {
                 const creditAmount = Math.max(0, Math.round(parsedPaidAmount * 100) / 100);
@@ -655,6 +663,26 @@ exports.submitOrder = async (req, res) => {
                         actor: 'Customer Checkout',
                         hub: 'Eds Towels Pacific Mall Lucena Hub',
                         note: `Partial payment received. Required: ₱${numTotal.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}.`
+                    }
+                ];
+            } else if (overpaymentExcess > 0) {
+                // Automatically credit overpayment excess into customer's store wallet balance
+                await tx.user.update({
+                    where: { id: user.id },
+                    data: { walletBalance: { increment: overpaymentExcess } }
+                });
+                orderPersonalization.isOverpayment = true;
+                orderPersonalization.overpaymentAmount = overpaymentExcess;
+                orderPersonalization.paidAmount = parsedPaidAmount;
+                orderPersonalization.walletCreditAdded = overpaymentExcess;
+                orderPersonalization.statusHistory = [
+                    ...(orderPersonalization.statusHistory || []),
+                    {
+                        status: 'Awaiting Payment',
+                        timestamp: new Date().toISOString(),
+                        actor: 'System',
+                        hub: 'Eds Towels Pacific Mall Lucena Hub',
+                        note: `Overpayment detected: Customer sent ₱${parsedPaidAmount.toFixed(2)} for a ₱${numTotal.toFixed(2)} order. ₱${overpaymentExcess.toFixed(2)} automatically credited to customer Store Wallet.`
                     }
                 ];
             }
@@ -728,7 +756,10 @@ exports.submitOrder = async (req, res) => {
                     referenceId: referenceNumber || personalization?.referenceNumber || (isBypassActive ? `TEST-GCASH-${Date.now().toString().slice(-8)}` : null),
                     imageHash: safeCreateImageHash,
                     imageUrl: receiptUrl || (isBypassActive ? 'https://res.cloudinary.com/dzr6uwcr1/image/upload/v1790078256/stitch-master-products/wrdipkvspnz1fuewligw.jpg' : null),
-                    userId: user.id
+                    userId: user.id,
+                    ocrData: req.body.ocrData || null,
+                    confidenceScore: req.body.confidenceScore || 0,
+                    flaggedReason: req.body.flaggedReason || (isInsufficientPaymentOrder ? orderPersonalization.insufficientPaymentNote : (overpaymentExcess > 0 ? `Overpayment of ₱${overpaymentExcess.toFixed(2)} credited to store wallet` : null))
                 }
             });
 
@@ -778,7 +809,13 @@ exports.submitOrder = async (req, res) => {
         cacheManager.delPattern('catalog:');
         cacheManager.delPattern('guest:');
         cacheManager.delPattern('workshop:');
-        const successPayload = { message: 'Order placed successfully.', order: result, receiptID: secureReceiptId };
+        const successPayload = { 
+            message: 'Order placed successfully.', 
+            order: result, 
+            receiptID: secureReceiptId,
+            walletBalance: updatedUser.walletBalance,
+            overpaymentAmount: overpaymentExcess > 0 ? overpaymentExcess : undefined
+        };
         if (idempotencyKey) {
             orderIdempotencyStore.set(idempotencyKey, { response: successPayload, timestamp: Date.now() });
         }

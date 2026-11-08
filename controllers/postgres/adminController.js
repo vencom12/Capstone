@@ -2803,6 +2803,24 @@ exports.verifyOrderPayment = async (req, res) => {
         }
 
         // MODE 3: Full Payment Verification or Remaining Balance Settlement
+        let adminOverpaymentExcess = 0;
+        if (parsedAmount !== null && !isNaN(parsedAmount) && parsedAmount > order.totalAmount + 0.04) {
+            adminOverpaymentExcess = Math.round((parsedAmount - order.totalAmount) * 100) / 100;
+            if (order.userId) {
+                const updatedUser = await prisma.user.update({
+                    where: { id: order.userId },
+                    data: { walletBalance: { increment: adminOverpaymentExcess } }
+                });
+                const io = req.app.get('io');
+                if (io) {
+                    socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: updatedUser.walletBalance }, `user:${order.userId}`);
+                }
+            }
+            currentPers.isOverpayment = true;
+            currentPers.overpaymentAmount = adminOverpaymentExcess;
+            currentPers.walletCreditAdded = adminOverpaymentExcess;
+        }
+
         currentPers.smsVerified = true;
         currentPers.smsVerifiedBy = verifiedBy;
         currentPers.smsVerifiedAt = now.toISOString();

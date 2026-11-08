@@ -434,6 +434,9 @@ export default function CheckoutModal({
         imageHash?: string | null;
         flaggedReason?: string;
         isInsufficientPayment?: boolean;
+        isOverpayment?: boolean;
+        overpaymentAmount?: number;
+        extractedAmount?: number;
         accountCredit?: number;
         outstandingBalance?: number;
         aiResult?: { isValidReceipt?: boolean; extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
@@ -451,8 +454,14 @@ export default function CheckoutModal({
           orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
             items: itemsWithPreOrder,
             totalAmount: finalTotal,
-            paidAmount: verifyRes.isInsufficientPayment ? verifyRes.accountCredit : undefined,
-            accountCredit: verifyRes.isInsufficientPayment ? verifyRes.accountCredit : undefined,
+            paidAmount: verifyRes.aiResult?.extractedAmount ?? (verifyRes.isInsufficientPayment ? verifyRes.accountCredit : undefined),
+            accountCredit: verifyRes.accountCredit,
+            isInsufficientPayment: verifyRes.isInsufficientPayment,
+            isOverpayment: verifyRes.isOverpayment,
+            overpaymentAmount: verifyRes.overpaymentAmount,
+            ocrData: verifyRes.aiResult,
+            confidenceScore: verifyRes.aiResult?.confidence,
+            flaggedReason: verifyRes.flaggedReason,
             address: currentAddress,
             deliveryTime: resolvedDeliveryLabel,
             dueDate: resolvedDueDate,
@@ -487,14 +496,33 @@ export default function CheckoutModal({
           return;
         }
 
+        const enrichedCreatedOrder = {
+          ...orderRes?.order,
+          isInsufficientPayment: verifyRes.isInsufficientPayment,
+          isOverpayment: verifyRes.isOverpayment,
+          overpaymentAmount: verifyRes.overpaymentAmount,
+          personalization: {
+            ...(orderRes?.order?.personalization || {}),
+            insufficientPayment: verifyRes.isInsufficientPayment,
+            accountCredit: verifyRes.accountCredit,
+            outstandingBalance: verifyRes.outstandingBalance,
+            isOverpayment: verifyRes.isOverpayment,
+            overpaymentAmount: verifyRes.overpaymentAmount,
+          }
+        };
+
         if (orderRes?.order?.orderId) {
           setPendingOrderId(orderRes.order.orderId);
-          setLatestCreatedOrder(orderRes.order);
+          setLatestCreatedOrder(enrichedCreatedOrder);
         }
 
         setPaymentVerified(true);
-        if (verifyRes.isInsufficientPayment && verifyRes.accountCredit !== undefined && verifyRes.outstandingBalance !== undefined) {
-          const msg = `Account Credit: ₱${Number(verifyRes.accountCredit).toFixed(2)} | Outstanding Balance: ₱${Number(verifyRes.outstandingBalance).toFixed(2)}. What you sent was not enough — please pay the remaining balance for your order to be processed.`;
+        if (verifyRes.isOverpayment && verifyRes.overpaymentAmount) {
+          const msg = `Overpayment detected: You sent ₱${Number(verifyRes.aiResult?.extractedAmount || (finalTotal + verifyRes.overpaymentAmount)).toFixed(2)} for a ₱${finalTotal.toFixed(2)} order. The excess ₱${Number(verifyRes.overpaymentAmount).toFixed(2)} has been added to your Store Wallet!`;
+          setAiVerificationResult(msg);
+          showToast(msg, 'success');
+        } else if (verifyRes.isInsufficientPayment && verifyRes.accountCredit !== undefined && verifyRes.outstandingBalance !== undefined) {
+          const msg = `Insufficient Payment Warning: What you sent (₱${Number(verifyRes.accountCredit).toFixed(2)}) is not enough for this ₱${finalTotal.toFixed(2)} order. Remaining balance: ₱${Number(verifyRes.outstandingBalance).toFixed(2)}.`;
           setAiVerificationResult(msg);
           showToast(msg, 'warning');
         } else {
@@ -508,7 +536,7 @@ export default function CheckoutModal({
         } catch (cleanErr) {
           console.error('[Checkout Cleanup Notice]:', cleanErr);
         }
-        handleModalClose(true, orderRes.order);
+        handleModalClose(true, enrichedCreatedOrder);
       } else if (verifyRes.needsManualRef && verifyRes.verificationStatus === 'pending_manual_verification') {
         // Authentic payment receipt detected by OCR, but 13-digit reference number needs manual confirmation
         setAllowManualRef(true);

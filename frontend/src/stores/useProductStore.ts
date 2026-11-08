@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { api } from '@/lib/api';
 import { matchesProductSearch } from '@/lib/searchUtils';
 import type { Product, Order, Transaction, Receipt, DashboardState } from '@/lib/types';
+import { useAuthStore } from './useAuthStore';
 
 const formatCategoryName = (str?: string) => {
   if (!str) return 'General';
@@ -82,6 +83,10 @@ export const useProductStore = create<ProductStoreState>()((set, get) => ({
         receipts: data.receipts || [],
         isSyncing: false,
       });
+
+      if (data.walletBalance !== undefined) {
+        useAuthStore.getState().updateWalletBalance(data.walletBalance);
+      }
     } catch (err: any) {
       if (err.name === 'AbortError') return;
       if (!silent) {

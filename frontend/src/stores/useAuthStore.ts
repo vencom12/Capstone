@@ -39,6 +39,7 @@ interface AuthState {
   logout: () => Promise<void>;
   checkAccess: (role: string) => boolean;
   setUser: (user: User | null) => void;
+  updateWalletBalance: (balance: number) => void;
   refreshUser: () => Promise<void>;
 }
 
@@ -330,6 +331,17 @@ export const useAuthStore = create<AuthState>()(
 
       setUser: (user) => set({ user, isAuthenticated: !!user }),
 
+      updateWalletBalance: (balance: number) => {
+        if (get().user) {
+          set({
+            user: {
+              ...get().user!,
+              walletBalance: Math.max(0, balance)
+            }
+          });
+        }
+      },
+
       refreshUser: async () => {
         try {
           const data = await api.get<any>('/api/customer/dashboard-state');
@@ -337,6 +349,7 @@ export const useAuthStore = create<AuthState>()(
             set({ 
               user: { 
                 ...get().user!, 
+                walletBalance: data.walletBalance !== undefined ? data.walletBalance : get().user!.walletBalance,
                 address: data.address ?? get().user!.address,
                 phoneNumber: data.phoneNumber ?? get().user!.phoneNumber,
                 savedAddresses: data.savedAddresses ?? get().user!.savedAddresses ?? [],

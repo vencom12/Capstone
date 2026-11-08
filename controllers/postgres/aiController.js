@@ -1983,11 +1983,13 @@ Rules: referenceId must be digits only without spaces; transactionDate must incl
             }
         }
 
-        // Audit Check 2: Numeric Equality & Option 3 (Convert Difference Into Customer Credit)
+        // Audit Check 2: Numeric Equality, Option 3 (Insufficient Payment -> Customer Credit) & Overpayment -> Wallet Credit
         // Never trust client boolean; compute deterministically in backend
         const extractedAmount = parseFloat(aiResult.extractedAmount) || 0;
-        const isAmountMatch = Math.abs(extractedAmount - numOrderTotal) < 0.05 || extractedAmount >= numOrderTotal;
-        const isInsufficientPayment = extractedAmount > 0 && extractedAmount < numOrderTotal - 0.05;
+        const isInsufficientPayment = extractedAmount > 0 && extractedAmount < numOrderTotal - 0.04;
+        const isOverpayment = extractedAmount > numOrderTotal + 0.04;
+        const overpaymentAmount = isOverpayment ? Math.round((extractedAmount - numOrderTotal) * 100) / 100 : 0;
+        const isAmountMatch = Math.abs(extractedAmount - numOrderTotal) < 0.05 || isOverpayment;
         const accountCredit = isInsufficientPayment ? Math.round(extractedAmount * 100) / 100 : (isAmountMatch ? numOrderTotal : 0);
         const outstandingBalance = isInsufficientPayment ? Math.round((numOrderTotal - accountCredit) * 100) / 100 : 0;
 
@@ -2127,6 +2129,8 @@ Rules: referenceId must be digits only without spaces; transactionDate must incl
             flaggedReason = "We couldn't clearly read your payment receipt. Please upload a clear, full screenshot of your GCash payment confirmation.";
         } else if (isInsufficientPayment && allChecksPassed) {
             flaggedReason = `Insufficient payment detected: Required ₱${numOrderTotal.toFixed(2)}, Sent ₱${accountCredit.toFixed(2)}. System recorded Account Credit: ₱${accountCredit.toFixed(2)} | Outstanding Balance: ₱${outstandingBalance.toFixed(2)}. Please pay the remaining balance for your order to be processed.`;
+        } else if (isOverpayment && allChecksPassed) {
+            flaggedReason = `Overpayment detected: You sent ₱${extractedAmount.toFixed(2)} for a ₱${numOrderTotal.toFixed(2)} order. The excess ₱${overpaymentAmount.toFixed(2)} will be credited to your Store Wallet balance.`;
         } else if (allChecksPassed) {
             flaggedReason = "Receipt received! Your order is now being processed by management.";
         } else if (isHighValue) {
@@ -2188,6 +2192,8 @@ Rules: referenceId must be digits only without spaces; transactionDate must incl
 
         const customerMessage = (isInsufficientPayment && allChecksPassed)
             ? flaggedReason
+            : (isOverpayment && allChecksPassed)
+            ? flaggedReason
             : allChecksPassed
             ? "Receipt received! Your order is now being processed by management."
             : (isHighValue && allChecksPassed
@@ -2198,9 +2204,12 @@ Rules: referenceId must be digits only without spaces; transactionDate must incl
             success: allChecksPassed,
             message: customerMessage,
             isInsufficientPayment: Boolean(isInsufficientPayment && allChecksPassed),
+            isOverpayment: Boolean(isOverpayment && allChecksPassed),
+            overpaymentAmount,
             accountCredit: isInsufficientPayment ? accountCredit : (allChecksPassed ? numOrderTotal : 0),
             outstandingBalance: isInsufficientPayment ? outstandingBalance : 0,
             requiredAmount: numOrderTotal,
+            extractedAmount,
             aiResult: {
                 isValidReceipt: aiResult.isValidReceipt,
                 extractedAmount,
@@ -2210,6 +2219,8 @@ Rules: referenceId must be digits only without spaces; transactionDate must incl
                 confidence,
                 isAmountMatch: aiResult.isAmountMatch,
                 isInsufficientPayment,
+                isOverpayment,
+                overpaymentAmount,
                 accountCredit,
                 outstandingBalance,
                 engine: extractionEngine
