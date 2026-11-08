@@ -3,7 +3,7 @@
 import { isValidProductImage } from '@/lib/imageOptimizer';
 import ProductImagePlaceholder from '@/components/ui/ProductImagePlaceholder';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
 import WaybillModal from '@/components/dashboard/WaybillModal';
 import CustomerHelpModal from '@/components/dashboard/CustomerHelpModal';

@@ -117,7 +117,7 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
           <span>Pacific Mall Counter</span>
         </span>
 
-        {stage.isActive ? (
+        {stage.isActive || credit.isInsufficientPayment ? (
           <div className="flex items-center gap-2">
             <button
               type="button"
@@ -213,7 +213,10 @@ export default function OrderList({ orders, onTrack, onDetails, onReceipt, onReo
   const sorted = [...orders].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );
-  const active = sorted.filter((o) => getOrderStage(o).isActive);
+  const active = sorted.filter((o) => {
+    const s = getOrderStage(o);
+    return s.tone !== 'done' && s.tone !== 'cancelled';
+  });
   const completed = sorted.filter((o) => getOrderStage(o).tone === 'done');
   const cancelled = sorted.filter((o) => getOrderStage(o).tone === 'cancelled');
   const visible = tab === 'active' ? active : tab === 'completed' ? completed : cancelled;
