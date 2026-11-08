@@ -301,17 +301,23 @@ export default function InvoiceModal({
                   )}
                   {(() => {
                     const pers = (order?.personalization || fetchedData?.order?.personalization) as any;
+                    const isGenericStaff = (name: any) => !name || /^(admin|employee|staff|system|customer\s*checkout|self-service|shop\s*counter)$/i.test(String(name).trim());
                     const history = Array.isArray(pers?.statusHistory) ? pers.statusHistory : [];
-                    const staffFromHistory = [...history].reverse().find((h: any) => h?.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
+                    const staffFromHistory = [...history].reverse().find((h: any) => !isGenericStaff(h?.actor))?.actor;
 
-                    const rawStaff = order?.processedBy 
+                    const rawStaff = (!isGenericStaff(order?.processedBy) ? order.processedBy : null)
+                      || (!isGenericStaff(fetchedData?.order?.processedBy) ? fetchedData.order.processedBy : null)
+                      || (!isGenericStaff(fetchedData?.processedBy) ? fetchedData.processedBy : null)
+                      || (!isGenericStaff(pers?.smsVerifiedBy) ? pers.smsVerifiedBy : null)
+                      || (!isGenericStaff(pers?.approvedPartialBy) ? pers.approvedPartialBy : null)
+                      || (!isGenericStaff(pers?.balanceSettledBy) ? pers.balanceSettledBy : null)
+                      || (!isGenericStaff(pers?.insufficientPaymentRecordedBy) ? pers.insufficientPaymentRecordedBy : null)
+                      || staffFromHistory
+                      || (!isGenericStaff(order?.garmentsReceivedBy) ? order.garmentsReceivedBy : null)
+                      || order?.processedBy 
                       || fetchedData?.order?.processedBy
                       || fetchedData?.processedBy
                       || pers?.smsVerifiedBy
-                      || pers?.approvedPartialBy
-                      || pers?.insufficientPaymentRecordedBy
-                      || staffFromHistory
-                      || order?.garmentsReceivedBy 
                       || (history.length > 0 ? history[0]?.actor : '')
                       || '';
 

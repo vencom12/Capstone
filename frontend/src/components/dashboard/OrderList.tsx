@@ -67,7 +67,7 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
         <div className="p-3 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
             <span className="text-[0.72rem] font-medium text-text-main leading-snug flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block shrink-0" />
+              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block shrink-0" />
               <span>
                 {credit.balanceTopUpPending
                   ? `Remaining balance payment (+₱${credit.balanceTopUpAmount.toFixed(2)}) submitted — awaiting staff confirmation.`

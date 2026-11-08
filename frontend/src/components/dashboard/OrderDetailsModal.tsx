@@ -14,6 +14,7 @@ import { api, apiFetch } from '@/lib/api';
 import { showToast } from '@/components/ui/Toast';
 import { useProductStore } from '@/stores/useProductStore';
 import { useBasketStore } from '@/stores/useBasketStore';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { getOrderStage, getOrderCreditSummary, TOTAL_STEPS } from '@/lib/orderStatus';
 
 interface OrderDetailsModalProps {
@@ -55,6 +56,7 @@ export default function OrderDetailsModal({
   const [isSubmittingBalance, setIsSubmittingBalance] = useState(false);
   const [isUploadingTopUp, setIsUploadingTopUp] = useState(false);
   const [topUpReceiptUrl, setTopUpReceiptUrl] = useState('');
+  const { user, refreshUser } = useAuthStore();
 
   if (!order) return null;
 
@@ -167,6 +169,31 @@ export default function OrderDetailsModal({
     }
   };
 
+  const handlePayBalanceWithWallet = async () => {
+    if (!user || user.walletBalance < credit.outstandingBalance) {
+      showToast('Your Store Wallet balance is not sufficient to cover the remaining balance.', 'warning');
+      return;
+    }
+    setIsSubmittingBalance(true);
+    try {
+      const res = await api.post<{ success: boolean; message: string; walletBalance?: number }>(
+        `/api/customer/orders/${order.id || order.orderId}/pay-balance`,
+        {
+          amountPaid: credit.outstandingBalance,
+          paymentMethod: 'wallet'
+        }
+      );
+      showToast(res?.message || 'Paid with Store Wallet! Order is now in queue.', 'success');
+      await refreshUser();
+      await useProductStore.getState().fetchDashboardState();
+      onClose();
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to pay with store wallet.', 'error');
+    } finally {
+      setIsSubmittingBalance(false);
+    }
+  };
+
   const handleReorderAction = () => {
     if (onReorder) {
       onReorder(order);
@@ -265,10 +292,14 @@ export default function OrderDetailsModal({
                   ? 'Order Cancelled'
                   : isCompletedOrDelivered
                     ? 'Claimed at Pacific Mall Studio'
-                    : 'Crafting at Pacific Mall Studio'}
+                    : (order as any).processedBy
+                      ? `Crafted by ${(order as any).processedBy}`
+                      : 'Crafting at Pacific Mall Studio'}
               </span>
               <span className="text-[0.68rem] text-text-dim/80 mt-0.5">
-                Pacific Mall Lucena • Ground Floor
+                {(order as any).processedBy && !isCompletedOrDelivered && !isCanceled
+                  ? `Embroidery Specialist: ${(order as any).processedBy} • Pacific Mall Lucena`
+                  : 'Pacific Mall Lucena • Ground Floor'}
               </span>
             </div>
           </div>
@@ -325,7 +356,7 @@ export default function OrderDetailsModal({
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-text-main uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
                   <span>Remaining Balance Required</span>
                 </div>
                 <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed mt-0.5">
@@ -359,8 +390,31 @@ export default function OrderDetailsModal({
               </div>
             ) : (
               <div className="flex flex-col gap-2 pt-1 border-t border-border-glass">
+                {user?.walletBalance !== undefined && user.walletBalance >= credit.outstandingBalance && (
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-primary/10 border border-primary/20">
+                    <div className="flex flex-col text-left">
+                      <span className="text-xs font-bold text-text-main flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        Settle with Store Wallet Balance
+                      </span>
+                      <span className="text-[10px] text-text-dim">
+                        Available Wallet Balance: <strong className="text-text-main font-mono">₱{user.walletBalance.toFixed(2)}</strong>
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handlePayBalanceWithWallet}
+                      disabled={isSubmittingBalance}
+                      className="px-3 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer border-none shrink-0 transition-all shadow-sm active:scale-95"
+                    >
+                      {isSubmittingBalance ? 'Settling...' : `Pay ₱${credit.outstandingBalance.toFixed(2)} Instantly`}
+                    </button>
+                  </div>
+                )}
                 <span className="text-[0.7rem] font-bold text-text-main">
-                  Complete Remaining Balance (₱{credit.outstandingBalance.toFixed(2)}) via GCash:
+                  {user?.walletBalance !== undefined && user.walletBalance >= credit.outstandingBalance
+                    ? 'Or complete remaining balance via GCash QR:'
+                    : `Complete Remaining Balance (₱${credit.outstandingBalance.toFixed(2)}) via GCash:`}
                 </span>
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input

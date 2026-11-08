@@ -167,17 +167,17 @@ export default function OrderSuccessModal({
             </div>
           </div>
           {isInsufficient ? (
-            <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-full shrink-0 flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+            <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-md shrink-0 flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
               <span>Balance Due</span>
             </span>
           ) : isOverpayment ? (
-            <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-full shrink-0 flex items-center gap-1.5">
+            <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-md shrink-0 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
               <span>Paid • Wallet Credited</span>
             </span>
           ) : (
-            <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-full shrink-0">
+            <span className="text-[0.62rem] font-semibold text-text-main bg-white/10 border border-border-glass px-2.5 py-0.5 rounded-md shrink-0">
               Paid &amp; In Queue
             </span>
           )}
@@ -188,7 +188,7 @@ export default function OrderSuccessModal({
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 font-bold text-text-main text-xs">
-                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
                 <span className="uppercase tracking-wider">Remaining Balance Required</span>
               </div>
               <span className="px-2 py-0.5 rounded-md bg-white/5 border border-border-glass text-text-dim text-[0.6rem] font-semibold uppercase tracking-wider">
@@ -238,12 +238,12 @@ export default function OrderSuccessModal({
                 Step 3 of 3:
               </span>
               <span className="text-[11px] text-primary font-bold">
-                Order Validated &amp; Placed in Queue!
+                {isInsufficient ? 'Order Recorded — Balance Required' : 'Order Validated & Placed in Queue!'}
               </span>
             </div>
-            <div className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-primary/30 bg-primary/10 text-primary">
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 text-primary">
               <span className="font-mono font-bold text-[11px]">
-                100%
+                {isInsufficient ? 'Action Needed' : '100%'}
               </span>
             </div>
           </div>
@@ -261,7 +261,7 @@ export default function OrderSuccessModal({
             {[
               { id: 1, label: 'Product Selection', shortLabel: 'Product' },
               { id: 2, label: 'Secure Checkout', shortLabel: 'Checkout' },
-              { id: 3, label: 'Verified in Queue', shortLabel: 'In Queue' },
+              { id: 3, label: isInsufficient ? 'Balance Required' : 'Verified in Queue', shortLabel: isInsufficient ? 'Balance Due' : 'In Queue' },
             ].map((s) => (
               <div key={s.id} className="relative z-10 flex flex-col items-center">
                 <div

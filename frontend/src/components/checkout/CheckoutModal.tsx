@@ -21,7 +21,7 @@ interface CheckoutModalProps {
   onBack?: () => void;
 }
 
-type PaymentMethod = 'gcash';
+type PaymentMethod = 'gcash' | 'wallet';
 
 export default function CheckoutModal({
   isOpen,
@@ -58,6 +58,7 @@ export default function CheckoutModal({
   const [allowManualRef, setAllowManualRef] = useState(false);
   const [pendingOrderId, setPendingOrderId] = useState<string | null>(null);
   const [latestCreatedOrder, setLatestCreatedOrder] = useState<any | null>(null);
+  const [lastVerifyResult, setLastVerifyResult] = useState<any | null>(null);
   const [isBypassing, setIsBypassing] = useState(false);
 
   const [gcashQrCodeUrl, setGcashQrCodeUrl] = useState<string | null>(null);
@@ -445,6 +446,8 @@ export default function CheckoutModal({
         orderTotal: finalTotal
       });
 
+      setLastVerifyResult(verifyRes);
+
       if (verifyRes.success) {
         // Step 3: Receipt passed all authenticity & temporal checks — now submit the order
         const firstPersonalizedItem = itemsWithPreOrder.find((i) => i.personalization?.text);
@@ -454,7 +457,7 @@ export default function CheckoutModal({
           orderRes = await api.post<{ order: { orderId: string; totalAmount?: number }, receiptID: string }>('/api/customer/order/submit', {
             items: itemsWithPreOrder,
             totalAmount: finalTotal,
-            paidAmount: verifyRes.aiResult?.extractedAmount ?? (verifyRes.isInsufficientPayment ? verifyRes.accountCredit : undefined),
+            paidAmount: (verifyRes.extractedAmount ?? verifyRes.aiResult?.extractedAmount) ?? (verifyRes.isInsufficientPayment ? verifyRes.accountCredit : undefined),
             accountCredit: verifyRes.accountCredit,
             isInsufficientPayment: verifyRes.isInsufficientPayment,
             isOverpayment: verifyRes.isOverpayment,
@@ -605,6 +608,14 @@ export default function CheckoutModal({
       const res = await api.post<{ order: any; receiptID: string }>('/api/customer/order/submit', {
         items: itemsWithPreOrder,
         totalAmount: finalTotal,
+        paidAmount: (lastVerifyResult?.extractedAmount ?? lastVerifyResult?.aiResult?.extractedAmount) ?? (lastVerifyResult?.isInsufficientPayment ? lastVerifyResult.accountCredit : undefined),
+        accountCredit: lastVerifyResult?.accountCredit,
+        isInsufficientPayment: lastVerifyResult?.isInsufficientPayment,
+        isOverpayment: lastVerifyResult?.isOverpayment,
+        overpaymentAmount: lastVerifyResult?.overpaymentAmount,
+        ocrData: lastVerifyResult?.aiResult,
+        confidenceScore: lastVerifyResult?.aiResult?.confidence,
+        flaggedReason: lastVerifyResult?.flaggedReason,
         address: currentAddress,
         deliveryTime: chosenDeliveryTimeLabel,
         dueDate: chosenDueDate,
@@ -632,11 +643,26 @@ export default function CheckoutModal({
         }
       });
 
+      const enrichedManualOrder = {
+        ...res?.order,
+        isInsufficientPayment: lastVerifyResult?.isInsufficientPayment,
+        isOverpayment: lastVerifyResult?.isOverpayment,
+        overpaymentAmount: lastVerifyResult?.overpaymentAmount,
+        personalization: {
+          ...(res?.order?.personalization || {}),
+          insufficientPayment: lastVerifyResult?.isInsufficientPayment,
+          accountCredit: lastVerifyResult?.accountCredit,
+          outstandingBalance: lastVerifyResult?.outstandingBalance,
+          isOverpayment: lastVerifyResult?.isOverpayment,
+          overpaymentAmount: lastVerifyResult?.overpaymentAmount,
+        }
+      };
+
       setPaymentVerified(true);
-      setLatestCreatedOrder(res?.order);
+      setLatestCreatedOrder(enrichedManualOrder);
       setAiVerificationResult(`GCash Reference Saved: ${cleanRef}`);
       showToast('Order placed! It is now being processed by management.', 'success');
-      handleModalClose(true, res?.order);
+      handleModalClose(true, enrichedManualOrder);
       refreshUser().catch(() => {});
       fetchDashboardState().catch(() => {});
       handleClearProcessedItems();
@@ -734,6 +760,76 @@ export default function CheckoutModal({
       showToast(err.message || 'Failed to bypass payment.', 'error');
     } finally {
       setIsBypassing(false);
+    }
+  };
+
+  const handleSubmitWithWallet = async () => {
+    if (!user || !user.isEmailVerified) {
+      showToast('Email verification required: Please click the verification link sent to your email or log in via Google before placing an order.', 'error');
+      return;
+    }
+    if ((user.walletBalance || 0) < finalTotal) {
+      showToast('Your store wallet balance is not enough for this order.', 'warning');
+      return;
+    }
+    if (isOrderingPaused) {
+      showToast(`Online ordering is temporarily paused while our workshop is closed (${emergencyNotice?.reason || 'Leave'}).`, 'error');
+      return;
+    }
+    if (emergencyNotice?.active && emergencyNotice.policy === 'ALLOW_WITH_DELAY' && !hasAcknowledgedDelay) {
+      showToast('Please check the acknowledgment box confirming you understand the adjusted schedule due to shop leave.', 'error');
+      return;
+    }
+
+    const currentAddress = 'Store Pick-up: Eds Towels & Caps, Pacific Mall Lucena, Quezon 4301';
+    setIsProcessing(true);
+    try {
+      const firstPersonalizedItem = itemsWithPreOrder.find((i) => i.personalization?.text);
+      const res = await api.post<{ order: any; receiptID: string; walletBalance?: number }>('/api/customer/order/submit', {
+        items: itemsWithPreOrder,
+        totalAmount: finalTotal,
+        paymentMethod: 'wallet',
+        address: currentAddress,
+        deliveryTime: chosenDeliveryTimeLabel,
+        dueDate: chosenDueDate,
+        isPreOrder: hasPreOrderItems,
+        notes: pickupNote.trim() ? `[Pick-up Note: ${pickupNote.trim()}]` : '',
+        existingOrderId: pendingOrderId || undefined,
+        idempotencyKey: `wallet-checkout-${user?.id}-${Date.now()}`,
+        personalization: {
+          fulfillmentType: 'pickup',
+          courier: 'Store Pick-up',
+          claimSchedule: chosenDeliveryTimeLabel,
+          isPreOrder: hasPreOrderItems,
+          claimantName: user?.username || 'Customer',
+          claimantPhone: user?.phoneNumber || undefined,
+          pickupNote: pickupNote.trim() || undefined,
+          text: firstPersonalizedItem?.personalization?.text,
+          namesList: firstPersonalizedItem?.personalization?.namesList,
+          isBulkList: firstPersonalizedItem?.personalization?.isBulkList,
+          color: firstPersonalizedItem?.personalization?.threadColor,
+          font: firstPersonalizedItem?.personalization?.font,
+        }
+      });
+
+      if (res?.walletBalance !== undefined) {
+        useAuthStore.getState().updateWalletBalance(res.walletBalance);
+      }
+      setPaymentVerified(true);
+      setLatestCreatedOrder(res?.order);
+      showToast('Order placed successfully with Store Wallet!', 'success');
+      try {
+        await refreshUser();
+        await fetchDashboardState();
+        handleClearProcessedItems();
+      } catch (cleanErr) {
+        console.error('[Checkout Cleanup Notice]:', cleanErr);
+      }
+      handleModalClose(true, res?.order);
+    } catch (err: any) {
+      showToast(err?.message || 'Failed to place order with Store Wallet.', 'error');
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -1150,28 +1246,111 @@ export default function CheckoutModal({
             </div>
           </div>
 
-          {/* Right Column: GCash Payment & Place Order */}
+          {/* Right Column: Payment Method (GCash or Store Wallet) & Place Order */}
           <div className="flex flex-col gap-3 border-l border-border-glass/50 pl-5 max-md:border-l-0 max-md:pl-0 max-md:pt-3 max-md:border-t min-w-0">
-            <GCashPayment
-              finalTotal={finalTotal}
-              totalAmount={finalTotal}
-              qrCodeUrl={gcashQrCodeUrl}
-              accountName={gcashAccountName}
-              accountNumber={gcashAccountNumber}
-              receiptFile={receiptFile}
-              onFileSelect={handleFileSelect}
-              aiAnalyzing={aiAnalyzing}
-              isAnalyzing={aiAnalyzing}
-              aiVerificationResult={aiVerificationResult}
-              paymentVerified={paymentVerified}
-              isVerified={paymentVerified}
-              manualRef={manualRef}
-              setManualRef={setManualRef}
-              onManualRefChange={setManualRef}
-              onSubmitManualRef={handleSubmitManualRef}
-              isEmailVerified={isEmailVerified}
-              allowManualRef={allowManualRef}
-            />
+            {user?.walletBalance !== undefined && user.walletBalance > 0 && (
+              <div className="flex rounded-xl bg-white/5 p-1 border border-border-glass gap-1">
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('gcash')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    paymentMethod === 'gcash'
+                      ? 'bg-bg-surface text-text-main border border-border-glass shadow-xs'
+                      : 'text-text-dim hover:text-text-main'
+                  }`}
+                >
+                  GCash QR
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPaymentMethod('wallet')}
+                  className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+                    paymentMethod === 'wallet'
+                      ? 'bg-primary text-white shadow-xs'
+                      : 'text-text-dim hover:text-text-main'
+                  }`}
+                >
+                  <span>Store Wallet</span>
+                  <span className="font-mono text-[10px] opacity-80">(₱{user.walletBalance.toFixed(2)})</span>
+                </button>
+              </div>
+            )}
+
+            {paymentMethod === 'wallet' ? (
+              user?.walletBalance !== undefined && user.walletBalance >= finalTotal ? (
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-white/[0.03] border border-border-glass text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-primary" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-text-main">Pay with Store Wallet</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-text-dim">Available Wallet Balance:</span>
+                    <span className="font-mono font-bold text-text-main">₱{user.walletBalance.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-text-dim">Order Total to Deduct:</span>
+                    <span className="font-mono font-bold text-primary">-₱{finalTotal.toFixed(2)}</span>
+                  </div>
+                  <div className="pt-2 border-t border-border-glass/40 flex justify-between items-center text-xs">
+                    <span className="font-bold text-text-main">Remaining After Order:</span>
+                    <span className="font-mono font-bold text-text-main">₱{(user.walletBalance - finalTotal).toFixed(2)}</span>
+                  </div>
+                  <p className="text-[11px] text-text-dim leading-relaxed m-0 mt-1">
+                    Your payment will be instantly settled and your custom order will immediately enter the workshop production queue.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleSubmitWithWallet}
+                    disabled={isProcessing}
+                    className="w-full py-3 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-sm cursor-pointer border-none transition-all shadow-md active:scale-95 disabled:opacity-50 mt-1"
+                  >
+                    {isProcessing ? 'Processing Order...' : `Pay ₱${finalTotal.toFixed(2)} & Place Order`}
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3 p-4 rounded-xl bg-white/[0.03] border border-border-glass text-left">
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-text-dim">Available Balance:</span>
+                    <span className="font-mono font-bold text-text-main">₱{(user?.walletBalance || 0).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs">
+                    <span className="text-text-dim">Required Total:</span>
+                    <span className="font-mono font-bold text-text-main">₱{finalTotal.toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-text-dim leading-relaxed m-0">
+                    Your store wallet balance is not enough for this order. Please use GCash QR to complete your checkout.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('gcash')}
+                    className="w-full py-2.5 px-4 rounded-xl bg-primary hover:bg-primary/90 text-white font-bold text-xs cursor-pointer border-none transition-all"
+                  >
+                    Switch to GCash QR Payment
+                  </button>
+                </div>
+              )
+            ) : (
+              <GCashPayment
+                finalTotal={finalTotal}
+                totalAmount={finalTotal}
+                qrCodeUrl={gcashQrCodeUrl}
+                accountName={gcashAccountName}
+                accountNumber={gcashAccountNumber}
+                receiptFile={receiptFile}
+                onFileSelect={handleFileSelect}
+                aiAnalyzing={aiAnalyzing}
+                isAnalyzing={aiAnalyzing}
+                aiVerificationResult={aiVerificationResult}
+                paymentVerified={paymentVerified}
+                isVerified={paymentVerified}
+                manualRef={manualRef}
+                setManualRef={setManualRef}
+                onManualRefChange={setManualRef}
+                onSubmitManualRef={handleSubmitManualRef}
+                isEmailVerified={isEmailVerified}
+                allowManualRef={allowManualRef}
+              />
+            )}
           </div>
         </div>
       </div>

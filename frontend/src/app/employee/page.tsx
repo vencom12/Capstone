@@ -784,6 +784,8 @@ export default function EmployeePage() {
 
     const matchesTab = ordersQueueTab === 'all'
       ? true
+      : ordersQueueTab === 'my_queue'
+      ? (o.processedBy === user?.username || o.personalization?.smsVerifiedBy === user?.username)
       : ordersQueueTab === 'insufficient_payment'
       ? isInsufficientOrder(o)
       : ordersQueueTab === 'awaiting_management'
@@ -966,12 +968,14 @@ export default function EmployeePage() {
             {/* Status Tab Navigation */}
             {(() => {
               const allActiveOrders = orders.filter((o) => !['Order Delivered', 'Completed', 'Order Canceled'].includes(o.status));
+              const myActiveOrders = allActiveOrders.filter(o => o.processedBy === user?.username || o.personalization?.smsVerifiedBy === user?.username);
               const insufficientOrders = allActiveOrders.filter(o => isInsufficientOrder(o));
               const unverifiedOrders = allActiveOrders.filter(o => (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') && !isInsufficientOrder(o));
               const inQueueVerified = allActiveOrders.filter(o => o.status === 'In Queue' && o.paymentStatus !== 'unpaid');
 
               const tabs = [
                 { key: 'all', label: 'All Active', count: allActiveOrders.length },
+                ...(user?.username ? [{ key: 'my_queue', label: 'My In-Progress', count: myActiveOrders.length, isSpecial: true }] : []),
                 { key: 'awaiting_management', label: 'Being Processed by Management', count: unverifiedOrders.length, isSpecial: true },
                 { key: 'insufficient_payment', label: 'Insufficient / Balance Due', count: insufficientOrders.length, isSpecial: true },
                 { key: 'In Queue', label: 'In Queue', count: inQueueVerified.length },
@@ -1043,7 +1047,7 @@ export default function EmployeePage() {
                                 <span className={`inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-1 rounded-md font-semibold w-fit mt-1 border whitespace-nowrap uppercase tracking-wider bg-white/5 text-text-main border-border-glass`}>
                                   <span
                                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                      o.status === 'Insufficient Payment' ? 'bg-amber-500' :
+                                      o.status === 'Insufficient Payment' ? 'bg-primary' :
                                       (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-zinc-400' :
                                       o.status === 'Preparing Order' ? 'bg-primary animate-pulse' :
                                       o.status === 'Ready For Pick Up' ? 'bg-primary' :
@@ -1058,6 +1062,16 @@ export default function EmployeePage() {
                                         : `${o.status} (${o.progress || 0}%)`}
                                   </span>
                                 </span>
+                                {o.processedBy && (
+                                  <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border w-fit mt-0.5 ${
+                                    o.processedBy === user?.username
+                                      ? 'bg-primary/10 border-primary/25 text-primary font-bold'
+                                      : 'bg-white/5 border-border-glass text-text-dim'
+                                  }`}>
+                                    <span>👤</span>
+                                    <span>{o.processedBy === user?.username ? 'You (Assigned)' : o.processedBy}</span>
+                                  </span>
+                                )}
                                 {isInsufficientOrder(o) && (
                                   <span className="inline-block text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass w-fit mt-1">
                                     Queue Hold
@@ -1081,10 +1095,10 @@ export default function EmployeePage() {
                                       )}
                                     </div>
                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                      <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                                         schedule.isOverdue
-                                          ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
-                                          : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                          ? 'bg-primary/10 text-primary border-primary/25'
+                                          : 'bg-white/5 text-text-dim border-border-glass'
                                       }`}>
                                         {schedule.relativeLabel}
                                       </span>
@@ -1262,7 +1276,7 @@ export default function EmployeePage() {
                                         <button
                                           type="button"
                                           onClick={(e) => handleOpenPartialModal(o, e)}
-                                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-500 text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
                                           title="Customer sent insufficient money? Convert amount sent into Account Credit & record Outstanding Balance"
                                         >
                                           Partial / Credit
@@ -1407,7 +1421,7 @@ export default function EmployeePage() {
                                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                       (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-zinc-400' :
                                       o.status === 'Preparing Order' ? 'bg-primary animate-pulse' :
-                                      o.status === 'Ready For Pick Up' ? 'bg-emerald-400' :
+                                      o.status === 'Ready For Pick Up' ? 'bg-primary' :
                                       'bg-zinc-400'
                                     }`}
                                   />
@@ -1417,11 +1431,21 @@ export default function EmployeePage() {
                                 </span>
                                 <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                                   schedule.isOverdue
-                                    ? 'bg-danger/15 text-danger border-danger/30'
-                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    ? 'bg-primary/10 text-primary border-primary/25'
+                                    : 'bg-white/5 text-text-dim border-border-glass'
                                 }`}>
                                   {schedule.relativeLabel}
                                 </span>
+                                {o.processedBy && (
+                                  <span className={`inline-flex items-center gap-1 text-[9.5px] font-mono px-1.5 py-0.5 rounded border w-fit ${
+                                    o.processedBy === user?.username
+                                      ? 'bg-primary/10 border-primary/25 text-primary font-bold'
+                                      : 'bg-white/5 border-border-glass text-text-dim'
+                                  }`}>
+                                    <span>👤</span>
+                                    <span>{o.processedBy === user?.username ? 'You' : o.processedBy}</span>
+                                  </span>
+                                )}
                               </div>
 
                               {/* Order ID & Claim Code & Rush */}
@@ -1613,7 +1637,7 @@ export default function EmployeePage() {
                         {o.status === 'Ready For Pick Up' && (
                           <button
                             onClick={() => setConfirmingHandoverOrder(o)}
-                            className="flex-1 min-h-[40px] bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/35 text-emerald-400 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center active:scale-95"
+                            className="flex-1 min-h-[40px] bg-primary hover:bg-primary/90 text-white border border-primary/40 py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center active:scale-95 shadow-sm"
                           >
                             Handover
                           </button>
@@ -1735,7 +1759,7 @@ export default function EmployeePage() {
                   type="button"
                   onClick={handleExportOrderHistoryExcel}
                   disabled={isExportingExcel}
-                  className="bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="bg-primary hover:bg-primary/90 disabled:opacity-50 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
                   title="Download print-ready Microsoft Excel (.xlsx) report with Revenue, Money Sent, Overhead, Profit & ROI"
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -1808,7 +1832,7 @@ export default function EmployeePage() {
                               <td className="glass-td text-left">
                                 <span className={`inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-1 rounded-md font-semibold border whitespace-nowrap uppercase tracking-wider bg-white/5 text-text-main border-border-glass`}>
                                   <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                    o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-emerald-400' : 'bg-rose-400'
+                                    o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-primary' : 'bg-zinc-400'
                                   }`} />
                                   <span>{o.status}</span>
                                 </span>
@@ -1858,7 +1882,7 @@ export default function EmployeePage() {
                             <div className="flex flex-col gap-1.5 text-left">
                               <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-md font-semibold border whitespace-nowrap uppercase tracking-wider bg-white/5 text-text-main border-border-glass w-fit`}>
                                 <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                  o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-emerald-400' : 'bg-rose-400'
+                                  o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-primary' : 'bg-zinc-400'
                                 }`} />
                                 <span>{o.status}</span>
                               </span>
@@ -2511,18 +2535,18 @@ export default function EmployeePage() {
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 font-mono text-xs flex flex-col gap-1.5">
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-border-glass font-mono text-xs flex flex-col gap-1.5">
                 <div className="flex justify-between">
                   <span className="text-text-dim font-sans">Required Total:</span>
                   <span className="font-bold text-text-main">₱{reqTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-dim font-sans">Account Credit:</span>
-                  <span className="font-bold text-emerald-500">₱{sentNum.toFixed(2)}</span>
+                  <span className="font-bold text-text-main">₱{sentNum.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between border-t border-amber-500/20 pt-1.5">
-                  <span className="text-amber-500 font-sans font-bold">Outstanding Balance:</span>
-                  <span className="font-black text-amber-500">₱{outBal.toFixed(2)}</span>
+                <div className="flex justify-between border-t border-border-glass/40 pt-1.5">
+                  <span className="text-text-main font-sans font-bold">Outstanding Balance:</span>
+                  <span className="font-black text-primary">₱{outBal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -2538,7 +2562,7 @@ export default function EmployeePage() {
                   type="button"
                   onClick={handleRecordPartialPayment}
                   disabled={isRecordingPartial}
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer border-none disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer border-none disabled:opacity-50 transition-all shadow-sm"
                 >
                   {isRecordingPartial ? 'Recording...' : 'Record Account Credit & Balance'}
                 </button>

@@ -999,13 +999,17 @@ exports.getReceipt = async (req, res) => {
 
         const clientName = tx?.user?.username || cleanOrder?.user?.username || cleanOrder?.client || 'Customer';
 
+        const isGenericStaff = (name) => !name || /^(admin|employee|staff|system|customer\s*checkout|self-service|shop\s*counter)$/i.test(String(name).trim());
         const history = Array.isArray(cleanOrder?.personalization?.statusHistory) ? cleanOrder.personalization.statusHistory : [];
-        const staffFromHistory = [...history].reverse().find(h => h?.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
-        const resolvedStaff = cleanOrder?.processedBy 
-            || cleanOrder?.personalization?.smsVerifiedBy
-            || cleanOrder?.personalization?.approvedPartialBy
+        const staffFromHistory = [...history].reverse().find(h => !isGenericStaff(h?.actor))?.actor;
+        const resolvedStaff = (!isGenericStaff(cleanOrder?.processedBy) ? cleanOrder.processedBy : null)
+            || (!isGenericStaff(cleanOrder?.personalization?.smsVerifiedBy) ? cleanOrder.personalization?.smsVerifiedBy : null)
+            || (!isGenericStaff(cleanOrder?.personalization?.approvedPartialBy) ? cleanOrder.personalization?.approvedPartialBy : null)
+            || (!isGenericStaff(cleanOrder?.personalization?.balanceSettledBy) ? cleanOrder.personalization?.balanceSettledBy : null)
             || staffFromHistory
-            || cleanOrder?.garmentsReceivedBy 
+            || (!isGenericStaff(cleanOrder?.garmentsReceivedBy) ? cleanOrder.garmentsReceivedBy : null)
+            || cleanOrder?.processedBy 
+            || cleanOrder?.personalization?.smsVerifiedBy
             || null;
 
         res.json({
@@ -1075,6 +1079,7 @@ exports.trackOrder = async (req, res) => {
                 items: true,
                 totalAmount: true,
                 paymentStatus: true,
+                processedBy: true,
                 createdAt: true,
                 updatedAt: true
             }
@@ -1212,6 +1217,7 @@ exports.trackOrder = async (req, res) => {
                 totalAmount: order.totalAmount,
                 paymentStatus: order.paymentStatus,
                 paymentMethod: order.paymentMethod,
+                processedBy: order.processedBy || null,
                 personalization: order.personalization,
                 delayNotice,
                 createdAt: order.createdAt,
@@ -1707,13 +1713,16 @@ exports.downloadReceipt = async (req, res) => {
         drawDetail('RECEIPT', id);
         drawDetail('DATE', dateStr);
         drawDetail('TIME', timeStr);
+        const isGenericStaff = (name) => !name || /^(admin|employee|staff|system|customer\s*checkout|self-service|shop\s*counter)$/i.test(String(name).trim());
         const historyList = Array.isArray(tx.order?.personalization?.statusHistory) ? tx.order.personalization.statusHistory : [];
-        const staffFromHistory = [...historyList].reverse().find(h => h.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
-        const cashierName = tx.order?.processedBy 
-            || tx.order?.personalization?.smsVerifiedBy
-            || tx.order?.personalization?.approvedPartialBy
+        const staffFromHistory = [...historyList].reverse().find(h => !isGenericStaff(h.actor))?.actor;
+        const cashierName = (!isGenericStaff(tx.order?.processedBy) ? tx.order.processedBy : null)
+            || (!isGenericStaff(tx.order?.personalization?.smsVerifiedBy) ? tx.order.personalization?.smsVerifiedBy : null)
+            || (!isGenericStaff(tx.order?.personalization?.approvedPartialBy) ? tx.order.personalization?.approvedPartialBy : null)
+            || (!isGenericStaff(tx.order?.personalization?.balanceSettledBy) ? tx.order.personalization?.balanceSettledBy : null)
             || staffFromHistory
-            || tx.order?.garmentsReceivedBy 
+            || (!isGenericStaff(tx.order?.garmentsReceivedBy) ? tx.order.garmentsReceivedBy : null)
+            || tx.order?.processedBy
             || 'Shop Counter';
         drawDetail('CASHIER', cashierName);
         drawDetail('CUSTOMER', tx.user?.username || 'Valued Client');
@@ -2222,6 +2231,84 @@ exports.payRemainingBalance = async (req, res) => {
             : currentBalance;
 
         const now = new Date();
+
+        // FAST PATH: Settle balance instantly via Store Wallet
+        if (paymentMethod === 'wallet') {
+            const user = await prisma.user.findUnique({ where: { id: userId } });
+            if (!user || (user.walletBalance || 0) < topUpAmount) {
+                return res.status(400).json({
+                    message: `Insufficient store wallet balance. You need ₱${topUpAmount.toFixed(2)}, but only have ₱${(user?.walletBalance || 0).toFixed(2)}.`
+                });
+            }
+
+            // Atomically deduct wallet balance
+            await prisma.user.update({
+                where: { id: userId },
+                data: { walletBalance: { decrement: topUpAmount } }
+            });
+
+            currentPers.accountCredit = order.totalAmount;
+            currentPers.outstandingBalance = 0;
+            currentPers.insufficientPayment = false;
+            currentPers.balanceTopUpPending = false;
+            currentPers.balanceSettledAt = now.toISOString();
+            currentPers.balanceSettledBy = 'Customer (Store Wallet)';
+
+            const paymentHistory = Array.isArray(currentPers.paymentHistory) ? [...currentPers.paymentHistory] : [];
+            paymentHistory.push({
+                amount: topUpAmount,
+                method: 'wallet',
+                timestamp: now.toISOString(),
+                note: 'Remaining balance paid via Store Wallet'
+            });
+            currentPers.paymentHistory = paymentHistory;
+
+            const nextStatus = order.status === 'Insufficient Payment' ? 'In Queue' : order.status;
+            const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
+            history.push({
+                status: nextStatus,
+                timestamp: now.toISOString(),
+                actor: 'Customer (Store Wallet)',
+                hub: 'Eds Towels Pacific Mall Lucena Hub',
+                note: `Remaining balance of ₱${topUpAmount.toFixed(2)} settled via Store Wallet. Order is now fully paid and in queue.`
+            });
+            currentPers.statusHistory = history;
+
+            const updatedOrder = await prisma.order.update({
+                where: { id: order.id },
+                data: {
+                    paymentStatus: 'paid',
+                    status: nextStatus,
+                    priorityScore: 0,
+                    personalization: currentPers
+                },
+                include: { receipt: true, transaction: true }
+            });
+
+            if (order.receipt) {
+                await prisma.receipt.update({
+                    where: { id: order.receipt.id },
+                    data: {
+                        status: 'Verified',
+                        aiVerificationStatus: 'verified',
+                        flaggedReason: null
+                    }
+                });
+            }
+
+            const io = req.app.get('io');
+            if (io) {
+                io.emit('ordersUpdated', { orderId: updatedOrder.orderId, status: updatedOrder.status, id: updatedOrder.id, order: updatedOrder });
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.ORDER, updatedOrder);
+                socketUtil.emitDataChanged(io, ACTIONS.UPDATE, ENTITIES.WALLET, { balance: user.walletBalance - topUpAmount }, `user:${userId}`);
+            }
+
+            return res.json({
+                success: true,
+                message: `Remaining balance of ₱${topUpAmount.toFixed(2)} successfully paid via Store Wallet! Your order is now in queue.`,
+                order: updatedOrder
+            });
+        }
         const paymentHistory = Array.isArray(currentPers.paymentHistory) ? [...currentPers.paymentHistory] : [];
         if (paymentHistory.length === 0 && currentCredit > 0) {
             paymentHistory.push({

@@ -19,6 +19,7 @@ interface TrackedOrder {
   totalAmount: number;
   paymentStatus: string;
   paymentMethod?: string;
+  processedBy?: string | null;
   delayNotice?: {
     active: boolean;
     reason?: string;
@@ -513,6 +514,11 @@ function OrderTrackerContent() {
             <span className="text-[11px] text-text-dim">
               Estimated ready: <strong className="text-text-main">{order.readyLabel || `in ~${order.estimatedMinutesLeft} minutes`}</strong> (~{order.estimatedMinutesLeft} min remaining).
             </span>
+            {order.processedBy && (
+              <span className="text-[11px] text-text-dim block mt-1.5 pt-1.5 border-t border-border-glass/40">
+                Specialist crafting your order: <strong className="text-text-main font-mono">{order.processedBy}</strong>
+              </span>
+            )}
           </div>
         ) : isCompleted ? (
           <div className="bg-bg-surface border border-border-glass rounded-xl p-3 text-center text-xs text-text-dim">

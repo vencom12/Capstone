@@ -161,6 +161,18 @@ export default function OfficialClaimSlip({
   const effectiveTotal = totalAmount > 0 ? totalAmount : calculatedItemsTotal;
   const paymentMethod = order.paymentMethod || 'Cash';
 
+  const isGenericStaff = (name: any) => !name || /^(admin|employee|staff|system|customer\s*checkout|self-service|shop\s*counter)$/i.test(String(name).trim());
+  const history = Array.isArray(order.personalization?.statusHistory) ? order.personalization.statusHistory : [];
+  const staffFromHistory = [...history].reverse().find((h: any) => !isGenericStaff(h?.actor))?.actor;
+  const staffName = (!isGenericStaff(order.processedBy) ? order.processedBy : null)
+    || (!isGenericStaff(order.personalization?.smsVerifiedBy) ? order.personalization?.smsVerifiedBy : null)
+    || (!isGenericStaff(order.personalization?.approvedPartialBy) ? order.personalization?.approvedPartialBy : null)
+    || (!isGenericStaff(order.personalization?.balanceSettledBy) ? order.personalization?.balanceSettledBy : null)
+    || staffFromHistory
+    || (!isGenericStaff(order.garmentsReceivedBy) ? order.garmentsReceivedBy : null)
+    || (order.processedBy && !/system|customer\s*checkout/i.test(order.processedBy) ? order.processedBy : '')
+    || '';
+
   const handlePrint = () => {
     const slipElement = document.getElementById(`official-claim-slip-${orderId}`);
     if (!slipElement) {
@@ -365,7 +377,7 @@ export default function OfficialClaimSlip({
               <span className="text-[9px] uppercase font-bold text-zinc-500 tracking-wider">
                 TRANSACTION TYPE
               </span>
-              <div className="text-xs font-black text-emerald-700 uppercase tracking-wide">
+              <div className="text-xs font-black text-black uppercase tracking-wide">
                 DIRECT SALE • PAID IN FULL
               </div>
               <div className="text-[10px] text-zinc-600">
@@ -391,6 +403,12 @@ export default function OfficialClaimSlip({
                 <span className="text-zinc-600">Payment Method:</span>
                 <span className="font-bold text-black text-right">{paymentMethod}</span>
               </div>
+              {staffName && (
+                <div className="flex justify-between items-baseline">
+                  <span className="text-zinc-600">Processed By:</span>
+                  <span className="font-bold text-black text-right">{staffName}</span>
+                </div>
+              )}
             </div>
 
             {/* Items Purchased List */}
@@ -461,7 +479,7 @@ export default function OfficialClaimSlip({
               </div>
               <div className="flex justify-between items-center text-[10px] text-zinc-500">
                 <span>Payment Status:</span>
-                <span className="font-bold text-emerald-700">PAID IN FULL</span>
+                <span className="font-bold text-black font-mono">PAID IN FULL</span>
               </div>
             </div>
 
@@ -530,6 +548,12 @@ export default function OfficialClaimSlip({
                   {estimatedReadyFormatted}
                 </span>
               </div>
+              {staffName && (
+                <div className="flex justify-between items-baseline mt-0.5">
+                  <span className="text-zinc-600">Processed By:</span>
+                  <span className="font-bold text-black text-right">{staffName}</span>
+                </div>
+              )}
             </div>
 
             {/* Items Ordered List */}

@@ -225,13 +225,17 @@ export function printBagSlip(order: any): void {
             <span class="field-value">${claimCode}</span>
           </div>
           ${(() => {
+            const isGenericStaff = (name: any) => !name || /^(admin|employee|staff|system|customer\s*checkout|self-service|shop\s*counter)$/i.test(String(name).trim());
             const history = Array.isArray(order.personalization?.statusHistory) ? order.personalization.statusHistory : [];
-            const staffFromHistory = [...history].reverse().find((h: any) => h?.actor && !/customer\s*checkout|system|self-service/i.test(h.actor))?.actor;
-            const staffName = order.processedBy 
-              || order.personalization?.smsVerifiedBy
-              || order.personalization?.approvedPartialBy
+            const staffFromHistory = [...history].reverse().find((h: any) => !isGenericStaff(h?.actor))?.actor;
+            const staffName = (!isGenericStaff(order.processedBy) ? order.processedBy : null)
+              || (!isGenericStaff(order.personalization?.smsVerifiedBy) ? order.personalization?.smsVerifiedBy : null)
+              || (!isGenericStaff(order.personalization?.approvedPartialBy) ? order.personalization?.approvedPartialBy : null)
+              || (!isGenericStaff(order.personalization?.balanceSettledBy) ? order.personalization?.balanceSettledBy : null)
               || staffFromHistory
-              || order.garmentsReceivedBy 
+              || (!isGenericStaff(order.garmentsReceivedBy) ? order.garmentsReceivedBy : null)
+              || (order.processedBy && !/system|customer\s*checkout/i.test(order.processedBy) ? order.processedBy : '')
+              || (order.personalization?.smsVerifiedBy && !/system|customer\s*checkout/i.test(order.personalization.smsVerifiedBy) ? order.personalization.smsVerifiedBy : '')
               || '';
             return staffName ? `
           <div class="field-row">

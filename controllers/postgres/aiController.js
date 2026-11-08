@@ -2217,7 +2217,7 @@ Rules: referenceId must be digits only without spaces; transactionDate must incl
                 recipientName: aiResult.recipientName,
                 paymentPlatform: aiResult.paymentPlatform,
                 confidence,
-                isAmountMatch: aiResult.isAmountMatch,
+                isAmountMatch: isAmountMatch,
                 isInsufficientPayment,
                 isOverpayment,
                 overpaymentAmount,

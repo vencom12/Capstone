@@ -305,8 +305,6 @@ export default function PanelOverview({
             .font-bold { font-weight: bold; }
             .font-black { font-weight: 900; }
             .uppercase { text-transform: uppercase; }
-            .bg-emerald-700 { background: #047857 !important; color: #fff !important; }
-            .bg-\\\\[\\\\#e11d48\\\\] { background: #e11d48 !important; color: #fff !important; }
             .bg-black { background: #000 !important; color: #fff !important; }
             .text-white { color: #fff !important; }
             .rounded-xl { border-radius: 8px; }
@@ -809,8 +807,8 @@ export default function PanelOverview({
                                 </span>
                                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                                   schedule.isOverdue
-                                    ? 'bg-danger/15 text-danger border-danger/30'
-                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                    ? 'bg-primary/10 text-primary border-primary/25'
+                                    : 'bg-white/5 text-text-dim border-border-glass'
                                 }`}>
                                   {schedule.relativeLabel}
                                 </span>
@@ -938,7 +936,7 @@ export default function PanelOverview({
                                     <button
                                       type="button"
                                       onClick={(e) => handleOpenPartialModal(o, e)}
-                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/35 text-amber-500 text-[10px] font-sans font-bold transition-all cursor-pointer w-fit"
+                                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-[10px] font-sans font-medium transition-all cursor-pointer w-fit"
                                       title="Customer sent insufficient money? Convert amount sent into Account Credit & record Outstanding Balance"
                                     >
                                       Partial / Credit
@@ -955,7 +953,7 @@ export default function PanelOverview({
                               <span
                                 className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                   o.status === 'Insufficient Payment'
-                                    ? 'bg-amber-500'
+                                    ? 'bg-primary'
                                     : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
                                       ? 'bg-zinc-400'
                                       : o.status === 'Preparing Order'
@@ -973,6 +971,12 @@ export default function PanelOverview({
                                     : o.status}
                               </span>
                             </span>
+                            {o.processedBy && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded border border-border-glass bg-white/5 text-text-dim">
+                                <span>👤</span>
+                                <span>{o.processedBy}</span>
+                              </span>
+                            )}
                             {isInsufficientOrder(o) && (
                               <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass">
                                 Queue Hold
@@ -1078,7 +1082,7 @@ export default function PanelOverview({
                                     : o.status === 'Preparing Order'
                                       ? 'bg-primary animate-pulse'
                                       : o.status === 'Ready For Pick Up'
-                                        ? 'bg-emerald-400'
+                                        ? 'bg-primary'
                                         : 'bg-zinc-400'
                                 }`}
                               />
@@ -1088,11 +1092,17 @@ export default function PanelOverview({
                             </span>
                             <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                               schedule.isOverdue
-                                ? 'bg-danger/15 text-danger border-danger/30'
-                                : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                                ? 'bg-primary/10 text-primary border-primary/25'
+                                : 'bg-white/5 text-text-dim border-border-glass'
                             }`}>
                               {schedule.relativeLabel}
                             </span>
+                            {o.processedBy && (
+                              <span className="inline-flex items-center gap-1 text-[9.5px] font-mono px-1.5 py-0.5 rounded border border-border-glass bg-white/5 text-text-dim">
+                                <span>👤</span>
+                                <span>{o.processedBy}</span>
+                              </span>
+                            )}
                           </div>
 
                           <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
@@ -1277,18 +1287,18 @@ export default function PanelOverview({
                 />
               </div>
 
-              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 font-mono text-xs flex flex-col gap-1.5">
+              <div className="p-3 rounded-xl bg-white/[0.03] border border-border-glass font-mono text-xs flex flex-col gap-1.5">
                 <div className="flex justify-between">
                   <span className="text-text-dim font-sans">Required Total:</span>
                   <span className="font-bold text-text-main">₱{reqTotal.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-text-dim font-sans">Account Credit:</span>
-                  <span className="font-bold text-emerald-500">₱{sentNum.toFixed(2)}</span>
+                  <span className="font-bold text-text-main">₱{sentNum.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between border-t border-amber-500/20 pt-1.5">
-                  <span className="text-amber-500 font-sans font-bold">Outstanding Balance:</span>
-                  <span className="font-black text-amber-500">₱{outBal.toFixed(2)}</span>
+                <div className="flex justify-between border-t border-border-glass/40 pt-1.5">
+                  <span className="text-text-main font-sans font-bold">Outstanding Balance:</span>
+                  <span className="font-black text-primary">₱{outBal.toFixed(2)}</span>
                 </div>
               </div>
 
@@ -1304,7 +1314,7 @@ export default function PanelOverview({
                   type="button"
                   onClick={handleRecordPartialPayment}
                   disabled={isRecordingPartial}
-                  className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer border-none disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer border-none disabled:opacity-50 transition-all shadow-sm"
                 >
                   {isRecordingPartial ? 'Recording...' : 'Record Account Credit & Balance'}
                 </button>
@@ -1394,7 +1404,7 @@ export default function PanelOverview({
                   {/* Top Bar */}
                   <div className="border-b-2 border-black pb-2 flex justify-between items-center">
                     <div className="flex items-center gap-1.5">
-                      <div className={`${isPick ? 'bg-emerald-700' : 'bg-[#e11d48]'} text-white px-2 py-0.5 font-black text-xs tracking-wider rounded-sm`}>
+                      <div className="bg-black text-white px-2 py-0.5 font-black text-xs tracking-wider rounded-sm">
                         {isPick ? 'COUNTER' : 'DISPATCH'}
                       </div>
                       <span className="font-black text-xs">{isPick ? 'STORE PICKUP' : 'J&T EXPRESS'}</span>
