@@ -1394,12 +1394,16 @@ export default function EmployeePage() {
                   const rawClient = o.personalization?.claimantName || o.client || o.clientName || 'Valued Customer';
                   const cleanClient = String(rawClient).replace(/\s*\([^)]*\)/g, '').trim() || 'Valued Customer';
                   const isUnpaidOrder = o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid';
+                  const credit = getOrderCreditSummary(o);
+                  const isInsufficient = isInsufficientOrder(o);
                   const hasPrimaryAction = isUnpaidOrder || (o.status === 'In Queue') || (o.status === 'Preparing Order') || (o.status === 'Ready For Pick Up') || Boolean(o.status?.includes('Hold'));
 
                   return (
                     <div
                       key={o.id || o._id}
-                      className="bg-bg-card backdrop-blur-[12px] border border-border-glass rounded-xl p-4 flex flex-col justify-between text-left relative shadow-xs hover:border-primary/40 transition-all gap-3"
+                      className={`bg-bg-card backdrop-blur-[12px] border rounded-xl p-4 flex flex-col justify-between text-left relative shadow-xs hover:border-primary/40 transition-all gap-3 ${
+                        isInsufficient ? 'border-primary/40' : 'border-border-glass'
+                      }`}
                     >
                       {/* Top Split Body: Left Info / Right Items */}
                       <div className="grid grid-cols-2 gap-3 items-start">
@@ -1411,6 +1415,7 @@ export default function EmployeePage() {
                               {/* Status Pill & Live Overdue/Remaining Badge */}
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider whitespace-nowrap border w-fit ${
+                                  isInsufficient ? 'bg-primary/10 text-primary border-primary/25' :
                                   (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-white/5 text-text-dim border-border-glass' :
                                     o.status === 'Preparing Order' ? 'bg-white/5 text-text-main border-border-glass' :
                                     o.status === 'Ready For Pick Up' ? 'bg-white/5 text-text-main border-border-glass' :
@@ -1419,6 +1424,7 @@ export default function EmployeePage() {
                                 `}>
                                   <span
                                     className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                      isInsufficient ? 'bg-primary' :
                                       (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-zinc-400' :
                                       o.status === 'Preparing Order' ? 'bg-primary animate-pulse' :
                                       o.status === 'Ready For Pick Up' ? 'bg-primary' :
@@ -1426,9 +1432,15 @@ export default function EmployeePage() {
                                     }`}
                                   />
                                   <span>
-                                    {(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
+                                    {isInsufficient ? 'Insufficient / Balance Due' :
+                                      (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
                                   </span>
                                 </span>
+                                {isInsufficient && (
+                                  <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass">
+                                    Queue Hold
+                                  </span>
+                                )}
                                 <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                                   schedule.isOverdue
                                     ? 'bg-primary/10 text-primary border-primary/25'
@@ -1566,6 +1578,82 @@ export default function EmployeePage() {
                         </div>
                       </div>
 
+                      {/* Option 3 Insufficient Payment Breakdown Notice (Mobile) */}
+                      {credit.isInsufficientPayment && (
+                        <div
+                          className="p-3 rounded-xl bg-white/[0.04] border border-primary/30 flex flex-col gap-2 font-sans"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <div className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5 text-primary font-bold">
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                              <span className="uppercase text-[10.5px] tracking-wider">Partial Payment Notice</span>
+                            </div>
+                            <span className="text-[9.5px] font-semibold uppercase px-1.5 py-0.5 rounded bg-white/5 text-text-dim border border-border-glass">
+                              Queue Hold
+                            </span>
+                          </div>
+
+                          {/* 3-Column Financial Breakdown */}
+                          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface/80 border border-border-glass text-center font-mono">
+                            <div className="flex flex-col">
+                              <span className="text-[9px] text-text-dim uppercase font-sans font-semibold">Total</span>
+                              <span className="font-bold text-xs text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
+                            </div>
+                            <div className="flex flex-col border-x border-white/5">
+                              <span className="text-[9px] text-text-dim uppercase font-sans font-semibold">Sent / Credit</span>
+                              <span className="font-bold text-xs text-text-main">₱{credit.accountCredit.toFixed(2)}</span>
+                            </div>
+                            <div className="flex flex-col">
+                              <span className="text-[9px] text-primary uppercase font-sans font-bold">Balance Due</span>
+                              <span className="font-extrabold text-xs text-primary">₱{credit.outstandingBalance.toFixed(2)}</span>
+                            </div>
+                          </div>
+
+                          {credit.balanceTopUpPending && (
+                            <div className="p-2 rounded-lg bg-primary/10 border border-primary/25 text-[11px] text-primary font-semibold flex items-center justify-between gap-1.5">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span>⚡</span>
+                                <span className="truncate">Top-Up Sent: +₱{credit.balanceTopUpAmount.toFixed(2)}</span>
+                              </div>
+                              {credit.balanceTopUpRef && (
+                                <span className="font-mono text-[10px] text-text-dim shrink-0">Ref: ...{credit.balanceTopUpRef.slice(-4)}</span>
+                              )}
+                            </div>
+                          )}
+
+                          {credit.note && (
+                            <p className="text-[10.5px] text-text-dim leading-snug font-sans bg-black/20 p-2 rounded-lg border border-white/5">
+                              {credit.note}
+                            </p>
+                          )}
+
+                          {/* Settlement & Process Anyway Actions */}
+                          <div className="flex items-center gap-2 pt-0.5">
+                            <button
+                              type="button"
+                              onClick={(e) => handleVerifySmsMatch(o, e)}
+                              disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                              className="flex-1 py-2 px-3 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-all cursor-pointer text-center shadow-sm disabled:opacity-50 active:scale-95"
+                              title="Settle remaining balance as paid in full"
+                            >
+                              {verifyingSmsIds[o.id || o._id || o.orderId] ? 'Settling...' : `Settle Balance (₱${credit.outstandingBalance.toFixed(0)})`}
+                            </button>
+                            {o.status === 'Insufficient Payment' && (
+                              <button
+                                type="button"
+                                onClick={(e) => handleProcessAnywayPartial(o, e)}
+                                disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
+                                className="py-2 px-2.5 rounded-lg bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-xs font-semibold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95 shrink-0"
+                                title="Approve & process order anyway while customer completes remaining balance later"
+                              >
+                                Process Anyway
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
                       {/* Bottom Action Bar (Balanced & Touch-Friendly) */}
                       <div className="flex items-center gap-2 pt-2 border-t border-white/5 w-full">
                         <button
@@ -1586,9 +1674,16 @@ export default function EmployeePage() {
                             type="button"
                             onClick={(e) => handleVerifySmsMatch(o, e)}
                             disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                            className="flex-1 min-h-[40px] bg-white/10 hover:bg-white/15 border border-border-glass text-text-main py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95"
+                            className={`flex-1 min-h-[40px] border py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95 ${
+                              credit.isInsufficientPayment
+                                ? 'bg-primary hover:bg-primary/90 text-white border-primary/40 shadow-sm'
+                                : 'bg-white/10 hover:bg-white/15 border-border-glass text-text-main'
+                            }`}
                           >
                             {verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (() => {
+                              if (credit.isInsufficientPayment) {
+                                return `Settle (₱${credit.outstandingBalance.toFixed(0)})`;
+                              }
                               const ref = getOrderGcashRef(o);
                               return ref ? `Verify ${ref.slice(-4)}` : 'Verify';
                             })()}

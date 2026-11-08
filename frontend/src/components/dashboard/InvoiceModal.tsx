@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import GlassModal from '@/components/ui/GlassModal';
+import { getOrderCreditSummary } from '@/lib/orderStatus';
 import type { Order, Transaction, User } from '@/lib/types';
 
 interface InvoiceModalProps {
@@ -83,6 +84,8 @@ export default function InvoiceModal({
   if (!isOpen) return null;
 
   // Resolve source data from order, fetchedData, or transaction
+  const effectiveOrder = order || fetchedData?.order || (fetchedData?.orderID ? fetchedData : null) || null;
+  const credit = getOrderCreditSummary(effectiveOrder);
   const effectiveOrderId = order?.orderId || fetchedData?.orderID || transaction?.orderID || targetTxId || 'N/A';
   const cleanOrderCode = String(effectiveOrderId).replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
   const receiptNo = (order as any)?.receipt?.receiptId || fetchedData?.receiptId || transaction?.receiptId || `RCP-${cleanOrderCode}`;
@@ -449,36 +452,83 @@ export default function InvoiceModal({
                       <hr style={{ border: 'none', borderTop: '1px dashed #000000', margin: '3px 0' }} />
                     </td>
                   </tr>
-                  <tr style={{ fontSize: '13px', fontWeight: '900' }}>
-                    <td style={{ textAlign: 'left', padding: '3px 0', color: '#000000' }}>TOTAL PAID:</td>
-                    <td style={{ textAlign: 'right', padding: '3px 0', color: '#000000', fontSize: '14px', fontFamily: 'monospace' }}>₱{totalAmount.toFixed(2)}</td>
-                  </tr>
-                  <tr>
-                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT METHOD:</td>
-                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px' }}>{paymentMethod}</td>
-                  </tr>
-                  {(() => {
-                    const resolvedRef = String(
-                      (order as any)?.receipt?.referenceId ||
-                      (order?.personalization as any)?.referenceNumber ||
-                      transaction?.transactionID ||
-                      targetTxId ||
-                      ''
-                    ).trim();
-                    if (!resolvedRef) return null;
-                    return (
+                  {credit.isInsufficientPayment ? (
+                    <>
                       <tr>
-                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT REF:</td>
-                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px', fontFamily: 'monospace' }}>
-                          {resolvedRef}
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9.5px' }}>REQUIRED TOTAL:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontFamily: 'monospace' }}>₱{credit.requiredAmount.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#16a34a', fontSize: '9.5px', fontWeight: '600' }}>AMOUNT PAID / CREDIT:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#16a34a', fontFamily: 'monospace' }}>₱{credit.accountCredit.toFixed(2)}</td>
+                      </tr>
+                      <tr style={{ fontSize: '12px', fontWeight: '900' }}>
+                        <td style={{ textAlign: 'left', padding: '2.5px 0', color: '#dc2626' }}>OUTSTANDING BALANCE:</td>
+                        <td style={{ textAlign: 'right', padding: '2.5px 0', color: '#dc2626', fontSize: '13px', fontFamily: 'monospace' }}>₱{credit.outstandingBalance.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT METHOD:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px' }}>{paymentMethod}</td>
+                      </tr>
+                      {(() => {
+                        const resolvedRef = String(
+                          (order as any)?.receipt?.referenceId ||
+                          (order?.personalization as any)?.referenceNumber ||
+                          transaction?.transactionID ||
+                          targetTxId ||
+                          ''
+                        ).trim();
+                        if (!resolvedRef) return null;
+                        return (
+                          <tr>
+                            <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT REF:</td>
+                            <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px', fontFamily: 'monospace' }}>
+                              {resolvedRef}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                      <tr>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#dc2626', fontSize: '9px', fontWeight: '700' }}>PAYMENT STATUS:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#dc2626', fontSize: '9px' }}>
+                          PARTIAL (₱{credit.outstandingBalance.toFixed(2)} DUE)
                         </td>
                       </tr>
-                    );
-                  })()}
-                  <tr>
-                    <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT STATUS:</td>
-                    <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#000000', fontSize: '9px' }}>PAID &amp; VERIFIED ✓</td>
-                  </tr>
+                    </>
+                  ) : (
+                    <>
+                      <tr style={{ fontSize: '13px', fontWeight: '900' }}>
+                        <td style={{ textAlign: 'left', padding: '3px 0', color: '#000000' }}>TOTAL PAID:</td>
+                        <td style={{ textAlign: 'right', padding: '3px 0', color: '#000000', fontSize: '14px', fontFamily: 'monospace' }}>₱{totalAmount.toFixed(2)}</td>
+                      </tr>
+                      <tr>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT METHOD:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px' }}>{paymentMethod}</td>
+                      </tr>
+                      {(() => {
+                        const resolvedRef = String(
+                          (order as any)?.receipt?.referenceId ||
+                          (order?.personalization as any)?.referenceNumber ||
+                          transaction?.transactionID ||
+                          targetTxId ||
+                          ''
+                        ).trim();
+                        if (!resolvedRef) return null;
+                        return (
+                          <tr>
+                            <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT REF:</td>
+                            <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '700', color: '#000000', fontSize: '9px', fontFamily: 'monospace' }}>
+                              {resolvedRef}
+                            </td>
+                          </tr>
+                        );
+                      })()}
+                      <tr>
+                        <td style={{ textAlign: 'left', padding: '1.5px 0', color: '#52525b', fontSize: '9px' }}>PAYMENT STATUS:</td>
+                        <td style={{ textAlign: 'right', padding: '1.5px 0', fontWeight: '800', color: '#000000', fontSize: '9px' }}>PAID &amp; VERIFIED ✓</td>
+                      </tr>
+                    </>
+                  )}
                 </tbody>
               </table>
 
@@ -501,6 +551,24 @@ export default function InvoiceModal({
                   <div style={{ fontSize: '8px', color: '#52525b' }}>
                     Present this code at the Pacific Mall Lucena counter for pickup
                   </div>
+                </div>
+              )}
+
+              {/* Insufficient Payment Warning Notice on Slip */}
+              {credit.isInsufficientPayment && (
+                <div style={{
+                  margin: '6px 0',
+                  padding: '5px 7px',
+                  border: '1px solid #dc2626',
+                  backgroundColor: '#fef2f2',
+                  color: '#991b1b',
+                  fontSize: '8.5px',
+                  borderRadius: '3px',
+                  textAlign: 'center',
+                  fontWeight: '700',
+                  lineHeight: '1.3'
+                }}>
+                  ⚠️ PARTIAL PAYMENT NOTICE: ₱{credit.outstandingBalance.toFixed(2)} OUTSTANDING BALANCE DUE BEFORE COUNTER RELEASE
                 </div>
               )}
 
