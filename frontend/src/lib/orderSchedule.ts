@@ -9,9 +9,10 @@ export interface OrderScheduleInfo {
 
 export function isOrderInsufficientPayment(o: any): boolean {
   if (!o) return false;
+  const status = String(o.status || '').toLowerCase();
+  if (status === 'completed' || status.includes('cancel') || status.includes('delivered')) return false;
   const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
   if (pers.employeeApprovedPartial) return false; // Staff authorized to process anyway
-  const status = String(o.status || '').toLowerCase();
   return (
     status === 'insufficient payment' ||
     o.paymentStatus === 'partial' ||

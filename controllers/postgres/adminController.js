@@ -2704,7 +2704,13 @@ exports.verifyOrderPayment = async (req, res) => {
             currentPers.employeeApprovedPartial = false;
             currentPers.insufficientPaymentRecordedBy = verifiedBy;
             currentPers.insufficientPaymentRecordedAt = now.toISOString();
-            currentPers.insufficientPaymentNote = `What you sent (₱${creditAmount.toFixed(2)}) was not enough. Required: ₱${order.totalAmount.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}. Please pay the remaining balance for your order to be processed.`;
+            currentPers.insufficientPaymentNote = `What you sent (₱${creditAmount.toFixed(2)}) was not enough. Required: ₱${order.totalAmount.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}. Your order is on hold and will NOT enter the queue or be processed until the remaining balance is paid in full.`;
+            currentPers.readyLabel = 'Not in Queue (Awaiting Full Payment)';
+            currentPers.estimatedReadyDate = null;
+            currentPers.queuePosition = null;
+            currentPers.ordersAhead = null;
+            currentPers.queueWaitMinutes = null;
+            currentPers.estimatedStitchMinutes = currentPers.estimatedStitchMinutes || order.estimatedTime || 3;
 
             const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
             history.push({
@@ -2712,7 +2718,7 @@ exports.verifyOrderPayment = async (req, res) => {
                 timestamp: now.toISOString(),
                 actor: verifiedBy,
                 hub: 'Eds Towels Pacific Mall Lucena Hub',
-                note: `Insufficient payment recorded. Required: ₱${order.totalAmount.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}.`
+                note: `Insufficient payment recorded (₱${creditAmount.toFixed(2)} of ₱${order.totalAmount.toFixed(2)}). Order placed on queue hold — not scheduled until remaining balance (₱${balanceDue.toFixed(2)}) is settled in full.`
             });
             currentPers.statusHistory = history;
 
@@ -2723,7 +2729,10 @@ exports.verifyOrderPayment = async (req, res) => {
                     paymentStatus: 'partial',
                     status: 'Insufficient Payment',
                     priorityScore: -10,
-                    progress: 5,
+                    progress: 0,
+                    dueDate: null,
+                    deliveryTime: 'Not in Queue (Awaiting Full Payment)',
+                    estimatedTime: 0,
                     personalization: currentPers
                 },
                 include: { receipt: true, transaction: true }
@@ -2766,6 +2775,39 @@ exports.verifyOrderPayment = async (req, res) => {
             currentPers.approvedPartialAt = now.toISOString();
             currentPers.insufficientPayment = balanceDue > 0;
 
+            let finalDueDate = order.dueDate;
+            let finalDeliveryTime = order.deliveryTime;
+            let finalEstimatedTime = order.estimatedTime || 0;
+
+            if (!finalDueDate || order.status === 'Insufficient Payment') {
+                if (needsStitching) {
+                    const stitchMins = currentPers.estimatedStitchMinutes || 3;
+                    try {
+                        const { scheduleIncomingOrder } = require('../../utils/workshopQueueManager');
+                        const scheduling = await scheduleIncomingOrder({
+                            orderDurationMinutes: stitchMins,
+                            prisma
+                        });
+                        finalDueDate = scheduling.estimatedReadyDate;
+                        finalDeliveryTime = scheduling.readyLabel;
+                        finalEstimatedTime = stitchMins;
+                        currentPers.readyLabel = scheduling.readyLabel;
+                        currentPers.estimatedReadyDate = scheduling.estimatedReadyDate.toISOString();
+                        currentPers.queuePosition = scheduling.queuePosition;
+                        currentPers.ordersAhead = scheduling.ordersAhead;
+                        currentPers.queueWaitMinutes = scheduling.queueWaitMinutes;
+                    } catch (schedErr) {
+                        console.warn('[process_anyway] Scheduling fallback:', schedErr.message);
+                    }
+                } else {
+                    finalDueDate = new Date(Date.now() + 5 * 60 * 1000);
+                    finalDeliveryTime = 'Ready in 2–5 mins (Packaging Only)';
+                    finalEstimatedTime = 0;
+                    currentPers.readyLabel = finalDeliveryTime;
+                    currentPers.estimatedReadyDate = finalDueDate.toISOString();
+                }
+            }
+
             const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
             history.push({
                 status: chosenNextStatus,
@@ -2784,6 +2826,9 @@ exports.verifyOrderPayment = async (req, res) => {
                     status: chosenNextStatus,
                     priorityScore: -10,
                     progress: chosenProgress,
+                    dueDate: finalDueDate,
+                    deliveryTime: finalDeliveryTime,
+                    estimatedTime: finalEstimatedTime,
                     personalization: currentPers
                 },
                 include: { receipt: true, transaction: true }
@@ -2836,6 +2881,39 @@ exports.verifyOrderPayment = async (req, res) => {
             : order.status;
         const nextProgress = nextStatus === 'Ready For Pick Up' ? 90 : Math.max(order.progress || 10, 10);
 
+        let finalDueDate = order.dueDate;
+        let finalDeliveryTime = order.deliveryTime;
+        let finalEstimatedTime = order.estimatedTime || 0;
+
+        if (!finalDueDate || order.status === 'Insufficient Payment') {
+            if (needsStitching) {
+                const stitchMins = currentPers.estimatedStitchMinutes || 3;
+                try {
+                    const { scheduleIncomingOrder } = require('../../utils/workshopQueueManager');
+                    const scheduling = await scheduleIncomingOrder({
+                        orderDurationMinutes: stitchMins,
+                        prisma
+                    });
+                    finalDueDate = scheduling.estimatedReadyDate;
+                    finalDeliveryTime = scheduling.readyLabel;
+                    finalEstimatedTime = stitchMins;
+                    currentPers.readyLabel = scheduling.readyLabel;
+                    currentPers.estimatedReadyDate = scheduling.estimatedReadyDate.toISOString();
+                    currentPers.queuePosition = scheduling.queuePosition;
+                    currentPers.ordersAhead = scheduling.ordersAhead;
+                    currentPers.queueWaitMinutes = scheduling.queueWaitMinutes;
+                } catch (schedErr) {
+                    console.warn('[verifyOrderPayment] Scheduling fallback:', schedErr.message);
+                }
+            } else {
+                finalDueDate = new Date(Date.now() + 5 * 60 * 1000);
+                finalDeliveryTime = 'Ready in 2–5 mins (Packaging Only)';
+                finalEstimatedTime = 0;
+                currentPers.readyLabel = finalDeliveryTime;
+                currentPers.estimatedReadyDate = finalDueDate.toISOString();
+            }
+        }
+
         const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
         history.push({
             status: nextStatus,
@@ -2853,6 +2931,9 @@ exports.verifyOrderPayment = async (req, res) => {
                 paymentStatus: 'paid',
                 status: nextStatus,
                 progress: nextProgress,
+                dueDate: finalDueDate,
+                deliveryTime: finalDeliveryTime,
+                estimatedTime: finalEstimatedTime,
                 personalization: currentPers
             },
             include: { receipt: true, transaction: true }

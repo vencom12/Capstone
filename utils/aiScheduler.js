@@ -140,13 +140,14 @@ async function recalculateQueuePriorities(io) {
                 Boolean(pers.insufficientPayment) ||
                 (Number(pers.outstandingBalance) || 0) > 0;
             const finalScore = hasOutstandingBalance ? -10 : Math.min(100, score);
+            const isHold = hasOutstandingBalance && !pers.employeeApprovedPartial;
 
-            // Update database row
+            // Update database row (preserve estimatedTime = 0 for held orders outside queue)
             return prisma.order.update({
                 where: { id: order.id },
                 data: {
                     priorityScore: parseFloat(finalScore.toFixed(2)),
-                    estimatedTime: Math.ceil(estTime)
+                    estimatedTime: isHold ? 0 : Math.ceil(estTime)
                 }
             });
         });

@@ -2128,7 +2128,7 @@ Rules: referenceId must be digits only without spaces; transactionDate must incl
         } else if (!isPassedGate) {
             flaggedReason = "We couldn't clearly read your payment receipt. Please upload a clear, full screenshot of your GCash payment confirmation.";
         } else if (isInsufficientPayment && allChecksPassed) {
-            flaggedReason = `Insufficient payment detected: Required ₱${numOrderTotal.toFixed(2)}, Sent ₱${accountCredit.toFixed(2)}. System recorded Account Credit: ₱${accountCredit.toFixed(2)} | Outstanding Balance: ₱${outstandingBalance.toFixed(2)}. Please pay the remaining balance for your order to be processed.`;
+            flaggedReason = `What you sent (₱${accountCredit.toFixed(2)}) was not enough. Required: ₱${numOrderTotal.toFixed(2)} | Account Credit: ₱${accountCredit.toFixed(2)} | Outstanding Balance: ₱${outstandingBalance.toFixed(2)}. Your order is on hold and will NOT enter the queue or be processed until the remaining balance is paid in full.`;
         } else if (isOverpayment && allChecksPassed) {
             flaggedReason = `Overpayment detected: You sent ₱${extractedAmount.toFixed(2)} for a ₱${numOrderTotal.toFixed(2)} order. The excess ₱${overpaymentAmount.toFixed(2)} will be credited to your Store Wallet balance.`;
         } else if (allChecksPassed) {

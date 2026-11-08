@@ -669,7 +669,7 @@ exports.submitOrder = async (req, res) => {
             }
 
             if (isInsufficientPaymentOrder) {
-                const creditAmount = Math.max(0, Math.round(parsedPaidAmount * 100) / 100);
+                const creditAmount = Math.max(0, Math.round((parsedPaidAmount || parseFloat(req.body.accountCredit) || 0) * 100) / 100);
                 const balanceDue = Math.max(0, Math.round((numTotal - creditAmount) * 100) / 100);
                 orderPersonalization.accountCredit = creditAmount;
                 orderPersonalization.outstandingBalance = balanceDue;
@@ -2071,6 +2071,15 @@ exports.cancelOrder = async (req, res) => {
                     where: { id: userId },
                     data: { walletBalance: { increment: order.totalAmount } }
                 });
+            } else if (currentPers.accountCredit && Number(currentPers.accountCredit) > 0 && userId) {
+                // If an insufficient payment / on-hold order is cancelled, return any recorded account credit to user store wallet
+                const creditToRefund = Number(currentPers.accountCredit);
+                await tx.user.update({
+                    where: { id: userId },
+                    data: { walletBalance: { increment: creditToRefund } }
+                });
+                currentPers.accountCreditRefunded = creditToRefund;
+                currentPers.accountCredit = 0;
             }
 
             const currentPers = (order.personalization && typeof order.personalization === 'object') ? { ...order.personalization } : {};
@@ -2284,6 +2293,51 @@ exports.payRemainingBalance = async (req, res) => {
             currentPers.paymentHistory = paymentHistory;
 
             const nextStatus = order.status === 'Insufficient Payment' ? 'In Queue' : order.status;
+            let finalDueDate = order.dueDate;
+            let finalDeliveryTime = order.deliveryTime;
+            let finalEstimatedTime = order.estimatedTime || 0;
+            let finalProgress = order.progress || 10;
+
+            if (order.status === 'Insufficient Payment' || !order.dueDate || currentPers.insufficientPayment) {
+                const itemsList = Array.isArray(order.items) ? order.items : [];
+                const needsStitch = currentPers.requiresEmbroidery ?? itemsList.some(item =>
+                    Boolean(
+                        (item.personalization?.text && String(item.personalization.text).trim().length > 0) ||
+                        (Array.isArray(item.personalization?.namesList) && item.personalization.namesList.length > 0) ||
+                        (Array.isArray(item.namesList) && item.namesList.length > 0)
+                    )
+                );
+
+                if (needsStitch) {
+                    const stitchMins = currentPers.estimatedStitchMinutes || 3;
+                    try {
+                        const { scheduleIncomingOrder } = require('../../utils/workshopQueueManager');
+                        const scheduling = await scheduleIncomingOrder({
+                            orderDurationMinutes: stitchMins,
+                            prisma
+                        });
+                        finalDueDate = scheduling.estimatedReadyDate;
+                        finalDeliveryTime = scheduling.readyLabel;
+                        finalEstimatedTime = stitchMins;
+                        currentPers.readyLabel = scheduling.readyLabel;
+                        currentPers.estimatedReadyDate = scheduling.estimatedReadyDate.toISOString();
+                        currentPers.queuePosition = scheduling.queuePosition;
+                        currentPers.ordersAhead = scheduling.ordersAhead;
+                        currentPers.queueWaitMinutes = scheduling.queueWaitMinutes;
+                        finalProgress = 10;
+                    } catch (schedErr) {
+                        console.warn('[payRemainingBalance] Scheduling fallback:', schedErr.message);
+                    }
+                } else {
+                    finalDueDate = new Date(Date.now() + 5 * 60 * 1000);
+                    finalDeliveryTime = 'Ready in 2–5 mins (Packaging Only)';
+                    finalEstimatedTime = 0;
+                    currentPers.readyLabel = finalDeliveryTime;
+                    currentPers.estimatedReadyDate = finalDueDate.toISOString();
+                    finalProgress = 10;
+                }
+            }
+
             const history = Array.isArray(currentPers.statusHistory) ? [...currentPers.statusHistory] : [];
             history.push({
                 status: nextStatus,
@@ -2300,6 +2354,10 @@ exports.payRemainingBalance = async (req, res) => {
                     paymentStatus: 'paid',
                     status: nextStatus,
                     priorityScore: 0,
+                    progress: finalProgress,
+                    dueDate: finalDueDate,
+                    deliveryTime: finalDeliveryTime,
+                    estimatedTime: finalEstimatedTime,
                     personalization: currentPers
                 },
                 include: { receipt: true, transaction: true }

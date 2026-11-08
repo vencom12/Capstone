@@ -248,7 +248,7 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
 
     // Perform the actual order status update in database
     const progressMap = {
-        'Insufficient Payment': 5,
+        'Insufficient Payment': 0,
         'In Queue': 10,
         'Preparing Order': 30,
         'In Transit': 70,
@@ -294,12 +294,51 @@ async function handleOrderStateTransition(tx, orderId, newStatus, username = 'Sy
     personalization.courier = extraData.courier || personalization.courier || 'Store Pick-up';
     personalization.fulfillmentType = 'pickup';
 
-        const orderUpdateData = { 
+    const orderUpdateData = { 
         status: newStatus, 
         progress,
         personalization,
         stagingCubby: null
     };
+
+    // If an unscheduled / hold order transitions into active production queue, allocate its queue watermark slot & target times
+    if ((newStatus === 'In Queue' || newStatus === 'Preparing Order') && (!order.dueDate || order.status === 'Insufficient Payment')) {
+        const needsStitch = personalization.requiresEmbroidery ?? items.some(item =>
+            Boolean(
+                (item.personalization?.text && String(item.personalization.text).trim().length > 0) ||
+                (Array.isArray(item.personalization?.namesList) && item.personalization.namesList.length > 0) ||
+                (Array.isArray(item.namesList) && item.namesList.length > 0)
+            )
+        );
+        if (needsStitch) {
+            const stitchMins = personalization.estimatedStitchMinutes || order.estimatedTime || 3;
+            try {
+                const { scheduleIncomingOrder } = require('./workshopQueueManager');
+                const scheduling = await scheduleIncomingOrder({
+                    orderDurationMinutes: stitchMins,
+                    prisma: tx
+                });
+                personalization.readyLabel = scheduling.readyLabel;
+                personalization.estimatedReadyDate = scheduling.estimatedReadyDate.toISOString();
+                personalization.queuePosition = scheduling.queuePosition;
+                personalization.ordersAhead = scheduling.ordersAhead;
+                personalization.queueWaitMinutes = scheduling.queueWaitMinutes;
+                orderUpdateData.dueDate = scheduling.estimatedReadyDate;
+                orderUpdateData.deliveryTime = scheduling.readyLabel;
+                orderUpdateData.estimatedTime = stitchMins;
+            } catch (err) {
+                console.warn('[handleOrderStateTransition] Scheduling fallback:', err.message);
+            }
+        } else {
+            const plainDueDate = new Date(Date.now() + 5 * 60 * 1000);
+            const plainLabel = 'Ready in 2–5 mins (Packaging Only)';
+            orderUpdateData.dueDate = plainDueDate;
+            orderUpdateData.deliveryTime = plainLabel;
+            orderUpdateData.estimatedTime = 0;
+            personalization.readyLabel = plainLabel;
+            personalization.estimatedReadyDate = plainDueDate.toISOString();
+        }
+    }
     if (username && username !== 'System') {
         orderUpdateData.processedBy = username;
     }

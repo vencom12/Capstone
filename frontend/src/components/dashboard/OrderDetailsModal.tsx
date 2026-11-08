@@ -56,7 +56,23 @@ export default function OrderDetailsModal({
   const [isSubmittingBalance, setIsSubmittingBalance] = useState(false);
   const [isUploadingTopUp, setIsUploadingTopUp] = useState(false);
   const [topUpReceiptUrl, setTopUpReceiptUrl] = useState('');
+  const [storeGcashSettings, setStoreGcashSettings] = useState<{ gcashQrCodeUrl?: string; gcashAccountName?: string; gcashAccountNumber?: string } | null>(null);
+  const [showGcashQr, setShowGcashQr] = useState(false);
   const { user, refreshUser } = useAuthStore();
+
+  useEffect(() => {
+    if (isOpen && !storeGcashSettings) {
+      api.get<any>('/api/customer/settings').then(res => {
+        if (res) {
+          setStoreGcashSettings({
+            gcashQrCodeUrl: res.gcashQrCodeUrl || undefined,
+            gcashAccountName: res.gcashAccountName || undefined,
+            gcashAccountNumber: res.gcashAccountNumber || undefined
+          });
+        }
+      }).catch(() => {});
+    }
+  }, [isOpen, storeGcashSettings]);
 
   if (!order) return null;
 
@@ -411,11 +427,63 @@ export default function OrderDetailsModal({
                     </button>
                   </div>
                 )}
-                <span className="text-[0.7rem] font-bold text-text-main">
-                  {user?.walletBalance !== undefined && user.walletBalance >= credit.outstandingBalance
-                    ? 'Or complete remaining balance via GCash QR:'
-                    : `Complete Remaining Balance (₱${credit.outstandingBalance.toFixed(2)}) via GCash:`}
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[0.7rem] font-bold text-text-main">
+                    {user?.walletBalance !== undefined && user.walletBalance >= credit.outstandingBalance
+                      ? 'Or complete remaining balance via GCash QR:'
+                      : `Complete Remaining Balance (₱${credit.outstandingBalance.toFixed(2)}) via GCash:`}
+                  </span>
+                  {storeGcashSettings?.gcashQrCodeUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setShowGcashQr(!showGcashQr)}
+                      className="text-[0.68rem] text-primary hover:underline font-semibold cursor-pointer bg-transparent border-none flex items-center gap-1"
+                    >
+                      <span>{showGcashQr ? 'Hide GCash QR' : 'View GCash QR Code'}</span>
+                      <span>{showGcashQr ? '▲' : '▼'}</span>
+                    </button>
+                  )}
+                </div>
+
+                {showGcashQr && storeGcashSettings?.gcashQrCodeUrl && (
+                  <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col sm:flex-row items-center gap-3">
+                    <div className="w-28 h-28 rounded-lg overflow-hidden border border-border-glass bg-white p-1 shrink-0">
+                      <img
+                        src={storeGcashSettings.gcashQrCodeUrl}
+                        alt="GCash QR Code"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1 text-center sm:text-left min-w-0">
+                      <span className="text-[0.65rem] font-bold uppercase tracking-wider text-text-dim">Official Store GCash</span>
+                      {storeGcashSettings.gcashAccountName && (
+                        <span className="text-xs font-bold text-text-main">
+                          {storeGcashSettings.gcashAccountName}
+                        </span>
+                      )}
+                      {storeGcashSettings.gcashAccountNumber && (
+                        <div className="flex items-center gap-1.5 justify-center sm:justify-start">
+                          <span className="font-mono text-xs font-semibold text-text-main">
+                            {storeGcashSettings.gcashAccountNumber}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(storeGcashSettings.gcashAccountNumber || '');
+                              showToast('GCash number copied!', 'success');
+                            }}
+                            className="text-[0.62rem] px-1.5 py-0.5 rounded bg-white/5 border border-border-glass text-text-dim hover:text-text-main cursor-pointer"
+                          >
+                            Copy
+                          </button>
+                        </div>
+                      )}
+                      <span className="text-[0.65rem] text-text-dim mt-0.5">
+                        Scan or send exact balance (₱{credit.outstandingBalance.toFixed(2)}) then enter reference number below.
+                      </span>
+                    </div>
+                  </div>
+                )}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"

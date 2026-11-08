@@ -81,7 +81,7 @@ export function getOrderStage(order: Order): OrderStage {
   if (status === 'in transit' || progress >= 75) {
     return { label: 'Ready for Pick-up', hint: 'Claim at Eds Towels & Caps, Pacific Mall Lucena (10AM-8PM).', step: 4, tone: 'shipping', isActive: true };
   }
-  if (creditSummary.isInsufficientPayment && !creditSummary.employeeApprovedPartial && status === 'insufficient payment') {
+  if (creditSummary.isInsufficientPayment && !creditSummary.employeeApprovedPartial && (status === 'insufficient payment' || status === 'awaiting payment' || (order as any).paymentStatus === 'partial' || Boolean((order as any).personalization?.insufficientPayment))) {
     if (creditSummary.balanceTopUpPending) {
       return {
         label: 'Remaining Balance Sent — Verifying',
