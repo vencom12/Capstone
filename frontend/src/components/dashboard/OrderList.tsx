@@ -71,22 +71,22 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
               <span>
                 {credit.balanceTopUpPending
                   ? `Remaining balance payment (+₱${credit.balanceTopUpAmount.toFixed(2)}) submitted — awaiting staff confirmation before entering the queue.`
-                  : `What you sent (₱${credit.accountCredit.toFixed(2)}) was not enough. Your order is on hold and will NOT enter the queue or be processed until the remaining balance of ₱${credit.outstandingBalance.toFixed(2)} is paid in full.`}
+                  : `Order is on hold. Settle the remaining balance of ₱${credit.outstandingBalance.toFixed(2)} to begin workshop production.`}
               </span>
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface border border-border-glass text-[0.68rem] font-mono">
+          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface border border-border-glass text-[0.68rem] font-mono text-center">
             <div>
-              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Required</span>
+              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Total</span>
               <span className="font-bold text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
             </div>
-            <div>
-              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Account Credit</span>
+            <div className="border-x border-border-glass">
+              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Credit Sent</span>
               <span className="font-bold text-text-main">₱{credit.accountCredit.toFixed(2)}</span>
             </div>
             <div>
-              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Remaining</span>
-              <span className="font-bold text-text-main">₱{credit.outstandingBalance.toFixed(2)}</span>
+              <span className="text-primary block text-[0.6rem] uppercase font-sans font-bold">Balance Due</span>
+              <span className="font-extrabold text-primary">₱{credit.outstandingBalance.toFixed(2)}</span>
             </div>
           </div>
         </div>

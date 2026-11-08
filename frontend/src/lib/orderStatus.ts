@@ -92,8 +92,8 @@ export function getOrderStage(order: Order): OrderStage {
       };
     }
     return {
-      label: `Insufficient Payment — Not in Queue (₱${creditSummary.outstandingBalance.toFixed(2)} Due)`,
-      hint: `What you sent (₱${creditSummary.accountCredit.toFixed(2)}) was not enough. Your order will NOT enter the queue and will NOT be processed until the remaining balance of ₱${creditSummary.outstandingBalance.toFixed(2)} is paid in full.`,
+      label: `Queue Hold • ₱${creditSummary.outstandingBalance.toFixed(0)} Due`,
+      hint: `Order is on hold. Settle the remaining balance (₱${creditSummary.outstandingBalance.toFixed(2)}) to begin production.`,
       step: 0,
       tone: 'warning',
       isActive: false,

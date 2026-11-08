@@ -1433,15 +1433,12 @@ export default function EmployeePage() {
                                     }`}
                                   />
                                   <span>
-                                    {isInsufficient ? 'Insufficient / Balance Due' :
-                                      (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
+                                    {isInsufficient
+                                      ? `Queue Hold (₱${credit.outstandingBalance.toFixed(0)} Due)`
+                                      : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
                                   </span>
                                 </span>
-                                {isInsufficient ? (
-                                  <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass">
-                                    Queue Hold
-                                  </span>
-                                ) : (
+                                {!isInsufficient && (
                                   <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                                     schedule.isOverdue
                                       ? 'bg-primary/10 text-primary border-primary/25'
@@ -1597,12 +1594,9 @@ export default function EmployeePage() {
                         >
                           <div className="flex items-center justify-between text-xs">
                             <div className="flex items-center gap-1.5 text-primary font-bold">
-                              <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                              <span className="uppercase text-[10.5px] tracking-wider">Partial Payment Notice</span>
+                              <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                              <span className="uppercase text-[10.5px] tracking-wider">Partial Payment Breakdown</span>
                             </div>
-                            <span className="text-[9.5px] font-semibold uppercase px-1.5 py-0.5 rounded bg-white/5 text-text-dim border border-border-glass">
-                              Queue Hold
-                            </span>
                           </div>
 
                           {/* 3-Column Financial Breakdown */}
@@ -1631,12 +1625,6 @@ export default function EmployeePage() {
                                 <span className="font-mono text-[10px] text-text-dim shrink-0">Ref: ...{credit.balanceTopUpRef.slice(-4)}</span>
                               )}
                             </div>
-                          )}
-
-                          {credit.note && (
-                            <p className="text-[10.5px] text-text-dim leading-snug font-sans bg-black/20 p-2 rounded-lg border border-white/5">
-                              {credit.note}
-                            </p>
                           )}
 
                           {/* Settlement & Process Anyway Actions */}
@@ -1680,21 +1668,14 @@ export default function EmployeePage() {
                           <span>Bag Slip</span>
                         </button>
 
-                        {isUnpaidOrder && (
+                        {isUnpaidOrder && !credit.isInsufficientPayment && (
                           <button
                             type="button"
                             onClick={(e) => handleVerifySmsMatch(o, e)}
                             disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                            className={`flex-1 min-h-[40px] border py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95 ${
-                              credit.isInsufficientPayment
-                                ? 'bg-primary hover:bg-primary/90 text-white border-primary/40 shadow-sm'
-                                : 'bg-white/10 hover:bg-white/15 border-border-glass text-text-main'
-                            }`}
+                            className="flex-1 min-h-[40px] border py-2 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer text-center disabled:opacity-50 active:scale-95 bg-white/10 hover:bg-white/15 border-border-glass text-text-main"
                           >
                             {verifyingSmsIds[o.id || o._id || o.orderId] ? 'Verifying...' : (() => {
-                              if (credit.isInsufficientPayment) {
-                                return `Settle (₱${credit.outstandingBalance.toFixed(0)})`;
-                              }
                               const ref = getOrderGcashRef(o);
                               return ref ? `Verify ${ref.slice(-4)}` : 'Verify';
                             })()}

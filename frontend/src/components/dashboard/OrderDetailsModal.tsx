@@ -308,12 +308,14 @@ export default function OrderDetailsModal({
                   ? 'Order Cancelled'
                   : isCompletedOrDelivered
                     ? 'Claimed at Pacific Mall Studio'
-                    : (order as any).processedBy
-                      ? `Crafted by ${(order as any).processedBy}`
-                      : 'Crafting at Pacific Mall Studio'}
+                    : credit.isInsufficientPayment && !credit.employeeApprovedPartial
+                      ? 'Store Counter Pick-up (Hold)'
+                      : (order as any).processedBy
+                        ? `Crafted by ${(order as any).processedBy}`
+                        : 'Crafting at Pacific Mall Studio'}
               </span>
               <span className="text-[0.68rem] text-text-dim/80 mt-0.5">
-                {(order as any).processedBy && !isCompletedOrDelivered && !isCanceled
+                {(order as any).processedBy && !isCompletedOrDelivered && !isCanceled && (!credit.isInsufficientPayment || credit.employeeApprovedPartial)
                   ? `Embroidery Specialist: ${(order as any).processedBy} • Pacific Mall Lucena`
                   : 'Pacific Mall Lucena • Ground Floor'}
               </span>
@@ -353,8 +355,8 @@ export default function OrderDetailsModal({
           )}
         </div>
 
-        {/* 3. Progress Bar (Step X of 5) */}
-        {!isCanceled && (
+        {/* 3. Progress Bar (Step X of 5) — Hidden during Queue Hold to avoid redundancy */}
+        {!isCanceled && !credit.isInsufficientPayment && (
           <div className="bg-bg-surface/60 border border-border-glass rounded-xl p-2.5 flex flex-col gap-1.5">
             <div className="flex justify-between items-center text-[0.68rem]">
               <span className="text-text-dim font-medium">{stage.hint}</span>
@@ -369,33 +371,28 @@ export default function OrderDetailsModal({
         {/* 3b. Option 3: Insufficient Payment / Account Credit & Outstanding Balance Breakdown */}
         {credit.isInsufficientPayment && !isCanceled && (
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2.5">
-            <div className="flex items-start justify-between gap-2">
-              <div className="flex flex-col gap-0.5">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-text-main uppercase tracking-wider">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                  <span>Order on Queue Hold • Full Payment Required</span>
-                </div>
-                <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed mt-0.5">
-                  Amount received: <strong className="font-mono text-text-main">₱{credit.accountCredit.toFixed(2)}</strong>. Required: <strong className="font-mono text-text-main">₱{credit.requiredAmount.toFixed(2)}</strong>. What you sent has been recorded as <strong>Account Credit</strong>, but <strong className="text-primary font-bold">your order will NOT enter the workshop queue and will NOT be processed</strong> until the remaining balance of <strong className="font-mono text-text-main font-bold">₱{credit.outstandingBalance.toFixed(2)}</strong> is settled in full.
-                </p>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5 text-xs font-bold text-text-main uppercase tracking-wider">
+                <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
+                <span>Order on Queue Hold • Payment Incomplete</span>
               </div>
-              <span className="px-2 py-0.5 rounded-md bg-white/5 border border-border-glass text-text-dim text-[0.62rem] font-semibold uppercase shrink-0">
-                Queue Hold
-              </span>
+              <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed">
+                Order is on hold. What you sent has been recorded as Account Credit (<strong className="font-mono text-text-main">₱{credit.accountCredit.toFixed(2)}</strong>). Settle the remaining balance to start workshop production.
+              </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-bg-surface border border-border-glass font-mono text-xs">
+            <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-bg-surface border border-border-glass font-mono text-xs text-center">
               <div>
-                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Required</span>
+                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Total</span>
                 <span className="font-bold text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
               </div>
-              <div>
-                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Account Credit</span>
+              <div className="border-x border-border-glass">
+                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Credit Sent</span>
                 <span className="font-bold text-text-main">₱{credit.accountCredit.toFixed(2)}</span>
               </div>
               <div>
-                <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Outstanding Balance</span>
-                <span className="font-bold text-text-main">₱{credit.outstandingBalance.toFixed(2)}</span>
+                <span className="text-[0.62rem] text-primary block font-sans uppercase font-bold">Balance Due</span>
+                <span className="font-extrabold text-primary">₱{credit.outstandingBalance.toFixed(2)}</span>
               </div>
             </div>
 

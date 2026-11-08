@@ -1111,17 +1111,13 @@ export default function PanelOverview({
                               />
                               <span>
                                 {isInsufficient
-                                  ? 'Insufficient / Balance Due'
+                                  ? `Queue Hold (₱${credit.outstandingBalance.toFixed(0)} Due)`
                                   : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
                                     ? 'Being Processed by Management'
                                     : o.status}
                               </span>
                             </span>
-                            {isInsufficient ? (
-                              <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass">
-                                Queue Hold
-                              </span>
-                            ) : (
+                            {!isInsufficient && (
                               <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                                 schedule.isOverdue
                                   ? 'bg-primary/10 text-primary border-primary/25'
@@ -1219,17 +1215,7 @@ export default function PanelOverview({
                         </div>
                         {(() => {
                           if (credit.isInsufficientPayment) {
-                            return (
-                              <button
-                                type="button"
-                                onClick={(e) => handleVerifySmsMatch(o, e)}
-                                disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                className="text-[10px] font-sans font-bold bg-primary hover:bg-primary/90 text-white min-h-[30px] px-2.5 py-1 rounded-md cursor-pointer border-none transition-all shadow-sm disabled:opacity-50 active:scale-95"
-                                title="Settle remaining balance as paid in full"
-                              >
-                                {verifyingSmsIds[o.id || o._id || o.orderId] ? 'Settling...' : `Settle ₱${credit.outstandingBalance.toFixed(0)}`}
-                              </button>
-                            );
+                            return null;
                           }
                           const ref = getOrderGcashRef(o);
                           const smsVerified = isOrderSmsVerified(o);
@@ -1266,12 +1252,9 @@ export default function PanelOverview({
                     >
                       <div className="flex items-center justify-between text-xs">
                         <div className="flex items-center gap-1.5 text-primary font-bold">
-                          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                          <span className="uppercase text-[10.5px] tracking-wider">Partial Payment Notice</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-primary" />
+                          <span className="uppercase text-[10.5px] tracking-wider">Partial Payment Breakdown</span>
                         </div>
-                        <span className="text-[9.5px] font-semibold uppercase px-1.5 py-0.5 rounded bg-white/5 text-text-dim border border-border-glass">
-                          Queue Hold
-                        </span>
                       </div>
 
                       {/* 3-Column Financial Breakdown */}
@@ -1300,12 +1283,6 @@ export default function PanelOverview({
                             <span className="font-mono text-[10px] text-text-dim shrink-0">Ref: ...{credit.balanceTopUpRef.slice(-4)}</span>
                           )}
                         </div>
-                      )}
-
-                      {credit.note && (
-                        <p className="text-[10.5px] text-text-dim leading-snug font-sans bg-black/20 p-2 rounded-lg border border-white/5">
-                          {credit.note}
-                        </p>
                       )}
 
                       {/* Settlement & Process Anyway Actions */}
