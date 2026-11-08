@@ -85,6 +85,105 @@ export default function OrderDetailsModal({
     }
   }, [isOpen, storeGcashSettings]);
 
+  const processBalanceReceiptFile = async (file: File) => {
+    if (!file || !file.type.startsWith('image/')) {
+      showToast('Please select a valid image screenshot (PNG, JPG, or WEBP).', 'warning');
+      return;
+    }
+    const localUrl = URL.createObjectURL(file);
+    setReceiptPreviewUrl(localUrl);
+    setIsAnalyzingReceipt(true);
+    setReceiptVerificationResult(null);
+    setReceiptVerified(false);
+
+    try {
+      // Step 1: Upload receipt screenshot to Cloudinary
+      const formData = new FormData();
+      formData.append('receipt', file);
+      const uploadData = await apiFetch<{ url?: string }>('/api/customer/upload-receipt', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!uploadData?.url) {
+        showToast('We could not upload your receipt. Please try again with a clear screenshot.', 'error');
+        setReceiptPreviewUrl(null);
+        return;
+      }
+
+      setTopUpReceiptUrl(uploadData.url);
+
+      // Step 2: Run AI OCR receipt verification against outstanding balance
+      const balanceDue = order ? getOrderCreditSummary(order).outstandingBalance : 0;
+      try {
+        const verifyRes = await api.post<{
+          success: boolean;
+          message: string;
+          verificationStatus?: string;
+          needsManualRef?: boolean;
+          extractedAmount?: number;
+          aiResult?: { isValidReceipt?: boolean; extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
+        }>('/api/ai/verify-receipt', {
+          receiptUrl: uploadData.url,
+          orderTotal: balanceDue
+        });
+
+        if (verifyRes.aiResult?.referenceId) {
+          setBalanceRef(verifyRes.aiResult.referenceId);
+        }
+
+        if (verifyRes.success) {
+          setReceiptVerified(true);
+          const extAmt = verifyRes.aiResult?.extractedAmount ?? verifyRes.extractedAmount;
+          const refId = verifyRes.aiResult?.referenceId;
+          const msg = `✓ Receipt Verified: ₱${Number(extAmt || balanceDue).toFixed(2)}${refId ? ` • Ref: ${refId}` : ''}`;
+          setReceiptVerificationResult(msg);
+          showToast(msg, 'success');
+        } else if (verifyRes.needsManualRef && verifyRes.aiResult?.referenceId) {
+          setReceiptVerified(true);
+          const msg = `Receipt detected with Ref: ${verifyRes.aiResult.referenceId}. Please confirm below.`;
+          setReceiptVerificationResult(msg);
+        } else {
+          setReceiptVerified(false);
+          const rawReason = verifyRes.message || 'Please ensure the receipt clearly shows the amount and reference number.';
+          setReceiptVerificationResult(rawReason);
+          showToast(rawReason, 'warning');
+        }
+      } catch (ocrErr: any) {
+        console.warn('[Balance OCR Check]:', ocrErr);
+        setReceiptVerificationResult('Receipt uploaded. You can confirm your GCash Reference Number below.');
+      }
+    } catch {
+      showToast('Could not upload receipt screenshot. You can manually enter your GCash reference number.', 'warning');
+      setReceiptPreviewUrl(null);
+    } finally {
+      setIsAnalyzingReceipt(false);
+    }
+  };
+
+  // Clipboard paste listener for Ctrl+V (Hook called unconditionally)
+  useEffect(() => {
+    if (!isOpen || !order) return;
+    const creditSummary = getOrderCreditSummary(order);
+    if (!creditSummary.isInsufficientPayment) return;
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith('image/')) {
+          const file = items[i].getAsFile();
+          if (file) {
+            showToast('Receipt screenshot pasted from clipboard!', 'success');
+            processBalanceReceiptFile(file);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [isOpen, order]);
+
   if (!order) return null;
 
   const stage = getOrderStage(order);
@@ -144,102 +243,6 @@ export default function OrderDetailsModal({
     }
   };
 
-  const processBalanceReceiptFile = async (file: File) => {
-    if (!file || !file.type.startsWith('image/')) {
-      showToast('Please select a valid image screenshot (PNG, JPG, or WEBP).', 'warning');
-      return;
-    }
-    const localUrl = URL.createObjectURL(file);
-    setReceiptPreviewUrl(localUrl);
-    setIsAnalyzingReceipt(true);
-    setReceiptVerificationResult(null);
-    setReceiptVerified(false);
-
-    try {
-      // Step 1: Upload receipt screenshot to Cloudinary
-      const formData = new FormData();
-      formData.append('receipt', file);
-      const uploadData = await apiFetch<{ url?: string }>('/api/customer/upload-receipt', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!uploadData?.url) {
-        showToast('We could not upload your receipt. Please try again with a clear screenshot.', 'error');
-        setReceiptPreviewUrl(null);
-        return;
-      }
-
-      setTopUpReceiptUrl(uploadData.url);
-
-      // Step 2: Run AI OCR receipt verification against outstanding balance
-      try {
-        const verifyRes = await api.post<{
-          success: boolean;
-          message: string;
-          verificationStatus?: string;
-          needsManualRef?: boolean;
-          extractedAmount?: number;
-          aiResult?: { isValidReceipt?: boolean; extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
-        }>('/api/ai/verify-receipt', {
-          receiptUrl: uploadData.url,
-          orderTotal: credit.outstandingBalance
-        });
-
-        if (verifyRes.aiResult?.referenceId) {
-          setBalanceRef(verifyRes.aiResult.referenceId);
-        }
-
-        if (verifyRes.success) {
-          setReceiptVerified(true);
-          const extAmt = verifyRes.aiResult?.extractedAmount ?? verifyRes.extractedAmount;
-          const refId = verifyRes.aiResult?.referenceId;
-          const msg = `✓ Receipt Verified: ₱${Number(extAmt || credit.outstandingBalance).toFixed(2)}${refId ? ` • Ref: ${refId}` : ''}`;
-          setReceiptVerificationResult(msg);
-          showToast(msg, 'success');
-        } else if (verifyRes.needsManualRef && verifyRes.aiResult?.referenceId) {
-          setReceiptVerified(true);
-          const msg = `Receipt detected with Ref: ${verifyRes.aiResult.referenceId}. Please confirm below.`;
-          setReceiptVerificationResult(msg);
-        } else {
-          setReceiptVerified(false);
-          const rawReason = verifyRes.message || 'Please ensure the receipt clearly shows the amount and reference number.';
-          setReceiptVerificationResult(rawReason);
-          showToast(rawReason, 'warning');
-        }
-      } catch (ocrErr: any) {
-        console.warn('[Balance OCR Check]:', ocrErr);
-        setReceiptVerificationResult('Receipt uploaded. You can confirm your GCash Reference Number below.');
-      }
-    } catch {
-      showToast('Could not upload receipt screenshot. You can manually enter your GCash reference number.', 'warning');
-      setReceiptPreviewUrl(null);
-    } finally {
-      setIsAnalyzingReceipt(false);
-    }
-  };
-
-  // Clipboard paste listener for Ctrl+V
-  useEffect(() => {
-    if (!isOpen || !credit.isInsufficientPayment) return;
-    const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith('image/')) {
-          const file = items[i].getAsFile();
-          if (file) {
-            showToast('Receipt screenshot pasted from clipboard!', 'success');
-            processBalanceReceiptFile(file);
-            break;
-          }
-        }
-      }
-    };
-    window.addEventListener('paste', handlePaste);
-    return () => window.removeEventListener('paste', handlePaste);
-  }, [isOpen, credit.isInsufficientPayment, credit.outstandingBalance]);
-
   const handleSubmitRemainingBalance = async () => {
     const cleanRef = balanceRef.trim();
     if (!cleanRef && !topUpReceiptUrl) {
@@ -269,7 +272,7 @@ export default function OrderDetailsModal({
   };
 
   const handlePayBalanceWithWallet = async () => {
-    if (!user || user.walletBalance < credit.outstandingBalance) {
+    if (!user || (user.walletBalance ?? 0) < credit.outstandingBalance) {
       showToast('Your Store Wallet balance is not sufficient to cover the remaining balance.', 'warning');
       return;
     }

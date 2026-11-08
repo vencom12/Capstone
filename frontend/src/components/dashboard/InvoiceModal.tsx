@@ -308,15 +308,15 @@ export default function InvoiceModal({
                     const history = Array.isArray(pers?.statusHistory) ? pers.statusHistory : [];
                     const staffFromHistory = [...history].reverse().find((h: any) => !isGenericStaff(h?.actor))?.actor;
 
-                    const rawStaff = (!isGenericStaff(order?.processedBy) ? order.processedBy : null)
-                      || (!isGenericStaff(fetchedData?.order?.processedBy) ? fetchedData.order.processedBy : null)
-                      || (!isGenericStaff(fetchedData?.processedBy) ? fetchedData.processedBy : null)
-                      || (!isGenericStaff(pers?.smsVerifiedBy) ? pers.smsVerifiedBy : null)
-                      || (!isGenericStaff(pers?.approvedPartialBy) ? pers.approvedPartialBy : null)
-                      || (!isGenericStaff(pers?.balanceSettledBy) ? pers.balanceSettledBy : null)
-                      || (!isGenericStaff(pers?.insufficientPaymentRecordedBy) ? pers.insufficientPaymentRecordedBy : null)
+                    const rawStaff = (!isGenericStaff(order?.processedBy) ? order?.processedBy : null)
+                      || (!isGenericStaff(fetchedData?.order?.processedBy) ? fetchedData?.order?.processedBy : null)
+                      || (!isGenericStaff(fetchedData?.processedBy) ? fetchedData?.processedBy : null)
+                      || (!isGenericStaff(pers?.smsVerifiedBy) ? pers?.smsVerifiedBy : null)
+                      || (!isGenericStaff(pers?.approvedPartialBy) ? pers?.approvedPartialBy : null)
+                      || (!isGenericStaff(pers?.balanceSettledBy) ? pers?.balanceSettledBy : null)
+                      || (!isGenericStaff(pers?.insufficientPaymentRecordedBy) ? pers?.insufficientPaymentRecordedBy : null)
                       || staffFromHistory
-                      || (!isGenericStaff(order?.garmentsReceivedBy) ? order.garmentsReceivedBy : null)
+                      || (!isGenericStaff(order?.garmentsReceivedBy) ? order?.garmentsReceivedBy : null)
                       || order?.processedBy 
                       || fetchedData?.order?.processedBy
                       || fetchedData?.processedBy
