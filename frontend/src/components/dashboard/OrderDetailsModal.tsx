@@ -189,19 +189,46 @@ export default function OrderDetailsModal({
           setReceiptVerified(true);
           setAllowManualRef(false);
           const extAmt = verifyRes.aiResult?.extractedAmount ?? verifyRes.extractedAmount;
-          const refId = verifyRes.aiResult?.referenceId;
+          const refId = verifyRes.aiResult?.referenceId || '';
           if (refId) {
             setBalanceRef(refId);
           }
 
-          if (verifyRes.isOverpayment && verifyRes.overpaymentAmount) {
-            const msg = `Overpayment detected: You sent ₱${Number(extAmt || (balanceDue + verifyRes.overpaymentAmount)).toFixed(2)} for a ₱${balanceDue.toFixed(2)} balance. The excess ₱${Number(verifyRes.overpaymentAmount).toFixed(2)} will be added to your Store Wallet!`;
-            setReceiptVerificationResult(msg);
-            showToast(msg, 'success');
-          } else {
-            const msg = `✓ Receipt Verified: ₱${Number(extAmt || balanceDue).toFixed(2)}${refId ? ` • Ref: ${refId}` : ''}`;
-            setReceiptVerificationResult(msg);
-            showToast(msg, 'success');
+          // Auto-submit remaining balance payment upon successful verification
+          setIsSubmittingBalance(true);
+          try {
+            await api.post<{ success: boolean; message: string }>(
+              `/api/customer/orders/${order?.id || order?.orderId}/pay-balance`,
+              {
+                referenceNumber: refId || undefined,
+                receiptUrl: uploadData.url,
+                amountPaid: extAmt || balanceDue,
+                paymentMethod: 'gcash',
+                imageHash: verifyRes.imageHash || undefined,
+                ocrData: verifyRes.aiResult || undefined,
+                confidenceScore: verifyRes.aiResult?.confidence || undefined,
+                flaggedReason: verifyRes.flaggedReason || undefined
+              }
+            );
+
+            if (verifyRes.isOverpayment && verifyRes.overpaymentAmount) {
+              const msg = `Overpayment detected: You sent ₱${Number(extAmt || (balanceDue + verifyRes.overpaymentAmount)).toFixed(2)} for a ₱${balanceDue.toFixed(2)} balance. The excess ₱${Number(verifyRes.overpaymentAmount).toFixed(2)} has been added to your Store Wallet!`;
+              setReceiptVerificationResult(msg);
+              showToast(msg, 'success');
+            } else {
+              const msg = `✓ Receipt verified! Remaining balance payment submitted (Ref: ${refId || 'Verified'}).`;
+              setReceiptVerificationResult(msg);
+              showToast(msg, 'success');
+            }
+
+            await refreshUser();
+            await useProductStore.getState().fetchDashboardState();
+          } catch (submitErr: any) {
+            const errMsg = submitErr?.message || 'Failed to submit remaining balance payment.';
+            setReceiptVerificationResult(errMsg);
+            showToast(errMsg, 'error');
+          } finally {
+            setIsSubmittingBalance(false);
           }
         } else if (verifyRes.needsManualRef && verifyRes.verificationStatus === 'pending_manual_verification') {
           // Authentic payment receipt detected by OCR, but reference number needs user confirmation
@@ -324,8 +351,8 @@ export default function OrderDetailsModal({
     }
   };
 
-  const handleSubmitRemainingBalance = async () => {
-    const cleanRef = balanceRef.trim();
+  const handleSubmitRemainingBalance = async (manualOverrideRef?: string) => {
+    const cleanRef = (typeof manualOverrideRef === 'string' ? manualOverrideRef : balanceRef).trim();
     if (!cleanRef && !topUpReceiptUrl) {
       showToast('Please enter your GCash reference number or upload your receipt screenshot for the remaining balance.', 'warning');
       return;
@@ -790,82 +817,35 @@ export default function OrderDetailsModal({
                           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
                           Re-upload Receipt
                         </button>
+                      ) : !receiptVerified && allowManualRef ? (
+                        <div className="flex flex-col gap-2 border-t border-white/10 pt-2 mt-1">
+                          <span className="text-[0.72rem] text-text-main font-bold">
+                            Please confirm your GCash Reference Number:
+                          </span>
+                          <div className="flex flex-col sm:flex-row gap-2">
+                            <input
+                              type="text"
+                              inputMode="numeric"
+                              maxLength={19}
+                              placeholder="e.g. 1002 9384 1029"
+                              value={balanceRef}
+                              onChange={(e) => setBalanceRef(e.target.value.replace(/[^0-9\s]/g, ''))}
+                              className="flex-1 bg-bg-surface border border-border-glass rounded-lg px-3 py-1.5 text-xs font-mono text-text-main outline-none focus:border-primary"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleSubmitRemainingBalance(balanceRef)}
+                              disabled={isSubmittingBalance}
+                              className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold transition-all shadow-sm border-none cursor-pointer"
+                            >
+                              {isSubmittingBalance ? 'Submitting...' : 'Confirm'}
+                            </button>
+                          </div>
+                        </div>
                       ) : null}
                     </div>
                   </div>
                 )}
-
-                {/* Reference Input & Pay Button */}
-                <div className="flex flex-col gap-1.5 pt-1">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[0.68rem] text-text-dim font-medium">
-                      GCash Reference Number (13 digits):
-                    </span>
-                    {balanceRef.trim().length >= 9 && !refError && (
-                      <span className="text-primary text-[0.65rem] font-bold">✓ Ready</span>
-                    )}
-                  </div>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <div className="flex-1 flex flex-col">
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        maxLength={19}
-                        placeholder="e.g. 1002 9384 1029"
-                        value={balanceRef}
-                        onKeyDown={(e) => {
-                          if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
-                          if (e.ctrlKey || e.metaKey) return;
-                          if (!/[0-9\s]/.test(e.key)) {
-                            e.preventDefault();
-                          }
-                        }}
-                        onChange={(e) => {
-                          const cleanDigits = e.target.value.replace(/[^0-9\s]/g, '');
-                          setBalanceRef(cleanDigits);
-                          if (refTouched) validateBalanceRef(cleanDigits);
-                        }}
-                        onBlur={() => {
-                          setRefTouched(true);
-                          if (balanceRef) validateBalanceRef(balanceRef);
-                        }}
-                        className={`w-full bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.82rem] outline-none transition-all ${
-                          refTouched && refError
-                            ? 'border-red-500/70 bg-red-500/[0.04]'
-                            : 'border-border-glass focus:border-primary'
-                        }`}
-                      />
-                      {refTouched && refError && (
-                        <span className="text-[0.65rem] text-red-400 mt-1">{refError}</span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setRefTouched(true);
-                        if (balanceRef) {
-                          const err = validateBalanceRef(balanceRef);
-                          if (err) return;
-                        }
-                        handleSubmitRemainingBalance();
-                      }}
-                      disabled={isSubmittingBalance || isAnalyzingReceipt}
-                      className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 border-none cursor-pointer active:scale-95"
-                    >
-                      {isSubmittingBalance ? (
-                        <>
-                          <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
-                            <path d="M12 2a10 10 0 0 1 10 10" />
-                          </svg>
-                          <span>Settling...</span>
-                        </>
-                      ) : (
-                        <span>Pay ₱{credit.outstandingBalance.toFixed(2)}</span>
-                      )}
-                    </button>
-                  </div>
-                </div>
               </div>
             )}
           </div>
