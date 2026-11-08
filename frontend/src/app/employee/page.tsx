@@ -1040,19 +1040,30 @@ export default function EmployeePage() {
                                     </span>
                                   )}
                                 </div>
-                                <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold w-fit mt-1
-                                   ${o.status === 'Insufficient Payment' ? 'bg-amber-500/20 text-amber-500 border border-amber-500/40' :
-                                     (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-white/10 text-text-main border border-border-glass' :
-                                     o.status === 'Preparing Order' ? 'bg-primary/20 text-primary border border-primary/30' :
-                                     o.status === 'Ready For Pick Up' ? 'bg-success/20 text-success border border-success/30' :
-                                       'bg-white/10 text-text-dim border border-white/20'
+                                <span className={`inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-1 rounded-md font-semibold w-fit mt-1 border whitespace-nowrap uppercase tracking-wider ${
+                                   o.status === 'Insufficient Payment' ? 'bg-amber-500/10 text-amber-400 border-amber-500/30' :
+                                     (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-white/5 text-text-dim border-border-glass' :
+                                     o.status === 'Preparing Order' ? 'bg-white/5 text-text-main border-border-glass' :
+                                     o.status === 'Ready For Pick Up' ? 'bg-white/5 text-text-main border-border-glass' :
+                                       'bg-white/5 text-text-dim border-border-glass'
                                    }
                                  `}>
-                                  {o.status === 'Insufficient Payment'
-                                    ? 'Insufficient / Balance Due'
-                                    : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
-                                      ? 'Being Processed by Management'
-                                      : `${o.status} (${o.progress || 0}%)`}
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                      o.status === 'Insufficient Payment' ? 'bg-amber-400' :
+                                      (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-zinc-400' :
+                                      o.status === 'Preparing Order' ? 'bg-primary animate-pulse' :
+                                      o.status === 'Ready For Pick Up' ? 'bg-emerald-400' :
+                                      'bg-zinc-400'
+                                    }`}
+                                  />
+                                  <span>
+                                    {o.status === 'Insufficient Payment'
+                                      ? 'Insufficient / Balance Due'
+                                      : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
+                                        ? 'Being Processed by Management'
+                                        : `${o.status} (${o.progress || 0}%)`}
+                                  </span>
                                 </span>
                                 {isInsufficientOrder(o) && (
                                   <span className="inline-block text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30 w-fit mt-1">
@@ -1392,19 +1403,29 @@ export default function EmployeePage() {
                             <div className="flex flex-col gap-1.5 text-left">
                               {/* Status Pill & Live Overdue/Remaining Badge */}
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className={`inline-flex items-center text-[10px] px-2 py-0.5 rounded-full font-semibold uppercase tracking-wider w-fit
-                                  ${(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-white/5 text-text-main border border-border-glass' :
-                                    o.status === 'Preparing Order' ? 'bg-primary/10 text-primary border border-primary/20' :
-                                    o.status === 'Ready For Pick Up' ? 'bg-success/10 text-success border border-success/20' :
-                                      'bg-white/5 text-text-dim border border-border-glass'
+                                <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-md font-semibold uppercase tracking-wider whitespace-nowrap border w-fit ${
+                                  (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-white/5 text-text-dim border-border-glass' :
+                                    o.status === 'Preparing Order' ? 'bg-white/5 text-text-main border-border-glass' :
+                                    o.status === 'Ready For Pick Up' ? 'bg-white/5 text-text-main border-border-glass' :
+                                      'bg-white/5 text-text-dim border-border-glass'
                                   }
                                 `}>
-                                  {(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
+                                  <span
+                                    className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                      (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'bg-zinc-400' :
+                                      o.status === 'Preparing Order' ? 'bg-primary animate-pulse' :
+                                      o.status === 'Ready For Pick Up' ? 'bg-emerald-400' :
+                                      'bg-zinc-400'
+                                    }`}
+                                  />
+                                  <span>
+                                    {(o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
+                                  </span>
                                 </span>
-                                <span className={`inline-flex items-center text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
                                   schedule.isOverdue
-                                    ? 'bg-danger/20 text-danger border-danger/40 animate-pulse'
-                                    : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                                    ? 'bg-danger/15 text-danger border-danger/30'
+                                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
                                 }`}>
                                   {schedule.relativeLabel}
                                 </span>
@@ -1792,12 +1813,11 @@ export default function EmployeePage() {
                                 )}
                               </td>
                               <td className="glass-td text-left">
-                                <span className={`inline-block text-[0.7rem] px-2 py-0.5 rounded-full font-bold
-                                  ${o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-success/20 text-success border border-success/30' :
-                                    'bg-danger/20 text-danger border border-danger/30'
-                                  }
-                                `}>
-                                  {o.status}
+                                <span className={`inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-1 rounded-md font-semibold border whitespace-nowrap uppercase tracking-wider bg-white/5 text-text-main border-border-glass`}>
+                                  <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                    o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-emerald-400' : 'bg-rose-400'
+                                  }`} />
+                                  <span>{o.status}</span>
                                 </span>
                               </td>
                               <td className="glass-td text-text-dim text-sm text-left">
@@ -1843,12 +1863,11 @@ export default function EmployeePage() {
                           <div className="grid grid-cols-2 gap-3 items-start">
                             {/* Left Side: ID & Timestamp, Status Badge, Client */}
                             <div className="flex flex-col gap-1.5 text-left">
-                              <span className={`inline-flex items-center text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider w-fit
-                                ${o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-success/20 text-success border border-success/30' :
-                                  'bg-danger/20 text-danger border border-danger/30'
-                                }
-                              `}>
-                                {o.status}
+                              <span className={`inline-flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-md font-semibold border whitespace-nowrap uppercase tracking-wider bg-white/5 text-text-main border-border-glass w-fit`}>
+                                <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                  o.status === 'Completed' || o.status === 'Order Delivered' ? 'bg-emerald-400' : 'bg-rose-400'
+                                }`} />
+                                <span>{o.status}</span>
                               </span>
 
                               <span className="font-mono text-sm font-bold text-text-main mt-0.5">{o.orderId}</span>
