@@ -269,7 +269,7 @@ export default function OrderDetailsModal({
               </span>
             </div>
             <p className="text-[0.72rem] text-text-dim mt-0.5 m-0">
-              Placed on {new Date(order.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} • Paid via {order.paymentMethod.toUpperCase()}
+              Placed on {new Date(order.date).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })} • {credit.isInsufficientPayment ? 'Partial Payment' : `Paid via ${order.paymentMethod.toUpperCase()}`}
             </p>
           </div>
 
@@ -324,18 +324,20 @@ export default function OrderDetailsModal({
 
           {!isCanceled && (
             <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                onClick={() => setIsClaimSlipOpen(true)}
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-text-main text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap"
-                title="View your digital claim slip & QR code"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                </svg>
-                <span>Claim Slip</span>
-              </button>
+              {(!credit.isInsufficientPayment || credit.employeeApprovedPartial) && (
+                <button
+                  type="button"
+                  onClick={() => setIsClaimSlipOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-text-main text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap"
+                  title="View your digital claim slip & QR code"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                  </svg>
+                  <span>Claim Slip</span>
+                </button>
+              )}
 
               <button
                 type="button"
@@ -377,7 +379,7 @@ export default function OrderDetailsModal({
                 <span>Order on Queue Hold • Payment Incomplete</span>
               </div>
               <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed">
-                Order is on hold. What you sent has been recorded as Account Credit (<strong className="font-mono text-text-main">₱{credit.accountCredit.toFixed(2)}</strong>). Settle the remaining balance to start workshop production.
+                Order is on hold. Settle the remaining balance below to begin workshop production.
               </p>
             </div>
 
@@ -426,9 +428,7 @@ export default function OrderDetailsModal({
                 )}
                 <div className="flex items-center justify-between">
                   <span className="text-[0.7rem] font-bold text-text-main">
-                    {user?.walletBalance !== undefined && user.walletBalance >= credit.outstandingBalance
-                      ? 'Or complete remaining balance via GCash QR:'
-                      : `Complete Remaining Balance (₱${credit.outstandingBalance.toFixed(2)}) via GCash:`}
+                    Pay remaining balance via GCash:
                   </span>
                   {storeGcashSettings?.gcashQrCodeUrl && (
                     <button
@@ -484,7 +484,7 @@ export default function OrderDetailsModal({
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
-                    placeholder="Enter GCash Reference # for remaining balance"
+                    placeholder="Enter GCash Reference #"
                     value={balanceRef}
                     onChange={(e) => setBalanceRef(e.target.value)}
                     className="flex-1 bg-bg-surface border border-border-glass rounded-lg px-3 py-1.5 text-xs font-mono text-text-main outline-none focus:border-primary"
@@ -627,44 +627,25 @@ export default function OrderDetailsModal({
 
           {/* Total row */}
           <div className="pt-2 border-t border-white/5 flex justify-between items-center text-xs">
-            <span className="text-text-dim">Paid via {order.paymentMethod.toUpperCase()}:</span>
+            <span className="text-text-dim">
+              {credit.isInsufficientPayment ? 'Order Total:' : `Paid via ${order.paymentMethod.toUpperCase()}:`}
+            </span>
             <div className="flex items-center gap-2">
               <span className="font-mono font-black text-sm text-text-main">₱{order.totalAmount.toFixed(2)}</span>
-              <button
-                type="button"
-                onClick={() => setIsReceiptModalOpen(true)}
-                className="px-2 py-0.5 rounded bg-white/5 hover:bg-white/10 text-text-dim hover:text-text-main border border-border-glass text-[0.68rem] font-medium transition-all cursor-pointer flex items-center gap-1"
-                title="View receipt"
-              >
-                <span>Receipt</span>
-                <span className="opacity-60">↗</span>
-              </button>
+              {credit.isInsufficientPayment && (
+                <span className="text-primary text-xs font-bold font-mono">
+                  (₱{credit.outstandingBalance.toFixed(2)} Due)
+                </span>
+              )}
             </div>
           </div>
         </div>
 
-        {/* 5. Notes / Instructions (if any) */}
-        {order.notes && (
+        {/* 5. Notes / Instructions (if any) — hide internal manufacturing/packaging notes */}
+        {order.notes && !order.notes.toLowerCase().includes('packaging only') && (
           <div className="px-3 py-2 bg-white/[0.02] border border-border-glass rounded-xl text-[0.72rem] text-text-dim flex items-center gap-2">
             <span className="font-bold text-text-main shrink-0">Note:</span>
             <span className="italic truncate">&ldquo;{order.notes}&rdquo;</span>
-          </div>
-        )}
-
-        {/* Paid Order modification notice */}
-        {isPaid && !isCanceled && !isCompletedOrDelivered && (
-          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-white/[0.02] border border-white/5 text-[0.68rem] text-text-dim">
-            <span>Need changes or cancellation?</span>
-            <button
-              type="button"
-              onClick={() => {
-                setHelpCategory('Order Cancellation & Refund');
-                setIsHelpModalOpen(true);
-              }}
-              className="text-primary hover:underline font-semibold bg-transparent border-none p-0 cursor-pointer"
-            >
-              Contact Workshop Studio →
-            </button>
           </div>
         )}
 
