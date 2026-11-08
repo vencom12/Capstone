@@ -1082,11 +1082,12 @@ export default function EmployeePage() {
                             <td className="glass-td text-left">
                               {(() => {
                                 const schedule = getOrderScheduleInfo(o);
+                                const isInsuff = isInsufficientOrder(o);
                                 return (
                                   <div className="flex flex-col gap-1">
                                     <div className="flex items-center gap-1.5 flex-wrap">
                                       <span className="font-bold text-text-main text-xs">
-                                        {schedule.exactTargetLabel}
+                                        {isInsuff ? 'Target: Unscheduled (Not in Queue)' : schedule.exactTargetLabel}
                                       </span>
                                       {o.isRush && (
                                         <span className="text-[0.65rem] bg-danger/25 text-danger font-extrabold px-1.5 py-0.5 rounded uppercase tracking-wider">
@@ -1103,7 +1104,7 @@ export default function EmployeePage() {
                                         {schedule.relativeLabel}
                                       </span>
                                       <span className="text-[11px] text-text-dim">
-                                        ⏱ {schedule.stitchLabel}
+                                        ⏱ {isInsuff ? 'Paused until full payment' : schedule.stitchLabel}
                                       </span>
                                     </div>
                                   </div>
@@ -1436,18 +1437,19 @@ export default function EmployeePage() {
                                       (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid') ? 'Being Processed by Management' : `${o.status} (${o.progress || 0}%)`}
                                   </span>
                                 </span>
-                                {isInsufficient && (
+                                {isInsufficient ? (
                                   <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass">
                                     Queue Hold
                                   </span>
+                                ) : (
+                                  <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
+                                    schedule.isOverdue
+                                      ? 'bg-primary/10 text-primary border-primary/25'
+                                      : 'bg-white/5 text-text-dim border-border-glass'
+                                  }`}>
+                                    {schedule.relativeLabel}
+                                  </span>
                                 )}
-                                <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
-                                  schedule.isOverdue
-                                    ? 'bg-primary/10 text-primary border-primary/25'
-                                    : 'bg-white/5 text-text-dim border-border-glass'
-                                }`}>
-                                  {schedule.relativeLabel}
-                                </span>
                                 {o.processedBy && (
                                   <span className={`inline-flex items-center gap-1 text-[9.5px] font-mono px-1.5 py-0.5 rounded border w-fit ${
                                     o.processedBy === user?.username
@@ -1482,8 +1484,17 @@ export default function EmployeePage() {
 
                               {/* Target Completion Time & Stitch Duration */}
                               <div className="flex flex-col text-[11px] font-semibold text-text-main mt-0.5">
-                                <span>{schedule.exactTargetLabel}</span>
-                                <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
+                                {isInsufficient ? (
+                                  <>
+                                    <span className="text-text-dim text-[10.5px]">Target: <strong className="text-text-main font-semibold">Unscheduled</strong> (Not in Queue)</span>
+                                    <span className="text-text-dim text-[10px] font-normal">⏱ Paused until full payment</span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span>{schedule.exactTargetLabel}</span>
+                                    <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
+                                  </>
+                                )}
                               </div>
                             </div>
                           );

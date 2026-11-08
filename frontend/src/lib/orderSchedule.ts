@@ -7,7 +7,34 @@ export interface OrderScheduleInfo {
   stitchLabel: string;
 }
 
+export function isOrderInsufficientPayment(o: any): boolean {
+  if (!o) return false;
+  const pers = o.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+  if (pers.employeeApprovedPartial) return false; // Staff authorized to process anyway
+  const status = String(o.status || '').toLowerCase();
+  return (
+    status === 'insufficient payment' ||
+    o.paymentStatus === 'partial' ||
+    Boolean(pers.insufficientPayment) ||
+    (Number(pers.outstandingBalance) > 0 && !pers.balanceSettledAt)
+  );
+}
+
 export function getOrderScheduleInfo(o: any): OrderScheduleInfo {
+  // If payment is incomplete, this order DOES NOT enter the queue and has NO target time allocated
+  if (isOrderInsufficientPayment(o)) {
+    const pers = o?.personalization && typeof o.personalization === 'object' ? o.personalization : {};
+    const hasTopUp = Boolean(pers?.balanceTopUpPending);
+    return {
+      dueTime: 0,
+      isOverdue: false,
+      relativeLabel: hasTopUp ? 'Top-Up Sent' : 'Queue Hold',
+      exactTargetLabel: 'Target: Unscheduled (Not in Queue)',
+      timeFormatted: 'Unscheduled',
+      stitchLabel: o?.estimatedTime ? `~${o.estimatedTime}m stitch (Paused)` : 'Queue Paused',
+    };
+  }
+
   const createdTime = new Date(o?.date || o?.createdAt || Date.now()).getTime();
   const rawDue = o?.dueDate || o?.personalization?.estimatedReadyDate;
   let dueTime = rawDue ? new Date(rawDue).getTime() : 0;

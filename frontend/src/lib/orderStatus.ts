@@ -85,18 +85,18 @@ export function getOrderStage(order: Order): OrderStage {
     if (creditSummary.balanceTopUpPending) {
       return {
         label: 'Remaining Balance Sent — Verifying',
-        hint: `Account Credit: ₱${creditSummary.accountCredit.toFixed(2)} + Top-Up: ₱${creditSummary.balanceTopUpAmount.toFixed(2)} submitted for staff review.`,
-        step: 1,
+        hint: `Account Credit: ₱${creditSummary.accountCredit.toFixed(2)} + Top-Up: ₱${creditSummary.balanceTopUpAmount.toFixed(2)} submitted for staff review. Order will enter the queue once verified.`,
+        step: 0,
         tone: 'warning',
-        isActive: true,
+        isActive: false,
       };
     }
     return {
-      label: `Insufficient Payment — Balance Due (₱${creditSummary.outstandingBalance.toFixed(2)})`,
-      hint: `What you sent (₱${creditSummary.accountCredit.toFixed(2)}) was not enough. Please pay the remaining ₱${creditSummary.outstandingBalance.toFixed(2)} balance for your order to be processed.`,
-      step: 1,
+      label: `Insufficient Payment — Not in Queue (₱${creditSummary.outstandingBalance.toFixed(2)} Due)`,
+      hint: `What you sent (₱${creditSummary.accountCredit.toFixed(2)}) was not enough. Your order will NOT enter the queue and will NOT be processed until the remaining balance of ₱${creditSummary.outstandingBalance.toFixed(2)} is paid in full.`,
+      step: 0,
       tone: 'warning',
-      isActive: true,
+      isActive: false,
     };
   }
   if (status.includes('awaiting') || status === 'pending' || (order as any).paymentStatus === 'unpaid') {

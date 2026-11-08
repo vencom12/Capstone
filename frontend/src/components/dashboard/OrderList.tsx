@@ -70,8 +70,8 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
               <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block shrink-0" />
               <span>
                 {credit.balanceTopUpPending
-                  ? `Remaining balance payment (+₱${credit.balanceTopUpAmount.toFixed(2)}) submitted — awaiting staff confirmation.`
-                  : `What you sent (₱${credit.accountCredit.toFixed(2)}) was not enough. Please pay the remaining balance for your order to be processed.`}
+                  ? `Remaining balance payment (+₱${credit.balanceTopUpAmount.toFixed(2)}) submitted — awaiting staff confirmation before entering the queue.`
+                  : `What you sent (₱${credit.accountCredit.toFixed(2)}) was not enough. Your order is on hold and will NOT enter the queue or be processed until the remaining balance of ₱${credit.outstandingBalance.toFixed(2)} is paid in full.`}
               </span>
             </span>
           </div>

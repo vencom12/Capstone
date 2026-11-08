@@ -189,15 +189,15 @@ export default function OrderSuccessModal({
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 font-bold text-text-main text-xs">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                <span className="uppercase tracking-wider">Remaining Balance Required</span>
+                <span className="uppercase tracking-wider">Order on Queue Hold — Balance Required</span>
               </div>
               <span className="px-2 py-0.5 rounded-md bg-white/5 border border-border-glass text-text-dim text-[0.6rem] font-semibold uppercase tracking-wider">
-                Hold
+                Queue Hold
               </span>
             </div>
             <p className="text-xs text-text-dim m-0 leading-relaxed">
               Amount received: <strong className="font-mono text-text-main">₱{creditAmount.toFixed(2)}</strong>. Required: <strong className="font-mono text-text-main">₱{totalAmount}</strong>.
-              Your partial payment is saved as Account Credit. Please settle the remaining balance (<strong className="font-mono text-text-main font-bold">₱{balanceDue.toFixed(2)}</strong>) for production to proceed.
+              What you sent has been saved as Account Credit, but your order has <strong className="text-text-main">NOT entered the workshop queue</strong> and will <strong className="text-text-main">NOT be processed</strong> until the remaining balance (<strong className="font-mono text-text-main font-bold">₱{balanceDue.toFixed(2)}</strong>) is paid in full.
             </p>
             <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface border border-border-glass text-[0.68rem] font-mono text-center">
               <div>
@@ -229,48 +229,53 @@ export default function OrderSuccessModal({
           </div>
         )}
 
-        {/* 3-Step Ordering Journey Progress Bar (100% Completed Milestones) */}
+        {/* 3-Step Ordering Journey Progress Bar */}
         <div className="pt-0.5 pb-2 border-b border-border-glass/40 -mt-1">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-1.5">
-              
               <span className="text-[11px] font-bold text-text-main">
                 Step 3 of 3:
               </span>
               <span className="text-[11px] text-primary font-bold">
-                {isInsufficient ? 'Order Recorded — Balance Required' : 'Order Validated & Placed in Queue!'}
+                {isInsufficient ? 'Order on Queue Hold — Full Payment Required' : 'Order Validated & Placed in Queue!'}
               </span>
             </div>
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-md border border-primary/30 bg-primary/10 text-primary">
               <span className="font-mono font-bold text-[11px]">
-                {isInsufficient ? 'Action Needed' : '100%'}
+                {isInsufficient ? 'Queue Hold' : '100%'}
               </span>
             </div>
           </div>
 
           {/* Checkpoints & Connecting Progress Line */}
           <div className="relative flex items-center justify-between px-3 pt-1 pb-0.5">
-            {/* Connected Track: 100% Filled glowing line */}
+            {/* Connected Track */}
             <div className="absolute left-[24px] right-[24px] top-4 -translate-y-1/2 h-1 bg-bg-surface border border-border-glass rounded-full overflow-hidden z-0">
               <div 
-                className="h-full bg-gradient-to-r bg-primary rounded-full transition-all duration-500 w-full"
+                className={`h-full rounded-full transition-all duration-500 ${isInsufficient ? 'bg-primary/50 w-2/3' : 'bg-primary w-full'}`}
               />
             </div>
 
             {/* 3 Checkpoint Milestones */}
             {[
-              { id: 1, label: 'Product Selection', shortLabel: 'Product' },
-              { id: 2, label: 'Secure Checkout', shortLabel: 'Checkout' },
-              { id: 3, label: isInsufficient ? 'Balance Required' : 'Verified in Queue', shortLabel: isInsufficient ? 'Balance Due' : 'In Queue' },
+              { id: 1, label: 'Product Selection', shortLabel: 'Product', done: true },
+              { id: 2, label: 'Secure Checkout', shortLabel: 'Checkout', done: true },
+              { id: 3, label: isInsufficient ? 'Full Payment Needed' : 'Verified in Queue', shortLabel: isInsufficient ? 'Hold' : 'In Queue', done: !isInsufficient },
             ].map((s) => (
               <div key={s.id} className="relative z-10 flex flex-col items-center">
                 <div
-                  className="w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold bg-primary text-white scale-105"
-                  title={`Step ${s.id}: ${s.label} (Completed)`}
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold scale-105 ${
+                    s.done ? 'bg-primary text-white' : 'bg-bg-surface text-primary border border-primary'
+                  }`}
+                  title={`Step ${s.id}: ${s.label}`}
                 >
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                    <polyline points="20 6 9 17 4 12" />
-                  </svg>
+                  {s.done ? (
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                  ) : (
+                    <span>⏸</span>
+                  )}
                 </div>
                 <span className="text-[9px] mt-1 font-bold tracking-tight uppercase whitespace-nowrap text-text-main">
                   {s.shortLabel}
@@ -292,7 +297,16 @@ export default function OrderSuccessModal({
                 {claimCode}
               </span>
               <span className="text-[0.68rem] text-text-dim font-semibold mt-0.5 flex items-center gap-1">
-                <span>✓</span> Present this code at the Pacific Mall counter to pick up
+                {isInsufficient ? (
+                  <>
+                    <span className="text-primary font-bold">⏸</span>
+                    <span className="text-primary/90 font-medium">Order on queue hold — pay balance before production begins</span>
+                  </>
+                ) : (
+                  <>
+                    <span>✓</span> Present this code at the Pacific Mall counter to pick up
+                  </>
+                )}
               </span>
             </div>
             <button

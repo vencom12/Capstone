@@ -508,11 +508,23 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
   };
   const claimCode = personalization.claimCode || order.claimCode || getVerificationCode(orderId);
 
+  // Financial reconciliation state (Insufficient payment vs Normal)
+  const isInsufficient = Boolean(
+    order.status === 'Insufficient Payment' ||
+    order.paymentStatus === 'partial' ||
+    personalization.insufficientPayment ||
+    (Number(personalization.outstandingBalance) > 0 && !personalization.balanceSettledAt)
+  );
+  const creditAmount = Number(personalization.accountCredit ?? (isInsufficient ? (Number(totalAmount) - Number(personalization.outstandingBalance || 0)) : Number(totalAmount)));
+  const balanceDue = Number(personalization.outstandingBalance ?? (isInsufficient ? Math.max(0, Number(totalAmount) - creditAmount) : 0));
+
   // 2. Estimated Ready Date & Time calculation
   const ordersAhead = personalization.ordersAhead !== undefined ? personalization.ordersAhead : null;
   let estimatedReadyLabel = personalization.readyLabel || null;
 
-  if (!estimatedReadyLabel) {
+  if (isInsufficient) {
+    estimatedReadyLabel = 'Not in Queue (Awaiting Full Payment)';
+  } else if (!estimatedReadyLabel) {
     try {
       const { calculatePickupSchedule, estimateArtisanProductionTime } = require('./pickupScheduler');
       const prodMins = order.estimatedTime || estimateArtisanProductionTime(order);
@@ -574,15 +586,21 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
   `;
 
   // Status Badge for top right
-  const statusBadge = `
+  const statusBadge = isInsufficient ? `
+    <span style="display: inline-block; font-size: 9.5px; font-weight: 700; color: #f87171; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.25); padding: 3px 8px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.3px;">
+      ⏸ On Queue Hold • Balance Due
+    </span>
+  ` : `
     <span style="display: inline-block; font-size: 9.5px; font-weight: 700; color: #10b981; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); padding: 3px 8px; border-radius: 9999px; text-transform: uppercase; letter-spacing: 0.3px;">
       ✓ Paid &amp; Queued
     </span>
   `;
 
-  const queueSubtitle = ordersAhead !== null
-    ? (ordersAhead === 0 ? 'Next in line' : `${ordersAhead} orders ahead`)
-    : 'Workshop queue';
+  const queueSubtitle = isInsufficient
+    ? 'Unscheduled (Hold)'
+    : (ordersAhead !== null
+        ? (ordersAhead === 0 ? 'Next in line' : `${ordersAhead} orders ahead`)
+        : 'Workshop queue');
 
   const contentHtml = `
     <!-- Dual-Column Hero Card: Claim Code + Ready Time (Zero Scrolling Needed) -->
@@ -597,16 +615,16 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
             ${claimCode}
           </div>
           <div style="font-size: 9px; color: #94a3b8;">
-            Show at GF Counter
+            ${isInsufficient ? 'Paused (Balance Due)' : 'Show at GF Counter'}
           </div>
         </td>
-        <!-- Right: Ready Time -->
+        <!-- Right: Ready Time or Queue Hold -->
         <td width="52%" style="padding: 10px 12px; text-align: center; vertical-align: middle;">
-          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: #34d399;">
-            ESTIMATED READY
+          <div style="font-size: 8.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; color: ${isInsufficient ? '#f87171' : '#34d399'};">
+            ${isInsufficient ? 'ORDER STATUS' : 'ESTIMATED READY'}
           </div>
-          <div style="font-size: 12px; font-weight: 700; color: #ffffff; line-height: 1.25; margin: 3px 0 1px;">
-            ${estimatedReadyLabel}
+          <div style="font-size: ${isInsufficient ? '11px' : '12px'}; font-weight: 700; color: #ffffff; line-height: 1.25; margin: 3px 0 1px;">
+            ${isInsufficient ? 'ON QUEUE HOLD' : estimatedReadyLabel}
           </div>
           <div style="font-size: 9px; color: #94a3b8;">
             ${queueSubtitle}
@@ -615,6 +633,21 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
       </tr>
     </table>
 
+    ${isInsufficient ? `
+      <!-- Insufficient Payment Notice Card -->
+      <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">
+        <div style="font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: #f87171; margin-bottom: 3px;">
+          ⚠️ Payment Incomplete — Order On Hold
+        </div>
+        <div style="font-size: 11px; color: #cbd5e1; line-height: 1.45;">
+          What you sent (<strong>₱${creditAmount.toFixed(2)}</strong>) was not enough. Required: <strong>₱${totalAmount}</strong> | Account Credit: <strong>₱${creditAmount.toFixed(2)}</strong> | Balance Due: <strong style="color: #f87171;">₱${balanceDue.toFixed(2)}</strong>.
+        </div>
+        <div style="font-size: 11px; color: #fca5a5; font-weight: 600; margin-top: 4px;">
+          Your order has NOT entered the workshop queue and will NOT be processed until the remaining balance is paid in full.
+        </div>
+      </div>
+    ` : ''}
+
     <!-- Order Items & Payment Summary (High Density Horizontal Space) -->
     <div style="background: #151d2e; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 8px; padding: 10px 12px; margin-bottom: 10px;">
       <table cellpadding="0" cellspacing="0" border="0" width="100%" style="padding-bottom: 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); margin-bottom: 6px;">
@@ -622,8 +655,11 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
           <td style="font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #94a3b8; font-family: monospace;">
             ORDER #${orderId}
           </td>
-          <td align="right" style="font-size: 11px; font-weight: 700; color: #10b981;">
-            PAID ₱${totalAmount} <span style="font-size: 9.5px; color: #94a3b8; font-weight: 500;">(${paymentMethodLabel})</span>
+          <td align="right" style="font-size: 11px; font-weight: 700; color: ${isInsufficient ? '#f87171' : '#10b981'};">
+            ${isInsufficient 
+              ? `CREDIT: ₱${creditAmount.toFixed(2)} <span style="font-size: 9.5px; color: #cbd5e1; font-weight: 500;">(₱${balanceDue.toFixed(2)} Due)</span>`
+              : `PAID ₱${totalAmount} <span style="font-size: 9.5px; color: #94a3b8; font-weight: 500;">(${paymentMethodLabel})</span>`
+            }
           </td>
         </tr>
       </table>
@@ -646,11 +682,15 @@ async function sendOrderConfirmationEmail(recipientEmail, recipientName, order) 
     contentHtml,
   });
 
+  const subject = isInsufficient
+    ? `[ACTION REQUIRED] Order #${orderId} on Hold — Please pay remaining balance of ₱${balanceDue.toFixed(2)}`
+    : `Order #${orderId} Confirmed — ${businessName}`;
+
   return dispatchEmail({
     to: recipientEmail,
-    subject: `Order #${orderId} Confirmed — ${businessName}`,
+    subject,
     html: htmlContent,
-    simulationInfo: { tag: 'ORDER CONFIRMATION', url: trackingUrl }
+    simulationInfo: { tag: isInsufficient ? 'ORDER ON HOLD' : 'ORDER CONFIRMATION', url: trackingUrl }
   });
 }
 

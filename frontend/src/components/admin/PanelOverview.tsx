@@ -800,21 +800,38 @@ export default function PanelOverview({
                           </div>
                           {(() => {
                             const schedule = getOrderScheduleInfo(o);
+                            const isInsuff = isInsufficientOrder(o);
                             return (
                               <div className="text-[11px] font-sans font-normal text-text-dim mt-1 flex items-center gap-2 flex-wrap">
-                                <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-main font-semibold">
-                                  {schedule.exactTargetLabel}
-                                </span>
-                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
-                                  schedule.isOverdue
-                                    ? 'bg-primary/10 text-primary border-primary/25'
-                                    : 'bg-white/5 text-text-dim border-border-glass'
-                                }`}>
-                                  {schedule.relativeLabel}
-                                </span>
-                                <span className="text-text-dim text-[11px]">
-                                  ⏱ {schedule.stitchLabel}
-                                </span>
+                                {isInsuff ? (
+                                  <>
+                                    <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-dim font-medium">
+                                      Target: <strong className="text-text-main font-semibold">Unscheduled</strong> (Not in Queue)
+                                    </span>
+                                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md border bg-white/5 text-text-dim border-border-glass">
+                                      Queue Hold
+                                    </span>
+                                    <span className="text-text-dim text-[11px]">
+                                      ⏱ Paused until full payment
+                                    </span>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="bg-white/5 px-1.5 py-0.5 rounded border border-white/10 text-text-main font-semibold">
+                                      {schedule.exactTargetLabel}
+                                    </span>
+                                    <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
+                                      schedule.isOverdue
+                                        ? 'bg-primary/10 text-primary border-primary/25'
+                                        : 'bg-white/5 text-text-dim border-border-glass'
+                                    }`}>
+                                      {schedule.relativeLabel}
+                                    </span>
+                                    <span className="text-text-dim text-[11px]">
+                                      ⏱ {schedule.stitchLabel}
+                                    </span>
+                                  </>
+                                )}
                               </div>
                             );
                           })()}
@@ -1100,18 +1117,19 @@ export default function PanelOverview({
                                     : o.status}
                               </span>
                             </span>
-                            {isInsufficient && (
+                            {isInsufficient ? (
                               <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass">
                                 Queue Hold
                               </span>
+                            ) : (
+                              <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
+                                schedule.isOverdue
+                                  ? 'bg-primary/10 text-primary border-primary/25'
+                                  : 'bg-white/5 text-text-dim border-border-glass'
+                              }`}>
+                                {schedule.relativeLabel}
+                              </span>
                             )}
-                            <span className={`inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-md border ${
-                              schedule.isOverdue
-                                ? 'bg-primary/10 text-primary border-primary/25'
-                                : 'bg-white/5 text-text-dim border-border-glass'
-                            }`}>
-                              {schedule.relativeLabel}
-                            </span>
                             {o.processedBy && (
                               <span className="inline-flex items-center gap-1 text-[9.5px] font-mono px-1.5 py-0.5 rounded border border-border-glass bg-white/5 text-text-dim">
                                 <span>👤</span>
@@ -1141,8 +1159,17 @@ export default function PanelOverview({
                           <div className="text-xs font-bold text-text-main truncate max-w-[150px]">{cleanClient}</div>
 
                           <div className="flex flex-col text-[11px] font-semibold text-text-main mt-0.5">
-                            <span>{schedule.exactTargetLabel}</span>
-                            <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
+                            {isInsufficient ? (
+                              <>
+                                <span className="text-text-dim text-[10.5px]">Target: <strong className="text-text-main font-semibold">Unscheduled</strong> (Not in Queue)</span>
+                                <span className="text-text-dim text-[10px] font-normal">⏱ Paused until full payment</span>
+                              </>
+                            ) : (
+                              <>
+                                <span>{schedule.exactTargetLabel}</span>
+                                <span className="text-text-dim text-[10px] font-normal">⏱ {schedule.stitchLabel}</span>
+                              </>
+                            )}
                           </div>
                         </div>
                       );

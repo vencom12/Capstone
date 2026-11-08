@@ -357,14 +357,14 @@ export default function OrderDetailsModal({
               <div className="flex flex-col gap-0.5">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-text-main uppercase tracking-wider">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                  <span>Remaining Balance Required</span>
+                  <span>Order on Queue Hold • Full Payment Required</span>
                 </div>
                 <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed mt-0.5">
-                  Amount received: <strong className="font-mono text-text-main">₱{credit.accountCredit.toFixed(2)}</strong>. Required: <strong className="font-mono text-text-main">₱{credit.requiredAmount.toFixed(2)}</strong>. We converted your payment into <strong>Account Credit</strong>. Please pay the remaining balance (<strong className="font-mono text-text-main font-bold">₱{credit.outstandingBalance.toFixed(2)}</strong>) for your order to be processed.
+                  Amount received: <strong className="font-mono text-text-main">₱{credit.accountCredit.toFixed(2)}</strong>. Required: <strong className="font-mono text-text-main">₱{credit.requiredAmount.toFixed(2)}</strong>. What you sent has been recorded as <strong>Account Credit</strong>, but <strong className="text-primary font-bold">your order will NOT enter the workshop queue and will NOT be processed</strong> until the remaining balance of <strong className="font-mono text-text-main font-bold">₱{credit.outstandingBalance.toFixed(2)}</strong> is settled in full.
                 </p>
               </div>
               <span className="px-2 py-0.5 rounded-md bg-white/5 border border-border-glass text-text-dim text-[0.62rem] font-semibold uppercase shrink-0">
-                Hold
+                Queue Hold
               </span>
             </div>
 

@@ -525,7 +525,7 @@ export default function CheckoutModal({
           setAiVerificationResult(msg);
           showToast(msg, 'success');
         } else if (verifyRes.isInsufficientPayment && verifyRes.accountCredit !== undefined && verifyRes.outstandingBalance !== undefined) {
-          const msg = `Insufficient Payment Warning: What you sent (₱${Number(verifyRes.accountCredit).toFixed(2)}) is not enough for this ₱${finalTotal.toFixed(2)} order. Remaining balance: ₱${Number(verifyRes.outstandingBalance).toFixed(2)}.`;
+          const msg = `Payment Incomplete: What you sent (₱${Number(verifyRes.accountCredit).toFixed(2)}) is not enough for this ₱${finalTotal.toFixed(2)} order. Your order is on hold and will NOT enter the queue or be processed until the remaining balance of ₱${Number(verifyRes.outstandingBalance).toFixed(2)} is paid in full.`;
           setAiVerificationResult(msg);
           showToast(msg, 'warning');
         } else {

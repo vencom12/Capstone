@@ -622,8 +622,21 @@ exports.submitOrder = async (req, res) => {
             let finalClaimSchedule = 'Ready in 2–5 mins (Packaging Only)';
             let finalDueDate = new Date(Date.now() + 5 * 60 * 1000);
 
-            if (requiresEmbroidery) {
-                // High-Efficiency Queue Watermark Scheduling for custom embroidery
+            if (isInsufficientPaymentOrder) {
+                // Critical policy: Insufficient payment orders DO NOT enter the workshop queue and have NO target completion time allocated
+                finalClaimSchedule = 'Not in Queue (Awaiting Full Payment)';
+                finalDueDate = null;
+                orderPersonalization.readyLabel = 'Not in Queue (Awaiting Full Payment)';
+                orderPersonalization.estimatedReadyDate = null;
+                orderPersonalization.queuePosition = null;
+                orderPersonalization.ordersAhead = null;
+                orderPersonalization.queueWaitMinutes = null;
+                orderPersonalization.estimatedStitchMinutes = requiresEmbroidery ? calculatedEstTime : 0;
+                orderPersonalization.isPlainOrder = !requiresEmbroidery;
+                orderPersonalization.requiresEmbroidery = requiresEmbroidery;
+                orderPersonalization.packagingPriority = undefined;
+            } else if (requiresEmbroidery) {
+                // High-Efficiency Queue Watermark Scheduling for custom embroidery (Valid paid/approved orders only)
                 const { scheduleIncomingOrder } = require('../../utils/workshopQueueManager');
                 const scheduling = await scheduleIncomingOrder({
                     orderDurationMinutes: calculatedEstTime,
@@ -640,14 +653,20 @@ exports.submitOrder = async (req, res) => {
                 orderPersonalization.queuePosition = scheduling.queuePosition;
                 orderPersonalization.ordersAhead = scheduling.ordersAhead;
                 orderPersonalization.queueWaitMinutes = scheduling.queueWaitMinutes;
+                orderPersonalization.readyLabel = finalClaimSchedule;
+                orderPersonalization.estimatedReadyDate = finalDueDate.toISOString();
+                orderPersonalization.estimatedStitchMinutes = calculatedEstTime;
+                orderPersonalization.isPlainOrder = false;
+                orderPersonalization.requiresEmbroidery = true;
+                orderPersonalization.packagingPriority = undefined;
+            } else {
+                orderPersonalization.readyLabel = finalClaimSchedule;
+                orderPersonalization.estimatedReadyDate = finalDueDate.toISOString();
+                orderPersonalization.estimatedStitchMinutes = 0;
+                orderPersonalization.isPlainOrder = true;
+                orderPersonalization.requiresEmbroidery = false;
+                orderPersonalization.packagingPriority = 2;
             }
-
-            orderPersonalization.readyLabel = finalClaimSchedule;
-            orderPersonalization.estimatedReadyDate = finalDueDate.toISOString();
-            orderPersonalization.estimatedStitchMinutes = requiresEmbroidery ? calculatedEstTime : 0;
-            orderPersonalization.isPlainOrder = !requiresEmbroidery;
-            orderPersonalization.requiresEmbroidery = requiresEmbroidery;
-            orderPersonalization.packagingPriority = !requiresEmbroidery ? 2 : undefined;
 
             if (isInsufficientPaymentOrder) {
                 const creditAmount = Math.max(0, Math.round(parsedPaidAmount * 100) / 100);
@@ -656,14 +675,14 @@ exports.submitOrder = async (req, res) => {
                 orderPersonalization.outstandingBalance = balanceDue;
                 orderPersonalization.requiredAmount = numTotal;
                 orderPersonalization.insufficientPayment = true;
-                orderPersonalization.insufficientPaymentNote = `What you sent (₱${creditAmount.toFixed(2)}) was not enough. Required: ₱${numTotal.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}. Please pay the remaining balance for your order to be processed.`;
+                orderPersonalization.insufficientPaymentNote = `What you sent (₱${creditAmount.toFixed(2)}) was not enough. Required: ₱${numTotal.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}. Your order is on hold and will NOT enter the queue or be processed until the remaining balance is paid in full.`;
                 orderPersonalization.statusHistory = [
                     {
                         status: 'Insufficient Payment',
                         timestamp: new Date().toISOString(),
                         actor: 'Customer Checkout',
                         hub: 'Eds Towels Pacific Mall Lucena Hub',
-                        note: `Partial payment received. Required: ₱${numTotal.toFixed(2)} | Account Credit: ₱${creditAmount.toFixed(2)} | Outstanding Balance: ₱${balanceDue.toFixed(2)}.`
+                        note: `Partial payment received (₱${creditAmount.toFixed(2)} of ₱${numTotal.toFixed(2)}). Order placed on queue hold — not scheduled until remaining balance (₱${balanceDue.toFixed(2)}) is settled in full.`
                     }
                 ];
             } else if (overpaymentExcess > 0) {
@@ -693,7 +712,7 @@ exports.submitOrder = async (req, res) => {
                 : (isInsufficientPaymentOrder ? 'Insufficient Payment' : 'Awaiting Payment');
             const initialOnlineProgress = isInstantApproved 
                 ? (requiresEmbroidery ? 5 : 10) 
-                : (isInsufficientPaymentOrder ? 5 : 0);
+                : 0; // Insufficient payment is NOT in queue: progress is strictly 0%
 
             const order = await tx.order.create({
                 data: {
@@ -717,7 +736,7 @@ exports.submitOrder = async (req, res) => {
                     calligraphyMessage: calligraphyMessage || null,
                     personalization: orderPersonalization,
                     isRush: isRush || false,
-                    estimatedTime: calculatedEstTime,
+                    estimatedTime: isInsufficientPaymentOrder ? 0 : calculatedEstTime,
                     dueDate: finalDueDate
                 }
             });
