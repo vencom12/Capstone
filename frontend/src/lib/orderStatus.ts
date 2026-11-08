@@ -132,10 +132,10 @@ export function getOrderTitle(order: Order): string {
 }
 
 export const TONE_CLASSES: Record<OrderTone, string> = {
-  pending: 'bg-white/10 text-text-main border-white/20',
-  progress: 'bg-primary/15 text-primary border-primary/30',
-  shipping: 'bg-secondary/15 text-secondary border-secondary/30',
-  done: 'bg-success/15 text-success border-success/30',
-  cancelled: 'bg-red-500/15 text-red-400 border-red-500/30',
-  warning: 'bg-amber-500/15 text-amber-500 border-amber-500/30',
+  pending: 'bg-white/5 text-text-main border-border-glass',
+  progress: 'bg-primary/10 text-primary border-primary/25',
+  shipping: 'bg-white/5 text-text-main border-border-glass',
+  done: 'bg-white/5 text-text-main border-border-glass',
+  cancelled: 'bg-white/5 text-text-dim border-border-glass',
+  warning: 'bg-white/5 text-text-main border-border-glass',
 };

@@ -64,26 +64,29 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
       </div>
 
       {credit.isInsufficientPayment && (
-        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex flex-col gap-2">
+        <div className="p-3 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2">
           <div className="flex items-start justify-between gap-2">
-            <span className="text-[0.72rem] font-bold text-amber-500 leading-snug">
-              {credit.balanceTopUpPending
-                ? `Remaining balance payment (+₱${credit.balanceTopUpAmount.toFixed(2)}) submitted — awaiting staff confirmation.`
-                : `What you sent (₱${credit.accountCredit.toFixed(2)}) was not enough. Please pay the remaining balance for your order to be processed.`}
+            <span className="text-[0.72rem] font-medium text-text-main leading-snug flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block shrink-0" />
+              <span>
+                {credit.balanceTopUpPending
+                  ? `Remaining balance payment (+₱${credit.balanceTopUpAmount.toFixed(2)}) submitted — awaiting staff confirmation.`
+                  : `What you sent (₱${credit.accountCredit.toFixed(2)}) was not enough. Please pay the remaining balance for your order to be processed.`}
+              </span>
             </span>
           </div>
-          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface/90 border border-border-glass text-[0.68rem] font-mono">
+          <div className="grid grid-cols-3 gap-2 p-2 rounded-lg bg-bg-surface border border-border-glass text-[0.68rem] font-mono">
             <div>
               <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Required</span>
               <span className="font-bold text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
             </div>
             <div>
               <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Account Credit</span>
-              <span className="font-bold text-emerald-500">₱{credit.accountCredit.toFixed(2)}</span>
+              <span className="font-bold text-text-main">₱{credit.accountCredit.toFixed(2)}</span>
             </div>
             <div>
-              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Outstanding Balance</span>
-              <span className="font-bold text-amber-500">₱{credit.outstandingBalance.toFixed(2)}</span>
+              <span className="text-text-dim block text-[0.6rem] uppercase font-sans font-semibold">Remaining</span>
+              <span className="font-bold text-text-main">₱{credit.outstandingBalance.toFixed(2)}</span>
             </div>
           </div>
         </div>
@@ -133,11 +136,7 @@ function OrderCard({ order, onTrack, onDetails, onReceipt, onReorder }: {
             <button
               type="button"
               onClick={() => onTrack(order)}
-              className={`px-3.5 py-1.5 rounded-lg text-white text-xs font-bold transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5 active:scale-[0.98] ${
-                credit.isInsufficientPayment && !credit.balanceTopUpPending
-                  ? 'bg-amber-600 hover:bg-amber-500'
-                  : 'bg-primary hover:bg-primary/90'
-              }`}
+              className="px-3.5 py-1.5 rounded-lg text-white text-xs font-bold transition-all cursor-pointer border-none shadow-sm flex items-center gap-1.5 active:scale-[0.98] bg-primary hover:bg-primary/90"
             >
               <span>
                 {credit.isInsufficientPayment && !credit.balanceTopUpPending

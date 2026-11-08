@@ -321,42 +321,44 @@ export default function OrderDetailsModal({
 
         {/* 3b. Option 3: Insufficient Payment / Account Credit & Outstanding Balance Breakdown */}
         {credit.isInsufficientPayment && !isCanceled && (
-          <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/35 flex flex-col gap-2.5">
+          <div className="p-3.5 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2.5">
             <div className="flex items-start justify-between gap-2">
               <div className="flex flex-col gap-0.5">
-                <span className="text-xs font-bold text-amber-500 uppercase tracking-wider">
-                  Insufficient Payment — Remaining Balance Required
-                </span>
-                <p className="text-[0.72rem] text-text-main m-0 leading-relaxed">
-                  What you sent (<strong className="font-mono">₱{credit.accountCredit.toFixed(2)}</strong>) was not enough. We converted your payment into <strong>Account Credit</strong>. Please pay the remaining balance (<strong className="font-mono">₱{credit.outstandingBalance.toFixed(2)}</strong>) for your order to be processed.
+                <div className="flex items-center gap-1.5 text-xs font-bold text-text-main uppercase tracking-wider">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-500 inline-block" />
+                  <span>Remaining Balance Required</span>
+                </div>
+                <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed mt-0.5">
+                  Amount received: <strong className="font-mono text-text-main">₱{credit.accountCredit.toFixed(2)}</strong>. Required: <strong className="font-mono text-text-main">₱{credit.requiredAmount.toFixed(2)}</strong>. We converted your payment into <strong>Account Credit</strong>. Please pay the remaining balance (<strong className="font-mono text-text-main font-bold">₱{credit.outstandingBalance.toFixed(2)}</strong>) for your order to be processed.
                 </p>
               </div>
-              <span className="px-2 py-0.5 rounded bg-amber-500/20 border border-amber-500/40 text-amber-500 text-[0.62rem] font-bold uppercase shrink-0">
-                Lowest Priority
+              <span className="px-2 py-0.5 rounded-md bg-white/5 border border-border-glass text-text-dim text-[0.62rem] font-semibold uppercase shrink-0">
+                Hold
               </span>
             </div>
 
             <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-bg-surface border border-border-glass font-mono text-xs">
               <div>
                 <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Required</span>
-                <span className="font-black text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
+                <span className="font-bold text-text-main">₱{credit.requiredAmount.toFixed(2)}</span>
               </div>
               <div>
                 <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Account Credit</span>
-                <span className="font-black text-emerald-500">₱{credit.accountCredit.toFixed(2)}</span>
+                <span className="font-bold text-text-main">₱{credit.accountCredit.toFixed(2)}</span>
               </div>
               <div>
                 <span className="text-[0.62rem] text-text-dim block font-sans uppercase font-bold">Outstanding Balance</span>
-                <span className="font-black text-amber-500">₱{credit.outstandingBalance.toFixed(2)}</span>
+                <span className="font-bold text-text-main">₱{credit.outstandingBalance.toFixed(2)}</span>
               </div>
             </div>
 
             {credit.balanceTopUpPending ? (
-              <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-[0.72rem] text-emerald-500 font-semibold">
-                ✓ Remaining balance payment (+₱{credit.balanceTopUpAmount.toFixed(2)}{credit.balanceTopUpRef ? ` • Ref: ${credit.balanceTopUpRef}` : ''}) has been submitted and is awaiting staff verification.
+              <div className="p-2.5 rounded-lg bg-white/5 border border-border-glass text-[0.72rem] text-text-main font-medium flex items-center gap-1.5">
+                <span>✓</span>
+                <span>Remaining balance payment (+₱{credit.balanceTopUpAmount.toFixed(2)}{credit.balanceTopUpRef ? ` • Ref: ${credit.balanceTopUpRef}` : ''}) submitted — awaiting staff verification.</span>
               </div>
             ) : (
-              <div className="flex flex-col gap-2 pt-1 border-t border-amber-500/20">
+              <div className="flex flex-col gap-2 pt-1 border-t border-border-glass">
                 <span className="text-[0.7rem] font-bold text-text-main">
                   Complete Remaining Balance (₱{credit.outstandingBalance.toFixed(2)}) via GCash:
                 </span>
@@ -376,7 +378,7 @@ export default function OrderDetailsModal({
                     type="button"
                     onClick={handleSubmitRemainingBalance}
                     disabled={isSubmittingBalance}
-                    className="px-3.5 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold cursor-pointer border-none shrink-0 disabled:opacity-50"
+                    className="px-3.5 py-1.5 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer border-none shrink-0 disabled:opacity-50 transition-all shadow-sm"
                   >
                     {isSubmittingBalance ? 'Submitting...' : `Pay ₱${credit.outstandingBalance.toFixed(2)}`}
                   </button>

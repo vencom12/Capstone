@@ -867,9 +867,9 @@ export default function PanelOverview({
                             if (credit.isInsufficientPayment) {
                               return (
                                 <div className="mt-1 flex flex-col gap-1 font-sans" onClick={(e) => e.stopPropagation()}>
-                                  <div className="p-1.5 rounded bg-amber-500/10 border border-amber-500/30 text-[10px] leading-tight">
-                                    <div className="text-emerald-500 font-bold">Account Credit: ₱{credit.accountCredit.toFixed(2)}</div>
-                                    <div className="text-amber-500 font-bold">Outstanding Balance: ₱{credit.outstandingBalance.toFixed(2)}</div>
+                                  <div className="p-1.5 rounded-md bg-white/5 border border-border-glass text-[10px] leading-tight">
+                                    <div className="text-text-main font-bold">Credit: ₱{credit.accountCredit.toFixed(2)}</div>
+                                    <div className="text-text-dim font-bold">Balance: ₱{credit.outstandingBalance.toFixed(2)}</div>
                                     {credit.balanceTopUpPending && (
                                       <div className="text-primary font-bold mt-0.5">+₱{credit.balanceTopUpAmount.toFixed(2)} Top-Up Sent!</div>
                                     )}
@@ -879,7 +879,7 @@ export default function PanelOverview({
                                       type="button"
                                       onClick={(e) => handleVerifySmsMatch(o, e)}
                                       disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                      className="px-2 py-0.5 rounded bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-bold cursor-pointer border-none"
+                                      className="px-2.5 py-1 rounded-md bg-primary hover:bg-primary/90 text-white text-[10px] font-bold cursor-pointer border-none transition-all shadow-sm"
                                       title="Mark remaining balance as paid in full"
                                     >
                                       Settle ₱{credit.outstandingBalance.toFixed(0)}
@@ -889,7 +889,7 @@ export default function PanelOverview({
                                         type="button"
                                         onClick={(e) => handleProcessAnywayPartial(o, e)}
                                         disabled={verifyingSmsIds[o.id || o._id || o.orderId]}
-                                        className="px-2 py-0.5 rounded bg-amber-600/20 hover:bg-amber-600/30 border border-amber-500/40 text-amber-500 text-[10px] font-bold cursor-pointer"
+                                        className="px-2 py-1 rounded-md bg-white/5 hover:bg-white/10 border border-border-glass text-text-dim hover:text-text-main text-[10px] font-semibold cursor-pointer transition-all"
                                         title="Approve & process order anyway while customer completes remaining balance later"
                                       >
                                         Process Anyway
@@ -951,31 +951,17 @@ export default function PanelOverview({
                         </td>
                         <td className="glass-td text-left">
                           <div className="flex flex-col gap-1 items-start">
-                            <span
-                              className={`inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-1 rounded-md font-semibold uppercase tracking-wider whitespace-nowrap border ${
-                                o.status === 'Insufficient Payment'
-                                  ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                                  : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
-                                    ? 'bg-white/5 text-text-dim border-border-glass'
-                                    : o.status === 'Preparing Order'
-                                      ? 'bg-white/5 text-text-main border-border-glass'
-                                      : o.status === 'In Transit'
-                                        ? 'bg-white/5 text-text-dim border-border-glass'
-                                        : o.status === 'Ready For Pick Up'
-                                          ? 'bg-white/5 text-text-main border-border-glass'
-                                          : 'bg-white/5 text-text-dim border-border-glass'
-                              }`}
-                            >
+                            <span className="inline-flex items-center gap-1.5 text-[0.68rem] px-2.5 py-1 rounded-md font-semibold uppercase tracking-wider whitespace-nowrap border bg-white/5 text-text-main border-border-glass">
                               <span
                                 className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                   o.status === 'Insufficient Payment'
-                                    ? 'bg-amber-400'
+                                    ? 'bg-amber-500'
                                     : (o.status === 'Awaiting Payment' || o.paymentStatus === 'unpaid')
                                       ? 'bg-zinc-400'
                                       : o.status === 'Preparing Order'
                                         ? 'bg-primary animate-pulse'
                                         : o.status === 'Ready For Pick Up'
-                                          ? 'bg-emerald-400'
+                                          ? 'bg-primary'
                                           : 'bg-zinc-400'
                                 }`}
                               />
@@ -988,8 +974,8 @@ export default function PanelOverview({
                               </span>
                             </span>
                             {isInsufficientOrder(o) && (
-                              <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/30">
-                                Lowest Priority
+                              <span className="text-[9px] font-semibold uppercase px-1.5 py-0.5 rounded-md bg-white/5 text-text-dim border border-border-glass">
+                                Queue Hold
                               </span>
                             )}
                           </div>

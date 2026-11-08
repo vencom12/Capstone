@@ -658,17 +658,17 @@ export default function DashboardPage() {
                       <p className="text-xs sm:text-sm text-text-dim m-0 mt-0.5">{user?.email || 'No email linked'}</p>
                     </div>
                     <div className="ml-auto flex flex-col items-end text-right">
-                      <span className="text-[0.62rem] uppercase font-bold text-text-dim tracking-wider">Store Wallet</span>
-                      <span className="font-mono text-base sm:text-lg font-black text-emerald-400">
+                      <span className="text-[0.62rem] uppercase font-semibold text-text-dim tracking-wider">Store Wallet</span>
+                      <span className="font-mono text-base sm:text-lg font-bold text-text-main">
                         ₱{Number(user?.walletBalance || 0).toFixed(2)}
                       </span>
                     </div>
                   </div>
 
                   {/* Store Wallet Credit Info Box */}
-                  <div className="px-6 py-3.5 bg-emerald-500/10 border-b border-emerald-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-                    <div className="flex items-center gap-2 text-emerald-400 font-bold">
-                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="4" width="20" height="16" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+                  <div className="px-6 py-3 bg-white/[0.02] border-b border-border-glass flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                    <div className="flex items-center gap-2 text-text-main font-semibold">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-dim"><rect x="2" y="4" width="20" height="16" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
                       <span>Store Wallet Credit: ₱{Number(user?.walletBalance || 0).toFixed(2)}</span>
                     </div>
                     <span className="text-[0.72rem] text-text-dim leading-snug">
@@ -1039,10 +1039,10 @@ export default function DashboardPage() {
           {/* Mobile Store Wallet Pill */}
           <button
             onClick={() => setActiveTab('settings')}
-            className="flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 font-mono text-[11px] font-bold cursor-pointer shrink-0"
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/5 border border-border-glass text-text-main font-mono text-[11px] font-semibold cursor-pointer shrink-0 hover:bg-white/10 transition-all"
             title="Store Wallet Balance"
           >
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><rect x="2" y="4" width="20" height="16" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-dim"><rect x="2" y="4" width="20" height="16" rx="2" /><line x1="2" y1="10" x2="22" y2="10" /></svg>
             <span>₱{Number(user?.walletBalance || 0).toFixed(2)}</span>
           </button>
 
