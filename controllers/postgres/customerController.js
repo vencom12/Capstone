@@ -2222,7 +2222,7 @@ exports.payRemainingBalance = async (req, res) => {
     try {
         const userId = req.user.id;
         const targetId = req.params.id;
-        const { referenceNumber, receiptUrl, amountPaid, paymentMethod = 'gcash' } = req.body || {};
+        const { referenceNumber, receiptUrl, amountPaid, paymentMethod = 'gcash', imageHash, ocrData, confidenceScore, flaggedReason } = req.body || {};
 
         const order = await prisma.order.findFirst({
             where: {
@@ -2255,9 +2255,38 @@ exports.payRemainingBalance = async (req, res) => {
             return res.status(400).json({ message: 'Please provide your GCash reference number or upload your receipt screenshot for the remaining balance.' });
         }
 
+        // Duplicate Reference Guard (Defense against reference replay)
+        if (paymentMethod === 'gcash' && cleanRef && !cleanRef.startsWith('TEST-')) {
+            const existingReceipt = await prisma.receipt.findFirst({
+                where: {
+                    referenceId: cleanRef,
+                    status: { not: 'Rejected' },
+                    NOT: { orderID: order.id }
+                },
+                include: { Order: { select: { status: true } } }
+            });
+            const isCancelled = existingReceipt?.Order?.status && /cancel/i.test(existingReceipt.Order.status);
+            if (existingReceipt && !isCancelled) {
+                return res.status(400).json({
+                    message: 'This GCash reference number has already been used for an earlier order. Please provide the official reference number for this payment.'
+                });
+            }
+        }
+
         const topUpAmount = amountPaid !== undefined && !isNaN(parseFloat(amountPaid)) && parseFloat(amountPaid) > 0
             ? Math.round(parseFloat(amountPaid) * 100) / 100
             : currentBalance;
+
+        // Auto-credit excess overpayment to Customer Store Wallet
+        const overpaymentAmount = Math.max(0, Math.round((topUpAmount - currentBalance) * 100) / 100);
+        if (overpaymentAmount > 0) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: { walletBalance: { increment: overpaymentAmount } }
+            });
+            currentPers.isOverpayment = true;
+            currentPers.overpaymentAmount = overpaymentAmount;
+        }
 
         const now = new Date();
 
@@ -2439,8 +2468,12 @@ exports.payRemainingBalance = async (req, res) => {
                 where: { id: order.receipt.id },
                 data: {
                     status: 'Manual Review',
-                    flaggedReason: `Balance Top-Up Submitted: +₱${topUpAmount.toFixed(2)} (Initial Credit: ₱${currentCredit.toFixed(2)}, Remaining: ₱${currentBalance.toFixed(2)})`,
-                    ...(receiptUrl ? { imageUrl: receiptUrl } : {})
+                    referenceId: cleanRef || order.receipt.referenceId,
+                    flaggedReason: flaggedReason || `Balance Top-Up Submitted: +₱${topUpAmount.toFixed(2)} (Initial Credit: ₱${currentCredit.toFixed(2)}, Remaining: ₱${currentBalance.toFixed(2)})${overpaymentAmount > 0 ? ` [Overpayment ₱${overpaymentAmount.toFixed(2)} credited to Wallet]` : ''}`,
+                    ...(receiptUrl ? { imageUrl: receiptUrl } : {}),
+                    ...(imageHash ? { imageHash } : {}),
+                    ...(ocrData ? { ocrData } : {}),
+                    ...(confidenceScore ? { confidenceScore: parseFloat(confidenceScore) } : {})
                 }
             });
         }

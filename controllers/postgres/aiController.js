@@ -1782,10 +1782,10 @@ exports.verifyReceipt = async (req, res) => {
             if (receipt && req.user?.id && receipt.userId !== req.user.id) {
                 return res.status(403).json({ success: false, message: "You are not authorized to verify this receipt." });
             }
-            if (receipt && receipt.amount > 0) {
+            if (receipt && (!numOrderTotal || numOrderTotal <= 0) && receipt.amount > 0) {
                 numOrderTotal = receipt.amount;
             }
-            if (receipt && receipt.aiVerificationStatus === 'verified') {
+            if (receipt && receipt.aiVerificationStatus === 'verified' && !req.body.isBalanceSettlement && (!req.body.orderTotal || parseFloat(req.body.orderTotal) >= receipt.amount)) {
                 return res.json({ success: true, message: "This receipt has already been verified.", aiResult: receipt.ocrData, updatedReceipt: receipt });
             }
         }

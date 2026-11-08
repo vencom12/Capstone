@@ -59,8 +59,15 @@ export default function OrderDetailsModal({
   const [isAnalyzingReceipt, setIsAnalyzingReceipt] = useState(false);
   const [receiptVerificationResult, setReceiptVerificationResult] = useState<string | null>(null);
   const [receiptVerified, setReceiptVerified] = useState(false);
+  const [allowManualRef, setAllowManualRef] = useState(false);
+  const [lastVerifyResult, setLastVerifyResult] = useState<any | null>(null);
   const [receiptPreviewUrl, setReceiptPreviewUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [copiedNumber, setCopiedNumber] = useState(false);
+  const [copiedAmount, setCopiedAmount] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
+  const [refError, setRefError] = useState('');
+  const [refTouched, setRefTouched] = useState(false);
   const [storeGcashSettings, setStoreGcashSettings] = useState<{ gcashQrCodeUrl?: string; gcashAccountName?: string; gcashAccountNumber?: string } | null>(null);
   const { user, refreshUser } = useAuthStore();
 
@@ -85,6 +92,37 @@ export default function OrderDetailsModal({
     }
   }, [isOpen, storeGcashSettings]);
 
+  const validateBalanceRef = (val: string) => {
+    const clean = val.trim();
+    if (!clean) {
+      const err = 'Please enter your GCash reference number';
+      setRefError(err);
+      return err;
+    }
+    const cleanChars = clean.replace(/[\s-]/g, '');
+    if (cleanChars.length < 9) {
+      const err = 'Please enter at least 9 characters from your GCash reference number';
+      setRefError(err);
+      return err;
+    }
+    setRefError('');
+    return '';
+  };
+
+  const copyToClipboard = (text: string, type: 'number' | 'amount') => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    if (type === 'number') {
+      setCopiedNumber(true);
+      showToast(`GCash number (${text}) copied to clipboard!`, 'success');
+      setTimeout(() => setCopiedNumber(false), 2000);
+    } else {
+      setCopiedAmount(true);
+      showToast(`Amount (₱${text}) copied to clipboard!`, 'success');
+      setTimeout(() => setCopiedAmount(false), 2000);
+    }
+  };
+
   const processBalanceReceiptFile = async (file: File) => {
     if (!file || !file.type.startsWith('image/')) {
       showToast('Please select a valid image screenshot (PNG, JPG, or WEBP).', 'warning');
@@ -95,6 +133,8 @@ export default function OrderDetailsModal({
     setIsAnalyzingReceipt(true);
     setReceiptVerificationResult(null);
     setReceiptVerified(false);
+    setAllowManualRef(false);
+    setLastVerifyResult(null);
 
     try {
       // Step 1: Upload receipt screenshot to Cloudinary
@@ -111,8 +151,6 @@ export default function OrderDetailsModal({
         return;
       }
 
-      setTopUpReceiptUrl(uploadData.url);
-
       // Step 2: Run AI OCR receipt verification against outstanding balance
       const balanceDue = order ? getOrderCreditSummary(order).outstandingBalance : 0;
       try {
@@ -121,37 +159,80 @@ export default function OrderDetailsModal({
           message: string;
           verificationStatus?: string;
           needsManualRef?: boolean;
+          imageHash?: string | null;
+          flaggedReason?: string;
+          isInsufficientPayment?: boolean;
+          isOverpayment?: boolean;
+          overpaymentAmount?: number;
           extractedAmount?: number;
-          aiResult?: { isValidReceipt?: boolean; extractedAmount?: number; confidence?: number; referenceId?: string; paymentPlatform?: string };
+          accountCredit?: number;
+          outstandingBalance?: number;
+          aiResult?: {
+            isValidReceipt?: boolean;
+            extractedAmount?: number;
+            confidence?: number;
+            referenceId?: string;
+            paymentPlatform?: string;
+          };
         }>('/api/ai/verify-receipt', {
           receiptUrl: uploadData.url,
-          orderTotal: balanceDue
+          orderTotal: balanceDue,
+          isBalanceSettlement: true,
+          orderId: order?.orderId
         });
 
-        if (verifyRes.aiResult?.referenceId) {
-          setBalanceRef(verifyRes.aiResult.referenceId);
-        }
+        setLastVerifyResult(verifyRes);
 
         if (verifyRes.success) {
+          // Authentic receipt & payment confirmed
+          setTopUpReceiptUrl(uploadData.url);
           setReceiptVerified(true);
+          setAllowManualRef(false);
           const extAmt = verifyRes.aiResult?.extractedAmount ?? verifyRes.extractedAmount;
           const refId = verifyRes.aiResult?.referenceId;
-          const msg = `✓ Receipt Verified: ₱${Number(extAmt || balanceDue).toFixed(2)}${refId ? ` • Ref: ${refId}` : ''}`;
-          setReceiptVerificationResult(msg);
-          showToast(msg, 'success');
-        } else if (verifyRes.needsManualRef && verifyRes.aiResult?.referenceId) {
-          setReceiptVerified(true);
-          const msg = `Receipt detected with Ref: ${verifyRes.aiResult.referenceId}. Please confirm below.`;
-          setReceiptVerificationResult(msg);
-        } else {
+          if (refId) {
+            setBalanceRef(refId);
+          }
+
+          if (verifyRes.isOverpayment && verifyRes.overpaymentAmount) {
+            const msg = `Overpayment detected: You sent ₱${Number(extAmt || (balanceDue + verifyRes.overpaymentAmount)).toFixed(2)} for a ₱${balanceDue.toFixed(2)} balance. The excess ₱${Number(verifyRes.overpaymentAmount).toFixed(2)} will be added to your Store Wallet!`;
+            setReceiptVerificationResult(msg);
+            showToast(msg, 'success');
+          } else {
+            const msg = `✓ Receipt Verified: ₱${Number(extAmt || balanceDue).toFixed(2)}${refId ? ` • Ref: ${refId}` : ''}`;
+            setReceiptVerificationResult(msg);
+            showToast(msg, 'success');
+          }
+        } else if (verifyRes.needsManualRef && verifyRes.verificationStatus === 'pending_manual_verification') {
+          // Authentic payment receipt detected by OCR, but reference number needs user confirmation
+          setTopUpReceiptUrl(uploadData.url);
           setReceiptVerified(false);
-          const rawReason = verifyRes.message || 'Please ensure the receipt clearly shows the amount and reference number.';
-          setReceiptVerificationResult(rawReason);
-          showToast(rawReason, 'warning');
+          setAllowManualRef(true);
+          if (verifyRes.aiResult?.referenceId) {
+            setBalanceRef(verifyRes.aiResult.referenceId);
+          }
+          const promptMsg = verifyRes.message || 'Receipt uploaded! Please confirm your 13-digit GCash Reference Number below to settle your balance.';
+          setReceiptVerificationResult(promptMsg);
+        } else {
+          // Hard rejection (non-receipt image, duplicate receipt, outdated receipt, wrong recipient, or insufficient amount)
+          setTopUpReceiptUrl(''); // Clear invalid receipt URL so it cannot be submitted
+          setBalanceRef('');
+          setReceiptVerified(false);
+          setAllowManualRef(false);
+          const rawReason = verifyRes.message || verifyRes.flaggedReason || '';
+          const reasonText = (rawReason && !rawReason.includes('does not appear to be an authentic payment receipt'))
+            ? rawReason
+            : 'Please upload an authentic, clear GCash transaction confirmation screenshot for this balance payment showing the exact amount and reference number.';
+          setReceiptVerificationResult(reasonText);
+          showToast(reasonText, 'error');
         }
       } catch (ocrErr: any) {
         console.warn('[Balance OCR Check]:', ocrErr);
-        setReceiptVerificationResult('Receipt uploaded. You can confirm your GCash Reference Number below.');
+        setTopUpReceiptUrl(uploadData.url);
+        setReceiptVerified(false);
+        setAllowManualRef(true);
+        const errMsg = ocrErr?.message || 'Could not verify receipt automatically. Please enter your GCash Reference Number below.';
+        setReceiptVerificationResult(errMsg);
       }
     } catch {
       showToast('Could not upload receipt screenshot. You can manually enter your GCash reference number.', 'warning');
@@ -249,6 +330,13 @@ export default function OrderDetailsModal({
       showToast('Please enter your GCash reference number or upload your receipt screenshot for the remaining balance.', 'warning');
       return;
     }
+    if (cleanRef) {
+      const err = validateBalanceRef(cleanRef);
+      if (err) {
+        showToast(err, 'warning');
+        return;
+      }
+    }
     setIsSubmittingBalance(true);
     try {
       const res = await api.post<{ success: boolean; message: string }>(
@@ -256,14 +344,24 @@ export default function OrderDetailsModal({
         {
           referenceNumber: cleanRef || undefined,
           receiptUrl: topUpReceiptUrl || undefined,
-          amountPaid: credit.outstandingBalance,
-          paymentMethod: 'gcash'
+          amountPaid: lastVerifyResult?.extractedAmount || credit.outstandingBalance,
+          paymentMethod: 'gcash',
+          imageHash: lastVerifyResult?.imageHash || undefined,
+          ocrData: lastVerifyResult?.aiResult || undefined,
+          confidenceScore: lastVerifyResult?.aiResult?.confidence || undefined,
+          flaggedReason: lastVerifyResult?.flaggedReason || undefined
         }
       );
       showToast(res?.message || 'Remaining balance payment submitted!', 'success');
       setBalanceRef('');
       setTopUpReceiptUrl('');
-      useProductStore.getState().fetchDashboardState().catch(() => {});
+      setReceiptPreviewUrl(null);
+      setReceiptVerificationResult(null);
+      setReceiptVerified(false);
+      setAllowManualRef(false);
+      setLastVerifyResult(null);
+      await refreshUser();
+      await useProductStore.getState().fetchDashboardState();
     } catch (err: any) {
       showToast(err?.message || 'Failed to submit remaining balance payment.', 'error');
     } finally {
@@ -525,51 +623,66 @@ export default function OrderDetailsModal({
                     </button>
                   </div>
                 )}
-                {/* Direct GCash QR & Account Info (No dropdowns) */}
-                {storeGcashSettings?.gcashQrCodeUrl ? (
-                  <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col sm:flex-row items-center gap-3">
-                    <div className="w-28 h-28 rounded-lg overflow-hidden border border-border-glass bg-white p-1 shrink-0">
-                      <img
-                        src={storeGcashSettings.gcashQrCodeUrl}
-                        alt="GCash QR Code"
-                        className="w-full h-full object-contain"
-                      />
-                    </div>
-                    <div className="flex flex-col gap-1 text-center sm:text-left min-w-0">
-                      <span className="text-[0.65rem] font-bold uppercase tracking-wider text-text-dim">Official Store GCash</span>
-                      {storeGcashSettings.gcashAccountName && (
-                        <span className="text-xs font-bold text-text-main">
-                          {storeGcashSettings.gcashAccountName}
-                        </span>
-                      )}
-                      {storeGcashSettings.gcashAccountNumber && (
-                        <div className="flex items-center gap-1.5 justify-center sm:justify-start">
-                          <span className="font-mono text-xs font-semibold text-text-main">
-                            {storeGcashSettings.gcashAccountNumber}
+                {/* Direct GCash QR & Account Info (Side-by-Side with copy buttons and click to enlarge) */}
+                <div className="bg-white/[0.03] border border-border-glass/60 p-2.5 sm:p-3 rounded-xl flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[0.68rem] font-bold text-text-main px-1.5 py-0.5 rounded bg-white/[0.06] border border-border-glass shrink-0">
+                      Official Store GCash
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => copyToClipboard(credit.outstandingBalance.toFixed(2), 'amount')}
+                      className="text-[0.68rem] bg-white/[0.05] hover:bg-white/[0.1] border border-border-glass/60 text-text-main font-semibold px-2 py-0.5 rounded-md transition-all cursor-pointer flex items-center gap-1 shrink-0"
+                    >
+                      {copiedAmount ? '✓ Copied' : `Copy ₱${credit.outstandingBalance.toFixed(2)}`}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center gap-3 bg-bg-surface/80 p-2.5 rounded-lg border border-border-glass/50">
+                    <div className="flex-1 flex flex-col gap-1 min-w-0">
+                      <div>
+                        <span className="text-[0.62rem] text-text-dim block uppercase tracking-wider font-semibold">GCash Number</span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-text-main font-bold text-sm tracking-wide font-mono truncate">
+                            {storeGcashSettings?.gcashAccountNumber || '0928 810 3928'}
                           </span>
                           <button
                             type="button"
-                            onClick={() => {
-                              navigator.clipboard.writeText(storeGcashSettings.gcashAccountNumber || '');
-                              showToast('GCash number copied!', 'success');
-                            }}
-                            className="text-[0.62rem] px-1.5 py-0.5 rounded bg-white/5 border border-border-glass text-text-dim hover:text-text-main cursor-pointer"
+                            onClick={() => copyToClipboard((storeGcashSettings?.gcashAccountNumber || '09288103928').replace(/\s+/g, ''), 'number')}
+                            className="bg-white/10 hover:bg-white/20 text-white font-semibold px-2 py-0.5 rounded text-[0.65rem] transition-all cursor-pointer border border-white/20 shrink-0"
                           >
-                            Copy
+                            {copiedNumber ? '✓' : 'Copy'}
                           </button>
                         </div>
-                      )}
-                      <span className="text-[0.65rem] text-text-dim mt-0.5">
-                        Scan or send exact balance (₱{credit.outstandingBalance.toFixed(2)}) then enter reference number below.
-                      </span>
+                      </div>
+                      <div className="border-t border-border-glass/40 pt-1">
+                        <span className="text-[0.62rem] text-text-dim block uppercase tracking-wider font-semibold">Account Name</span>
+                        <span className="text-text-main font-semibold text-[0.72rem] truncate block">
+                          {storeGcashSettings?.gcashAccountName || 'Edz Towels & Caps'}
+                        </span>
+                      </div>
                     </div>
+
+                    {(storeGcashSettings?.gcashQrCodeUrl || '/gcash-qr.png') && (
+                      <div
+                        onClick={() => setShowQrModal(true)}
+                        className="relative group cursor-pointer bg-white p-1 rounded-lg shadow-sm border border-white/20 hover:scale-105 transition-all shrink-0"
+                        title="Click to enlarge QR"
+                      >
+                        <img
+                          src={storeGcashSettings?.gcashQrCodeUrl || '/gcash-qr.png'}
+                          alt="GCash QR Code"
+                          className="w-16 h-16 sm:w-18 sm:h-18 object-contain rounded"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 rounded-lg flex items-center justify-center transition-opacity">
+                          <span className="text-white font-bold text-[0.55rem] bg-black/70 px-1 py-0.5 rounded">Enlarge</span>
+                        </div>
+                      </div>
+                    )}
                   </div>
-                ) : (
-                  <span className="text-[0.7rem] font-bold text-text-main">
-                    Pay remaining balance via GCash:
-                  </span>
-                )}
-                {/* Receipt Upload Dropbox with Drag & Drop & Paste */}
+                </div>
+
+                {/* Upload Zone (shown when NOT analyzing and NO verification notice / rejection box) */}
                 <div className="flex flex-col gap-1.5 pt-1">
                   <input
                     id="balance-receipt-upload"
@@ -578,110 +691,180 @@ export default function OrderDetailsModal({
                     accept="image/*"
                     onChange={(e) => {
                       const file = e.target.files?.[0];
+                      if (e.target && 'value' in e.target) {
+                        e.target.value = '';
+                      }
                       if (file) processBalanceReceiptFile(file);
                     }}
                   />
 
-                  <div
-                    onClick={() => document.getElementById('balance-receipt-upload')?.click()}
-                    onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
-                    onDragLeave={() => setIsDragging(false)}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      setIsDragging(false);
-                      const file = e.dataTransfer.files?.[0];
-                      if (file && file.type.startsWith('image/')) {
-                        processBalanceReceiptFile(file);
-                      }
-                    }}
-                    className={`group border-2 border-dashed rounded-xl p-3 text-center transition-all cursor-pointer ${
-                      isDragging
-                        ? 'border-primary bg-primary/10 ring-2 ring-primary/40 scale-[1.01]'
-                        : 'border-border-glass hover:border-primary/50 bg-white/[0.015] hover:bg-primary/[0.04]'
-                    }`}
-                  >
-                    {receiptPreviewUrl ? (
-                      <div className="flex items-center gap-3 p-1">
-                        <div className="w-12 h-12 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
-                          <img src={receiptPreviewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex flex-col text-left min-w-0 flex-1">
-                          {isAnalyzingReceipt ? (
-                            <div className="flex items-center gap-2">
-                              <svg className="w-3.5 h-3.5 animate-spin text-primary shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
-                                <path d="M12 2a10 10 0 0 1 10 10" />
-                              </svg>
-                              <span className="text-xs text-text-main font-bold">Verifying payment receipt with AI...</span>
+                  {(!receiptVerificationResult || isAnalyzingReceipt) && (
+                    <div
+                      onClick={() => document.getElementById('balance-receipt-upload')?.click()}
+                      onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+                      onDragLeave={() => setIsDragging(false)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        setIsDragging(false);
+                        const file = e.dataTransfer.files?.[0];
+                        if (file && file.type.startsWith('image/')) {
+                          processBalanceReceiptFile(file);
+                        }
+                      }}
+                      className={`group border-2 border-dashed rounded-xl p-3.5 text-center transition-all cursor-pointer ${
+                        isDragging
+                          ? 'border-primary bg-primary/10 ring-2 ring-primary/40 scale-[1.01]'
+                          : 'border-border-glass hover:border-primary/50 bg-white/[0.015] hover:bg-primary/[0.04]'
+                      }`}
+                    >
+                      {receiptPreviewUrl && isAnalyzingReceipt ? (
+                        <div className="flex items-center gap-3 p-1">
+                          <div className="w-14 h-14 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0">
+                            <img src={receiptPreviewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex flex-col text-left min-w-0 flex-1">
+                            <div className="flex flex-col gap-0.5">
+                              <div className="flex items-center gap-2">
+                                <svg className="w-3.5 h-3.5 animate-spin text-text-main shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
+                                  <path d="M12 2a10 10 0 0 1 10 10" />
+                                </svg>
+                                <span className="text-[0.78rem] text-text-main font-bold">Checking your receipt...</span>
+                              </div>
+                              <span className="text-[0.65rem] text-text-dim pl-5.5">Confirming payment details</span>
                             </div>
-                          ) : (
-                            <div className="flex items-center justify-between gap-1">
-                              <span className="text-xs text-text-main font-bold truncate">
-                                {receiptVerified ? '✓ Receipt Verified' : 'Receipt Attached'}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setReceiptPreviewUrl(null);
-                                  setTopUpReceiptUrl('');
-                                  setReceiptVerificationResult(null);
-                                  setReceiptVerified(false);
-                                }}
-                                className="text-[0.65rem] text-primary hover:underline font-semibold bg-transparent border-none cursor-pointer"
-                              >
-                                Change
-                              </button>
-                            </div>
-                          )}
-                          {receiptVerificationResult && (
-                            <span className={`text-[0.68rem] leading-snug mt-0.5 ${receiptVerified ? 'text-primary font-semibold' : 'text-text-dim'}`}>
-                              {receiptVerificationResult}
-                            </span>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col items-center gap-1.5 py-1">
-                        <div className={`w-9 h-9 rounded-xl border flex items-center justify-center transition-all ${
-                          isDragging
-                            ? 'bg-primary text-white border-primary scale-110 shadow-md'
-                            : 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/15'
-                        }`}>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="17 8 12 3 7 8" />
-                            <line x1="12" y1="3" x2="12" y2="15" />
-                          </svg>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1.5 py-1">
+                          <div className={`w-11 h-11 rounded-xl border flex items-center justify-center transition-all ${
+                            isDragging
+                              ? 'bg-primary text-white border-primary scale-110 shadow-md'
+                              : 'bg-primary/10 border-primary/30 text-primary group-hover:bg-primary/15'
+                          }`}>
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                              <polyline points="17 8 12 3 7 8" />
+                              <line x1="12" y1="3" x2="12" y2="15" />
+                            </svg>
+                          </div>
+                          <span className="text-[0.78rem] text-text-main font-bold">
+                            {isDragging ? 'Drop receipt screenshot here!' : 'Drag & drop receipt screenshot here, or tap to browse'}
+                          </span>
+                          <span className="text-[0.65rem] text-text-dim">
+                            Screenshot or photo accepted, or press <strong className="text-text-main font-mono">Ctrl + V</strong> to paste
+                          </span>
                         </div>
-                        <span className="text-xs text-text-main font-bold">
-                          {isDragging ? 'Drop receipt screenshot here!' : 'Drag & drop receipt screenshot here, or tap to browse'}
-                        </span>
-                        <span className="text-[0.65rem] text-text-dim">
-                          Supports image drop, photo upload, or <strong className="text-text-main font-mono">Ctrl + V</strong> paste
-                        </span>
-                      </div>
-                    )}
-                  </div>
+                      )}
+                    </div>
+                  )}
                 </div>
 
+                {/* Verification Notice or Rejection Box */}
+                {receiptVerificationResult && !isAnalyzingReceipt && (
+                  <div className="flex gap-3 p-2.5 rounded-lg text-[0.72rem] font-medium border border-border-glass bg-white/[0.04] text-text-main">
+                    {/* Thumbnail beside message */}
+                    {receiptPreviewUrl && (
+                      <div className="w-14 h-14 rounded-lg overflow-hidden border border-border-glass bg-bg-surface shrink-0 mt-0.5">
+                        <img src={receiptPreviewUrl} alt="Receipt preview" className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-2 flex-1 min-w-0">
+                      <div className="flex items-start gap-1.5 font-bold">
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className={`shrink-0 mt-0.5 ${receiptVerified ? 'text-primary' : 'text-text-dim'}`}>
+                          {receiptVerified ? <polyline points="20 6 9 17 4 12" /> : <circle cx="12" cy="12" r="10" />}
+                        </svg>
+                        <span className="leading-relaxed">{receiptVerificationResult}</span>
+                      </div>
+
+                      {!receiptVerified && !allowManualRef ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setReceiptVerificationResult(null);
+                            setReceiptPreviewUrl(null);
+                            document.getElementById('balance-receipt-upload')?.click();
+                          }}
+                          className="w-full bg-primary hover:bg-primary/90 text-white font-bold px-4 py-2 rounded-xl text-[0.75rem] transition-all cursor-pointer shadow-md flex items-center justify-center gap-2 border-none"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>
+                          Re-upload Receipt
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+                )}
+
                 {/* Reference Input & Pay Button */}
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter GCash Reference # (or auto-filled by AI)"
-                    value={balanceRef}
-                    onChange={(e) => setBalanceRef(e.target.value)}
-                    className="flex-1 bg-bg-surface border border-border-glass rounded-lg px-3 py-1.5 text-xs font-mono text-text-main outline-none focus:border-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSubmitRemainingBalance}
-                    disabled={isSubmittingBalance || isAnalyzingReceipt}
-                    className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white text-xs font-bold cursor-pointer border-none shrink-0 disabled:opacity-50 transition-all shadow-sm active:scale-95"
-                  >
-                    {isSubmittingBalance ? 'Submitting...' : `Pay ₱${credit.outstandingBalance.toFixed(2)}`}
-                  </button>
+                <div className="flex flex-col gap-1.5 pt-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[0.68rem] text-text-dim font-medium">
+                      GCash Reference Number (13 digits):
+                    </span>
+                    {balanceRef.trim().length >= 9 && !refError && (
+                      <span className="text-primary text-[0.65rem] font-bold">✓ Ready</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <div className="flex-1 flex flex-col">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={19}
+                        placeholder="e.g. 1002 9384 1029"
+                        value={balanceRef}
+                        onKeyDown={(e) => {
+                          if (['Backspace', 'Delete', 'Tab', 'Escape', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+                          if (e.ctrlKey || e.metaKey) return;
+                          if (!/[0-9\s]/.test(e.key)) {
+                            e.preventDefault();
+                          }
+                        }}
+                        onChange={(e) => {
+                          const cleanDigits = e.target.value.replace(/[^0-9\s]/g, '');
+                          setBalanceRef(cleanDigits);
+                          if (refTouched) validateBalanceRef(cleanDigits);
+                        }}
+                        onBlur={() => {
+                          setRefTouched(true);
+                          if (balanceRef) validateBalanceRef(balanceRef);
+                        }}
+                        className={`w-full bg-bg-surface border px-3 py-2 rounded-lg text-text-main font-mono text-[0.82rem] outline-none transition-all ${
+                          refTouched && refError
+                            ? 'border-red-500/70 bg-red-500/[0.04]'
+                            : 'border-border-glass focus:border-primary'
+                        }`}
+                      />
+                      {refTouched && refError && (
+                        <span className="text-[0.65rem] text-red-400 mt-1">{refError}</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setRefTouched(true);
+                        if (balanceRef) {
+                          const err = validateBalanceRef(balanceRef);
+                          if (err) return;
+                        }
+                        handleSubmitRemainingBalance();
+                      }}
+                      disabled={isSubmittingBalance || isAnalyzingReceipt}
+                      className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 shrink-0 border-none cursor-pointer active:scale-95"
+                    >
+                      {isSubmittingBalance ? (
+                        <>
+                          <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                            <circle cx="12" cy="12" r="10" stroke="currentColor" strokeOpacity="0.2" />
+                            <path d="M12 2a10 10 0 0 1 10 10" />
+                          </svg>
+                          <span>Settling...</span>
+                        </>
+                      ) : (
+                        <span>Pay ₱{credit.outstandingBalance.toFixed(2)}</span>
+                      )}
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
@@ -915,6 +1098,29 @@ export default function OrderDetailsModal({
         isOpen={isClaimSlipOpen}
         onClose={() => setIsClaimSlipOpen(false)}
       />
+
+      {/* QR Code Fullscreen Lightbox Modal */}
+      {showQrModal && (storeGcashSettings?.gcashQrCodeUrl || '/gcash-qr.png') && (
+        <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-[fadeIn_0.2s_ease-out]" onClick={() => setShowQrModal(false)}>
+          <div className="bg-bg-dark border border-white/20 p-6 rounded-xl flex flex-col items-center gap-4 max-w-sm w-full shadow-2xl relative" onClick={e => e.stopPropagation()}>
+            <button
+              onClick={() => setShowQrModal(false)}
+              className="absolute top-4 right-4 text-text-dim hover:text-text-main text-lg font-bold w-8 h-8 rounded-full bg-white/5 border border-border-glass flex items-center justify-center cursor-pointer"
+            >
+              ✕
+            </button>
+            <h3 className="text-text-main font-bold text-base m-0">GCash Official QR Code</h3>
+            <div className="bg-white p-3 rounded-lg shadow-inner">
+              <img
+                src={storeGcashSettings?.gcashQrCodeUrl || '/gcash-qr.png'}
+                alt="GCash QR Code Enlarged"
+                className="w-64 h-64 object-contain"
+              />
+            </div>
+            <p className="text-text-dim text-[0.75rem] text-center m-0">Open your GCash App, tap QR, and scan this code directly.</p>
+          </div>
+        </div>
+      )}
     </GlassModal>
   );
 }
