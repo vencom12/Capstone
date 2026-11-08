@@ -281,50 +281,48 @@ export default function OrderDetailsModal({
           )}
         </div>
 
-        {/* 2. Compact Status & Store Pick-up Card */}
-        <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${statusCardStyle}`}>
-          <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
-              {isCanceled ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-400">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="15" y1="9" x2="9" y2="15" />
-                  <line x1="9" y1="9" x2="15" y2="15" />
-                </svg>
-              ) : isCompletedOrDelivered ? (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary">
-                  <polyline points="20 6 9 17 4 12" />
-                </svg>
-              ) : (
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
-                  <circle cx="12" cy="12" r="10" />
-                  <polyline points="12 6 12 12 14 14" />
-                </svg>
-              )}
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="font-bold text-xs text-text-main leading-tight truncate">
-                {isCanceled
-                  ? 'Order Cancelled'
-                  : isCompletedOrDelivered
-                    ? 'Claimed at Pacific Mall Studio'
-                    : credit.isInsufficientPayment && !credit.employeeApprovedPartial
-                      ? 'Store Counter Pick-up (Hold)'
+        {/* 2. Compact Status & Store Pick-up Card (Only shown when not on hold) */}
+        {(!credit.isInsufficientPayment || credit.employeeApprovedPartial) && (
+          <div className={`p-3 rounded-xl border flex items-center justify-between gap-3 ${statusCardStyle}`}>
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center shrink-0">
+                {isCanceled ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-400">
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="15" y1="9" x2="9" y2="15" />
+                    <line x1="9" y1="9" x2="15" y2="15" />
+                  </svg>
+                ) : isCompletedOrDelivered ? (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-primary">
+                    <polyline points="20 6 9 17 4 12" />
+                  </svg>
+                ) : (
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-primary">
+                    <circle cx="12" cy="12" r="10" />
+                    <polyline points="12 6 12 12 14 14" />
+                  </svg>
+                )}
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-xs text-text-main leading-tight truncate">
+                  {isCanceled
+                    ? 'Order Cancelled'
+                    : isCompletedOrDelivered
+                      ? 'Claimed at Pacific Mall Studio'
                       : (order as any).processedBy
                         ? `Crafted by ${(order as any).processedBy}`
                         : 'Crafting at Pacific Mall Studio'}
-              </span>
-              <span className="text-[0.68rem] text-text-dim/80 mt-0.5">
-                {(order as any).processedBy && !isCompletedOrDelivered && !isCanceled && (!credit.isInsufficientPayment || credit.employeeApprovedPartial)
-                  ? `Embroidery Specialist: ${(order as any).processedBy} • Pacific Mall Lucena`
-                  : 'Pacific Mall Lucena • Ground Floor'}
-              </span>
+                </span>
+                <span className="text-[0.68rem] text-text-dim/80 mt-0.5">
+                  {(order as any).processedBy && !isCompletedOrDelivered && !isCanceled
+                    ? `Embroidery Specialist: ${(order as any).processedBy} • Pacific Mall Lucena`
+                    : 'Pacific Mall Lucena • Ground Floor'}
+                </span>
+              </div>
             </div>
-          </div>
 
-          {!isCanceled && (
-            <div className="flex items-center gap-2 shrink-0">
-              {(!credit.isInsufficientPayment || credit.employeeApprovedPartial) && (
+            {!isCanceled && (
+              <div className="flex items-center gap-2 shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsClaimSlipOpen(true)}
@@ -337,25 +335,25 @@ export default function OrderDetailsModal({
                   </svg>
                   <span>Claim Slip</span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={() => setIsReceiptModalOpen(true)}
-                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-text-main text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap"
-                title="View receipt"
-              >
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                </svg>
-                <span>Receipt</span>
-              </button>
-            </div>
-          )}
-        </div>
+                <button
+                  type="button"
+                  onClick={() => setIsReceiptModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-text-main text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap"
+                  title="View receipt"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="16" y1="13" x2="8" y2="13" />
+                    <line x1="16" y1="17" x2="8" y2="17" />
+                  </svg>
+                  <span>Receipt</span>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* 3. Progress Bar (Step X of 5) — Hidden during Queue Hold to avoid redundancy */}
         {!isCanceled && !credit.isInsufficientPayment && (
@@ -370,18 +368,33 @@ export default function OrderDetailsModal({
           </div>
         )}
 
-        {/* 3b. Option 3: Insufficient Payment / Account Credit & Outstanding Balance Breakdown */}
-        {credit.isInsufficientPayment && !isCanceled && (
+        {/* 3b. Insufficient Payment Breakdown Card (Single unified card when on queue hold) */}
+        {credit.isInsufficientPayment && !credit.employeeApprovedPartial && !isCanceled && (
           <div className="p-3.5 rounded-xl bg-white/[0.03] border border-border-glass flex flex-col gap-2.5">
-            <div className="flex flex-col gap-1">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5 text-xs font-bold text-text-main uppercase tracking-wider">
                 <span className="w-1.5 h-1.5 rounded-full bg-primary inline-block" />
-                <span>Order on Queue Hold • Payment Incomplete</span>
+                <span>Payment Incomplete</span>
               </div>
-              <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed">
-                Order is on hold. Settle the remaining balance below to begin workshop production.
-              </p>
+              <button
+                type="button"
+                onClick={() => setIsReceiptModalOpen(true)}
+                className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/20 text-text-main text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-sm active:scale-95 whitespace-nowrap shrink-0"
+                title="View receipt"
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                </svg>
+                <span>Receipt</span>
+              </button>
             </div>
+
+            <p className="text-[0.72rem] text-text-dim m-0 leading-relaxed">
+              Settle remaining balance below to begin production at Pacific Mall Studio.
+            </p>
 
             <div className="grid grid-cols-3 gap-2 p-2.5 rounded-lg bg-bg-surface border border-border-glass font-mono text-xs text-center">
               <div>
