@@ -57,7 +57,6 @@ export default function OrderDetailsModal({
   const [isUploadingTopUp, setIsUploadingTopUp] = useState(false);
   const [topUpReceiptUrl, setTopUpReceiptUrl] = useState('');
   const [storeGcashSettings, setStoreGcashSettings] = useState<{ gcashQrCodeUrl?: string; gcashAccountName?: string; gcashAccountNumber?: string } | null>(null);
-  const [showGcashQr, setShowGcashQr] = useState(false);
   const { user, refreshUser } = useAuthStore();
 
   useEffect(() => {
@@ -439,23 +438,8 @@ export default function OrderDetailsModal({
                     </button>
                   </div>
                 )}
-                <div className="flex items-center justify-between">
-                  <span className="text-[0.7rem] font-bold text-text-main">
-                    Pay remaining balance via GCash:
-                  </span>
-                  {storeGcashSettings?.gcashQrCodeUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setShowGcashQr(!showGcashQr)}
-                      className="text-[0.68rem] text-primary hover:underline font-semibold cursor-pointer bg-transparent border-none flex items-center gap-1"
-                    >
-                      <span>{showGcashQr ? 'Hide GCash QR' : 'View GCash QR Code'}</span>
-                      <span>{showGcashQr ? '▲' : '▼'}</span>
-                    </button>
-                  )}
-                </div>
-
-                {showGcashQr && storeGcashSettings?.gcashQrCodeUrl && (
+                {/* Direct GCash QR & Account Info (No dropdowns) */}
+                {storeGcashSettings?.gcashQrCodeUrl ? (
                   <div className="p-3 rounded-xl bg-bg-surface border border-border-glass flex flex-col sm:flex-row items-center gap-3">
                     <div className="w-28 h-28 rounded-lg overflow-hidden border border-border-glass bg-white p-1 shrink-0">
                       <img
@@ -493,6 +477,10 @@ export default function OrderDetailsModal({
                       </span>
                     </div>
                   </div>
+                ) : (
+                  <span className="text-[0.7rem] font-bold text-text-main">
+                    Pay remaining balance via GCash:
+                  </span>
                 )}
                 <div className="flex flex-col sm:flex-row gap-2">
                   <input
