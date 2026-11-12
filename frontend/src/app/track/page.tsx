@@ -40,33 +40,7 @@ function OrderTrackerContent() {
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [isCancelling, setIsCancelling] = useState(false);
   const prevStageRef = useRef<string>('');
-
-  const handleRequestRefundAndCancel = async () => {
-    if (!order) return;
-    const confirmCancel = window.confirm(
-      `Request immediate cancellation and full refund of ₱${order.totalAmount?.toFixed(2)} for Order #${order.orderId}?`
-    );
-    if (!confirmCancel) return;
-
-    setIsCancelling(true);
-    try {
-      await api.post(`/api/customer/orders/${order.orderId}/cancel`, {
-        reason: `Full refund requested due to workshop operational delay (${order.delayNotice?.reason || 'Schedule adjusted'}).`
-      });
-      alert('Your cancellation and full refund request has been registered.');
-      // Refresh order
-      const res = await api.get<{ success: boolean; order: TrackedOrder }>(`/api/customer/track/${order.orderId}`);
-      if (res && res.success) {
-        setOrder(res.order);
-      }
-    } catch (err: any) {
-      alert(err.message || 'Failed to request cancellation and refund.');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
 
   // Audio chime when order transitions to ready
   const playClaimReadyChime = () => {
@@ -347,27 +321,8 @@ function OrderTrackerContent() {
           </div>
 
           <p className="text-[11.5px] text-text-dim leading-relaxed">
-            Your garments are safely held in our Pacific Mall studio. If you are comfortable waiting, no action is needed — we will fulfill your stitching at the revised target time.
+            Your garments are safely held in our Pacific Mall studio. We will fulfill your stitching at the revised target time. If you have any urgent concerns, please contact our workshop staff or visit our counter.
           </p>
-
-          <div className="flex flex-col gap-1.5 pt-1 border-t border-white/10">
-            <button
-              type="button"
-              onClick={handleRequestRefundAndCancel}
-              disabled={isCancelling}
-              className="w-full py-2.5 px-3 rounded-lg bg-white/10 hover:bg-white/20 text-text-main border border-white/20 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="10"/>
-                <line x1="15" y1="9" x2="9" y2="15"/>
-                <line x1="9" y1="9" x2="15" y2="15"/>
-              </svg>
-              {isCancelling ? 'Processing Cancellation...' : 'Request Full Refund & Cancel Order'}
-            </button>
-            <span className="text-[10px] text-text-dim text-center">
-              100% full refund guaranteed. No penalty fees or deductions.
-            </span>
-          </div>
         </div>
       )}
 

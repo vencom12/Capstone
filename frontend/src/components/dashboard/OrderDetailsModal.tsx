@@ -49,7 +49,6 @@ export default function OrderDetailsModal({
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false);
   const [isReceiptModalOpen, setIsReceiptModalOpen] = useState(false);
   const [isClaimSlipOpen, setIsClaimSlipOpen] = useState(false);
-  const [isCancelling, setIsCancelling] = useState(false);
   const [helpCategory, setHelpCategory] = useState<string | undefined>(undefined);
   const [expandedRosterIdx, setExpandedRosterIdx] = useState<number | null>(null);
   const [balanceRef, setBalanceRef] = useState('');
@@ -317,39 +316,12 @@ export default function OrderDetailsModal({
      !['none', 'unpaid', 'pending'].includes(order.paymentMethod.toLowerCase()) && 
      order.paymentStatus?.toLowerCase() !== 'unpaid');
 
-  const canCancel = !isCanceled && !isInProduction && !isCompletedOrDelivered && !isPaid;
-
   const cleanId = order.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(-8).toUpperCase();
   const claimCode = (order.personalization as any)?.claimCode || (
     order.orderId.startsWith('WI-')
       ? `#${order.orderId.replace('WI-', 'A-')}`
       : `#A-${cleanId.slice(-4)}`
   );
-
-  const handleCancelOrder = async () => {
-    if (!canCancel || isCancelling) return;
-    const confirmed = window.confirm(
-      `Are you sure you want to cancel order #${order.orderId}?\n\nThis will cancel your order and release reserved materials.`
-    );
-    if (!confirmed) return;
-
-    setIsCancelling(true);
-    try {
-      const res = await api.post<{ success: boolean; message: string }>(
-        `/api/customer/orders/${order.id || order.orderId}/cancel`,
-        {}
-      );
-      showToast(res?.message || 'Order cancelled successfully', 'success');
-      onOrderCancelled?.(order.id || order.orderId);
-      useProductStore.getState().fetchDashboardState().catch(() => {});
-      onClose();
-    } catch (err: any) {
-      console.error(err);
-      showToast(err.message || 'Failed to cancel order', 'error');
-    } finally {
-      setIsCancelling(false);
-    }
-  };
 
   const handleSubmitRemainingBalance = async (manualOverrideRef?: string) => {
     const cleanRef = (typeof manualOverrideRef === 'string' ? manualOverrideRef : balanceRef).trim();
@@ -1002,17 +974,6 @@ export default function OrderDetailsModal({
           >
             Close
           </button>
-
-          {!isCanceled && !isCompletedOrDelivered && canCancel && (
-            <button
-              type="button"
-              onClick={handleCancelOrder}
-              disabled={isCancelling}
-              className="flex-1 h-9 rounded-xl font-bold text-xs bg-danger/10 hover:bg-danger/20 border border-danger/30 text-danger transition-all cursor-pointer flex items-center justify-center active:scale-[0.98]"
-            >
-              {isCancelling ? 'Cancelling...' : 'Cancel Order'}
-            </button>
-          )}
 
           {isCompletedOrDelivered ? (
             <button
